@@ -1,13 +1,12 @@
 import os
 
-# Debe ir antes de cualquier import de tensorflow/keras (ver nota en predict.py)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 os.environ["TF_USE_LEGACY_KERAS"] = "1"
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from database import BaseDatos
-from predict import predecir_alimento  # única fuente de inferencia (fusión con predict.py)
+from predict import predecir_alimento  # Fusión con la funcion de predict.py
 
 app = Flask(__name__)
 CORS(app)
@@ -120,8 +119,7 @@ def formatear_nombre(nombre_tecnico):
         'tiramisu': 'Tiramisú',
         'tuna_tartare': 'Tartar de atún',
         'waffles': 'Waffles',
-        # TODO: agregar aquí los 26 códigos de tus platos regionales colombianos
-        # a medida que definas sus nombres_técnicos en el dataset de entrenamiento.
+        # Pendiente agregar aquí los códigos de los platos regionales 
     }
     return traducciones.get(nombre_tecnico, nombre_tecnico.replace('_', ' ').title())
 
@@ -137,7 +135,7 @@ def predecir():
         return jsonify({'error': 'No se seleccionó ningún archivo o la imagen está vacía.'}), 400
 
     try:
-        # Una sola lectura de los bytes (evita el bug de doble .read() del stream)
+        # Coreccion: Una sola lectura de los bytes
         img_bytes = file.read()
         resultado = predecir_alimento(img_bytes)
 
@@ -151,7 +149,7 @@ def predecir():
             es_balanceado = info_alimento.get("es_saludable", 1)
         else:
             nombre_amigable = formatear_nombre(nombre_tecnico)
-            calorias = 250  # Placeholder: revisar cuando tabla_alimentos esté poblada con datos reales
+            calorias = 250  # Placeholder
             es_balanceado = 1
 
         guardado_exitoso = False
@@ -170,7 +168,7 @@ def predecir():
                 'alimento_app': nombre_amigable,
                 'guardado_baseDatos': guardado_exitoso,
                 'mensaje': "Predicción realizada y guardada en la base de datos." if guardado_exitoso
-                           else "Predicción realizada pero no se pudo guardar en la base de datos.",
+                           else "Predicción realizada, pero no se pudo guardar en la base de datos.",
                 'certeza': round(mejor_certeza, 2),
                 'alimento': nombre_amigable,
             }
@@ -179,7 +177,7 @@ def predecir():
                 'success': False,
                 'guardado_baseDatos': False,
                 'seleccion_manual': True,
-                'mensaje': "La certeza de la IA es muy baja para guardarse automáticamente.",
+                'mensaje': "La certeza de la IA es muy baja para guardar la predicción.",
                 'certeza': round(mejor_certeza, 2),
                 'alimento': nombre_amigable,
             }
@@ -226,7 +224,7 @@ def lista_alimentos():
         return jsonify({'error': f'Error al obtener la lista de alimentos: {str(e)}'}), 500
 
 
-# ==== Cargar alimentos desde CSV ====
+# ==== Cargar alimentos desde CSV ==== # ESTO DEBE SER MODIFICADO POSTERIORMENTE 
 @app.route('/cargar-alimentos-csv', methods=['POST'])
 def cargar_alimentos_csv():
     """
@@ -242,8 +240,7 @@ def cargar_alimentos_csv():
 
     try:
         contenido_csv = file.read().decode('utf-8')
-        # Nombre corregido: coincide con el método real de database.py
-        # (antes se llamaba a cargar_alimentos_desde_csv_contenido, que no existe)
+        # Nombre corregido
         exito, mensaje = db.cargar_alimentos_desde_csv(contenido_csv)
 
         if exito:
