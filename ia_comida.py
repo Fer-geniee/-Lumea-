@@ -1,7 +1,4 @@
 import os
-
-# Igual que en predict.py: debe fijarse ANTES de importar tensorflow, para que
-# el modelo entrenado aquí sea compatible con el que se carga en producción.
 os.environ["TF_USE_LEGACY_KERAS"] = "1"
 
 import json
@@ -10,10 +7,6 @@ import tensorflow as tf
 Size = (224, 224)
 BATCH_SIZE = 32
 DATASET_PATH = "dataset/"
-
-# Guardamos junto a este script; muévelo (o ajusta esta ruta) a la carpeta
-# Backend/ antes de entrenar, para que quede en el mismo lugar donde
-# predict.py espera encontrar modelo_lumea_comida.h5 y clases.json.
 Base_dir = os.path.dirname(os.path.abspath(__file__))
 MODEL_OUT = os.path.join(Base_dir, "modelo_lumea_comida.h5")
 CLASSES_OUT = os.path.join(Base_dir, "clases.json")
@@ -41,7 +34,7 @@ print(f"Clases de entrenamiento ({len(classes)}): {classes}")
 with open(CLASSES_OUT, "w", encoding="utf-8") as f:
     json.dump(classes, f)
 
-# ==== Red neuronal (transfer learning sobre MobileNetV2) ====
+# ==== Red neuronal - transfer learning sobre MobileNetV2 ====
 data_argumentation = tf.keras.Sequential([
     tf.keras.layers.RandomFlip("horizontal_and_vertical"),
     tf.keras.layers.RandomRotation(0.2),
