@@ -1,0 +1,33 @@
+pass.env 
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+
+# Variables de entorno y secretos — NUNCA subir esto
+.env
+
+# Base de datos local
+*.db
+lumea.db
+
+# Modelos entrenados grandes (evalúa el tamaño con `ls -lh`; si pesa
+# más de ~50MB considera Git LFS o excluirlo y compartirlo por Drive)
+# *.h5
+
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/
+
+# Frontend (si usa npm/Node más adelante)
+node_modules/
+dist/
+build/
+
+# Arduino / otros proyectos que NO son de Lumea (por si el .git anterior los arrastró)
+.arduino-create/
+.arduinoIDE/

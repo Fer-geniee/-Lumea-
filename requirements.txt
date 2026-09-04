@@ -1,0 +1,9 @@
+flask
+flask-cors
+mysql-connector-python
+python-dotenv
+tensorflow>=2.16
+tf_keras>=2.16
+pillow
+numpy
+requests  # solo para test_api.py
