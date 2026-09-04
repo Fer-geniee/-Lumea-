@@ -9,12 +9,9 @@ load_dotenv()
 
 def conectar_mysql():
     """Establece la conexión inicial con el servidor MySQL.
-
-    La contraseña NUNCA debe quedar escrita en el código fuente. Se lee desde
-    una variable de entorno (archivo .env) que no se sube al repositorio.
     """
     password = os.getenv("MYSQL_PASSWORD", "")
-    host = os.getenv("MYSQL_HOST", "127.0.0.1")  # Cambiar en .env el día de la sustentación IMPORTANTE 
+    host = os.getenv("MYSQL_HOST", "127.0.0.1")  # Cambiar en .env IMPORTANTE 
     port = int(os.getenv("MYSQL_PORT", "3306"))
     user = os.getenv("MYSQL_USER", "root")
 
@@ -89,10 +86,7 @@ class BaseDatos:
                 )
             ''')
 
-            # 4. TABLA DE SUEÑO
-            # Nota: renombrada de 'sueño' a 'sueno' (sin eñe) para evitar problemas
-            # de identificador según el charset/collation del cliente MySQL que use
-            # cada máquina el día de la presentación. Ver explicación en el chat.
+            # 4. TABLA DE SUEÑO - Renombrada 
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS sueno (
                     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -113,7 +107,7 @@ class BaseDatos:
                 )
             ''')
 
-            # 6. TABLA MAESTRA DE ALIMENTOS
+            # 6. TABLA PRINCIPAL DE ALIMENTOS
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS tabla_alimentos (
                     alimento_codigo VARCHAR(100) PRIMARY KEY,
@@ -134,21 +128,16 @@ class BaseDatos:
 
     def _verificar_alimentos_poblados(self, cursor):
         """Avisa si 'tabla_alimentos' está vacía.
-
-        Antes este método (_poblar_alimentos_iniciales) intentaba insertar datos
-        nutricionales por defecto, pero no existía en el código y además yo no
-        tengo cifras nutricionales verificadas para tus 127 clases — inventarlas
-        sería peor que dejarlo vacío. Por eso solo avisa; la carga real debe
-        venir de cargar_alimentos_desde_csv() con una fuente verificada
-        (ver discusión sobre USDA/ICBF).
+        La información real debe venir de cargar_alimentos_desde_csv() con una fuente verificada 
+        que se añadirá en unos días. 
         """
         try:
             cursor.execute("SELECT COUNT(*) FROM tabla_alimentos")
             (total,) = cursor.fetchone()
             if total == 0:
                 print(
-                    "tabla_alimentos está vacía. Ejecuta cargar_alimentos_desde_csv() "
-                    "con tu fuente de datos nutricionales antes de usar /predecir en producción."
+                    "Tabla_alimentos está vacía. Ejecutar cargar_alimentos_desde_csv() "
+                    "con la fuente de datos nutricionales antes de usar /predecir."
                 )
         except csv.Error as e:
             print(f"No se pudo verificar tabla_alimentos: {e}")
@@ -156,7 +145,7 @@ class BaseDatos:
     # ==== Exportar datos desde EXCEL/CSV ====
     def cargar_alimentos_desde_csv(self, texto_csv):
         """Carga los alimentos desde un CSV a la tabla maestra.
-        Columnas esperadas: alimento_codigo, nombre_pantalla, calorias, es_saludable
+        Columnas: alimento_codigo, nombre_pantalla, calorias, es_saludable
         """
         if not self.conexion or not self.conexion.is_connected():
             return False, "Sin conexión a MySQL"
@@ -225,11 +214,6 @@ class BaseDatos:
     # ================= MÓDULO HISTORIAL Y ALIMENTOS =================
     def registrar_comida(self, alimento_codigo, nombre_amigable, certeza, calorias, balanceado):
         """Inserta un registro de comida procesada por la IA.
-
-        Antes esta función recibía 4 parámetros pero app.py la llamaba con 5
-        argumentos en otro orden (guardaba el nombre bonito en la columna de
-        certeza). Ahora recibe explícitamente el código técnico (para trazabilidad
-        con tabla_alimentos) y el nombre amigable (lo que ve el usuario).
         """
         if not self.conexion or not self.conexion.is_connected():
             print("No hay conexión activa a MySQL.")
@@ -299,4 +283,4 @@ if __name__ == "__main__":
     if db.conexion and db.conexion.is_connected():
         print("Base de datos lista")
     else:
-        print("Verifica que el servidor esté activo y que exista el archivo .env con MYSQL_PASSWORD")
+        print("Verificar que el servidor está activo y el archivo .env es correcto")
