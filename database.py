@@ -2,10 +2,9 @@ import os
 import io
 import csv
 import mysql.connector
-from venv import load_dotenv
+from dotenv import load_dotenv 
 
-load_dotenv()
-
+load_dotenv() 
 
 def conectar_mysql():
     """Establece la conexión inicial con el servidor MySQL.
@@ -122,7 +121,15 @@ class BaseDatos:
                     es_saludable INT
                 )
             ''')
-
+            
+            # 7. TABLA DE ESTADO DE ÁNIMO 
+            cursor.execute(''' 
+                CREATE TABLE IF NOT EXISTS estado_animo (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                fecha DATE DEFAULT (CURRENT_DATE),
+                estado VARCHAR(20)  -- p. ej. 'muy_bien', 'bien', 'neutral', 'mal', 'muy_mal'
+                )
+            ''')
             self.conexion.commit()
             print("Estructura de tablas verificada en MySQL (lumea_db).")
             self._verificar_alimentos_poblados(cursor)
