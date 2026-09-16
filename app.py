@@ -255,4 +255,11 @@ def cargar_alimentos_csv():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001, debug=True, use_reloader=False)  # use_reloader=False evita problemas de TensorFlow en MacOS 
+    # use_reloader=False es crítico aquí: el reloader de Flask arranca la app
+    # en un proceso hijo aparte para poder reiniciarla sola al detectar
+    # cambios. TensorFlow en macOS (sobre todo Apple Silicon) tiene problemas
+    # documentados cuando su inicialización queda dividida entre el proceso
+    # padre y ese hijo -- puede colgar peticiones indefinidamente, sin error
+    # ni log. Puerto 5001 evitado por AirPlay Receiver (ver nota anterior).
+    app.run(host='0.0.0.0', port=5001, debug=True, use_reloader=False)
+    

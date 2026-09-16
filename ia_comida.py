@@ -15,7 +15,7 @@ DATASET_PATH = "dataset/"
 # Backend/ antes de entrenar, para que quede en el mismo lugar donde
 # predict.py espera encontrar modelo_lumea_comida.h5 y clases.json.
 Base_dir = os.path.dirname(os.path.abspath(__file__))
-MODEL_OUT = os.path.join(Base_dir, "modelo_lumea_comida.h5")
+MODEL_OUT = os.path.join(Base_dir, "modelo_lumea_comida.keras")
 CLASSES_OUT = os.path.join(Base_dir, "clases.json")
 
 training = tf.keras.utils.image_dataset_from_directory(
