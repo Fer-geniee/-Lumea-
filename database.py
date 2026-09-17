@@ -2,9 +2,12 @@ import os
 import io
 import csv
 import mysql.connector
-from dotenv import load_dotenv 
+from mysql.connector import Error
+from dotenv import load_dotenv
 
-load_dotenv() 
+# Carga las variables definidas en el archivo .env (mismo directorio que este script)
+load_dotenv()
+
 
 def conectar_mysql():
     """Establece la conexión inicial con el servidor MySQL.
@@ -13,7 +16,7 @@ def conectar_mysql():
     una variable de entorno (archivo .env) que no se sube al repositorio.
     """
     password = os.getenv("MYSQL_PASSWORD", "")
-    host = os.getenv("MYSQL_HOST", "127.0.0.1")  # Cambiar en .env el día de la sustentación IMPORTANTE 
+    host = os.getenv("MYSQL_HOST", "127.0.0.1")  # Cambiar en .env el día de la sustentación
     port = int(os.getenv("MYSQL_PORT", "3306"))
     user = os.getenv("MYSQL_USER", "root")
 
@@ -23,11 +26,11 @@ def conectar_mysql():
             port=port,
             user=user,
             password=password,
-            charset="utf8mb4",  # Tildes y eñes 
+            charset="utf8mb4",  # Necesario para nombres/columnas con tildes y eñes (p. ej. 'sueño')
         )
         if conexion.is_connected():
             return conexion
-    except mysql.connector.Error as e:
+    except Error as e:
         print(f"Error al conectar a MySQL: {e}")
         return None
 
@@ -121,23 +124,36 @@ class BaseDatos:
                     es_saludable INT
                 )
             ''')
-            
-            # 7. TABLA DE ESTADO DE ÁNIMO 
-            cursor.execute(''' 
-                CREATE TABLE IF NOT EXISTS estado_animo (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                fecha DATE DEFAULT (CURRENT_DATE),
-                estado VARCHAR(20)  -- p. ej. 'muy_bien', 'bien', 'neutral', 'mal', 'muy_mal'
-                )
-            ''')
+
             self.conexion.commit()
             print("Estructura de tablas verificada en MySQL (lumea_db).")
             self._verificar_alimentos_poblados(cursor)
+            self._asegurar_columna(cursor, "historial_comida", "alimento_codigo", "alimento_codigo VARCHAR(100) AFTER fecha")
+            self.conexion.commit()
 
-        except mysql.connector.Error as e:
+        except Error as e:
             print(f"Error al crear tablas en MySQL: {e}")
         finally:
             cursor.close()
+
+    def _asegurar_columna(self, cursor, tabla, columna, definicion_sql):
+        """Agrega una columna a una tabla existente si todavía no la tiene.
+
+        CREATE TABLE IF NOT EXISTS NO modifica una tabla que ya existía --
+        por eso los cambios de esquema (columnas nuevas) necesitan este paso
+        aparte, revisando primero si la columna ya está antes de agregarla.
+        """
+        cursor.execute(
+            """
+            SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = 'lumea_db' AND TABLE_NAME = %s AND COLUMN_NAME = %s
+            """,
+            (tabla, columna),
+        )
+        (existe,) = cursor.fetchone()
+        if not existe:
+            cursor.execute(f"ALTER TABLE {tabla} ADD COLUMN {definicion_sql}")
+            print(f"Columna agregada: {tabla}.{columna}")
 
     def _verificar_alimentos_poblados(self, cursor):
         """Avisa si 'tabla_alimentos' está vacía.
@@ -157,7 +173,7 @@ class BaseDatos:
                     "tabla_alimentos está vacía. Ejecuta cargar_alimentos_desde_csv() "
                     "con tu fuente de datos nutricionales antes de usar /predecir en producción."
                 )
-        except csv.Error as e:
+        except Error as e:
             print(f"No se pudo verificar tabla_alimentos: {e}")
 
     # ==== Exportar datos desde EXCEL/CSV ====
@@ -210,7 +226,7 @@ class BaseDatos:
             cursor.execute(sql, (nombre, email, edad, genero, peso, altura))
             self.conexion.commit()
             return True
-        except mysql.connector.Error as e:
+        except Error as e:
             print(f"Error al guardar perfil: {e}")
             return False
         finally:
@@ -223,7 +239,7 @@ class BaseDatos:
         try:
             cursor.execute('SELECT * FROM perfil WHERE id = 1')
             return cursor.fetchone()
-        except csv.Error as e:
+        except Error as e:
             print(f"Error al obtener perfil: {e}")
             return None
         finally:
@@ -251,7 +267,7 @@ class BaseDatos:
             cursor.execute(sql, (alimento_codigo, nombre_amigable, certeza, calorias, balanceado))
             self.conexion.commit()
             return True
-        except mysql.connector.Error as e:
+        except Error as e:
             print(f"Error al insertar comida: {e}")
             return False
         finally:
@@ -264,7 +280,7 @@ class BaseDatos:
         try:
             cursor.execute('SELECT * FROM historial_comida ORDER BY id DESC')
             return cursor.fetchall()
-        except csv.Error as e:
+        except Error as e:
             print(f"Error al obtener historial: {e}")
             return []
         finally:
@@ -278,7 +294,7 @@ class BaseDatos:
             sql = "SELECT nombre_pantalla, calorias, es_saludable FROM tabla_alimentos WHERE alimento_codigo = %s"
             cursor.execute(sql, (codigo_alimento,))
             return cursor.fetchone()
-        except mysql.connector.Error as e:
+        except Error as e:
             print(f"Error al consultar tabla_alimentos: {e}")
             return None
         finally:
@@ -293,7 +309,7 @@ class BaseDatos:
             cursor.execute("INSERT INTO hidratacion (cantidad_mL) VALUES (%s)", (cantidad_ml,))
             self.conexion.commit()
             return True
-        except csv.Error as e:
+        except Error as e:
             print(f"Error en hidratación: {e}")
             return False
         finally:
