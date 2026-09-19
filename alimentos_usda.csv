@@ -1,0 +1,100 @@
+alimento_codigo,nombre_pantalla,calorias,es_saludable
+apple_pie,Tarta de manzana,354,0
+baby_back_ribs,Costillas de cerdo,170,0
+baklava,Baklava,440,0
+beef_tartare,Tartar de ternera,216,0
+beet_salad,Ensalada de remolacha,93,0
+beignets,Buñuelos,417,0
+bibimbap,Bibimbap,76,0
+bread_pudding,Budín de pan,156,0
+breakfast_burrito,Burrito de desayuno,277,0
+bruschetta,Bruschetta,171,1
+caesar_salad,Ensalada César,190,0
+cannoli,Cannoli,328,0
+caprese_salad,Ensalada Caprese,152,0
+carrot_cake,Pastel de zanahoria,374,0
+ceviche,Ceviche,63,1
+cheesecake,Tarta de queso,289,0
+cheese_plate,Plato de quesos,192,0
+chicken_curry,Curry de pollo,107,0
+chicken_quesadilla,Quesadilla de pollo,287,0
+chicken_wings,Alitas de pollo,196,0
+chocolate_cake,Pastel de chocolate,399,0
+chocolate_mousse,Mousse de chocolate,225,0
+churros,Churros,419,0
+clam_chowder,Sopa de almejas,118,0
+club_sandwich,Sándwich club,220,0
+crab_cakes,Pasteles de cangrejo,214,0
+creme_brulee,Crema catalana,113,0
+cup_cakes,Magdalenas,422,0
+deviled_eggs,Huevos rellenos,198,0
+donuts,Donas,404,0
+dumplings,Dumplings,125,0
+edamame,Edamame,106,1
+eggs_benedict,Huevos benedictinos,288,0
+escargots,Caracoles,158,1
+falafel,Falafel,514,0
+filet_mignon,Filete mignon,196,0
+foie_gras,Foie gras,462,0
+french_fries,Papas fritas,198,1
+french_onion_soup,Sopa de cebolla francesa,108,0
+french_toast,Tostadas francesas,278,0
+fried_calamari,Calamares fritos,234,0
+fried_rice,Arroz frito,174,0
+frozen_yogurt,Yogur helado,204,0
+garlic_bread,Pan de ajo,349,0
+gnocchi,Ñoquis,178,0
+greek_salad,Ensalada griega,66,0
+grilled_cheese_sandwich,Sándwich de queso a la parrilla,343,0
+grilled_salmon,Salmón a la parrilla,259,0
+guacamole,Guacamole,200,0
+gyoza,Gyoza,151,1
+hamburger,Hamburguesa,263,0
+hot_and_sour_soup,Sopa agripicante,39,0
+hot_dog,Perro caliente,233,0
+huevos_rancheros,Huevos rancheros,121,0
+hummus,Hummus,321,0
+ice_cream,Helado,200,0
+lasagna,Lasaña,139,0
+lobster_bisque,Bisque de langosta,147,0
+lobster_roll_sandwich,Sándwich de langosta,271,0
+macaroni_and_cheese,Macarrones con queso,223,0
+macarons,Macarons,467,0
+miso_soup,Sopa de miso,24,0
+mussels,Mejillones,109,0
+nachos,Nachos,242,0
+omelette,Tortilla francesa,24,1
+onion_rings,Aros de cebolla,500,0
+oysters,Ostras,418,0
+pad_thai,Pad Thai,154,0
+paella,Paella,143,0
+pancakes,Panqueques,207,1
+panna_cotta,Panna cotta,220,0
+peking_duck,Pato Pekín,154,0
+pho,Pho,77,0
+pizza,Pizza,238,0
+pork_chop,Chuleta de cerdo,190,0
+poutine,Poutine,379,0
+prime_rib,Costilla de res,335,0
+pulled_pork_sandwich,Sándwich de cerdo desmenuzado,188,0
+ramen,Ramen,137,0
+ravioli,Raviolis,77,0
+red_velvet_cake,Pastel de red velvet,312,0
+risotto,Risotto,157,0
+samosa,Samosa,310,0
+sashimi,Sashimi,102,1
+scallops,Vieiras,217,0
+seaweed_salad,Ensalada de algas,125,0
+shrimp_and_grits,Camarones con sémola,126,0
+spaghetti_bolognese,Espaguetis a la boloñesa,32,0
+spaghetti_carbonara,Espaguetis a la carbonara,400,0
+spring_rolls,Rollitos de primavera,159,0
+steak,Bistec,145,0
+strawberry_shortcake,Pastel de fresa,214,0
+sushi,Sushi,94,0
+tacos,Tacos,275,0
+tiramisu,Tiramisú,353,0
+waffles,Waffles,437,0
+soda,Gaseosa,42,0
+frutas,Fruta,61,1
+snacks_empacados,Snack empacado,571,0
