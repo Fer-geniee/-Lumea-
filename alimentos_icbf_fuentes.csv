@@ -1,0 +1,25 @@
+alimento_codigo,fuente_tipo,cita,kcal_100g,sodio_mg_100g,azucares_g_100g,grasas_sat_g_100g,sellos_activados,datos_incompletos
+ajiaco,icbf_directo,"TCAC 2018, p.102-103, código S001",82,248,0.0,0.2,ninguno,azucares (TCAC no lo reporta para platos preparados)
+bandeja_paisa,icbf_directo,"TCAC 2018, p.102-103, código S004",212,282,0.0,1.9,ninguno,azucares (TCAC no lo reporta para platos preparados)
+cuy,icbf_directo,"TCAC 2018, p.102-103, código S010",229,758,0.0,3.2,"sodio,grasas_saturadas",azucares (TCAC no lo reporta para platos preparados)
+tamal,icbf_directo,"TCAC 2018, p.104-105, código S032",132,265,0.0,0.8,ninguno,azucares (TCAC no lo reporta para platos preparados)
+sancocho,icbf_directo,"TCAC 2018, p.102-103, código S025 (variante de pollo, genérica)",121,347,0.0,0.4,sodio,azucares (TCAC no lo reporta para platos preparados)
+arroz,icbf_directo,"TCAC 2018, p.42-43, código A009",161,4,0.0,0.2,ninguno,azucares (TCAC no lo reporta para platos preparados)
+arepa,icbf_directo,"TCAC 2018, p.42-43, código A004 (variante paisa, sin relleno)",163,188,0.0,0.0,ninguno,azucares (TCAC no lo reporta para platos preparados); grasas_saturadas (celda en blanco en el TCAC)
+huevo,icbf_directo,"TCAC 2018, p.82-83, código J003",145,143,0.0,3.1,grasas_saturadas,azucares (TCAC no lo reporta para platos preparados)
+pescado,icbf_directo,"TCAC 2018, p.64-65, código E009 (especie representativa)",138,97,0.0,3.2,grasas_saturadas,azucares (TCAC no lo reporta para platos preparados)
+pollo_frito,icbf_directo,"TCAC 2018, p.72-75, código F088",178,79,0.0,1.5,ninguno,azucares (TCAC no lo reporta para platos preparados)
+mazorcada,estimacion_por_receta,"Suma ponderada de 6 ingredientes (ver alimentos_icbf_ingredientes.csv), peso total receta = 270.0g",167,211.4,0.7,4.5,grasas_saturadas,
+empanada_anejo,estimacion_por_receta,"Suma ponderada de 5 ingredientes (ver alimentos_icbf_ingredientes.csv), peso total receta = 125.0g",324,144.4,0.8,2.9,ninguno,
+bunuelos,estimacion_por_receta,"Suma ponderada de 6 ingredientes (ver alimentos_icbf_ingredientes.csv), peso total receta = 120.0g",347,292.5,5.4,6.3,grasas_saturadas,
+aromatica,estimacion_por_receta,"Suma ponderada de 1 ingredientes (ver alimentos_icbf_ingredientes.csv), peso total receta = 250.0g",1,1.0,0.0,0.0,ninguno,
+frito,estimacion_por_receta,"Suma ponderada de 4 ingredientes (ver alimentos_icbf_ingredientes.csv), peso total receta = 167.0g",227,519.2,0.0,4.7,"sodio,grasas_saturadas",
+chicharron,estimacion_por_receta,"Suma ponderada de 2 ingredientes (ver alimentos_icbf_ingredientes.csv), peso total receta = 101.0g",400,832.7,0.0,11.6,"sodio,grasas_saturadas",
+fresas_crema,estimacion_por_receta,"Suma ponderada de 3 ingredientes (ver alimentos_icbf_ingredientes.csv), peso total receta = 800.0g",142,9.9,5.0,8.4,"azucares,grasas_saturadas",
+patacon,estimacion_por_receta,"Suma ponderada de 4 ingredientes (ver alimentos_icbf_ingredientes.csv), peso total receta = 171.0g",201,233.3,0.0,1.6,ninguno,
+pandebono,estimacion_por_receta,"Suma ponderada de 6 ingredientes (ver alimentos_icbf_ingredientes.csv), peso total receta = 160.0g",345,319.0,4.6,8.0,"sodio,grasas_saturadas",
+hornado,estimacion_por_receta,"Suma ponderada de 3 ingredientes (ver alimentos_icbf_ingredientes.csv), peso total receta = 152.0g",269,576.3,0.0,6.4,"sodio,grasas_saturadas",
+llapingachos,estimacion_por_receta,"Suma ponderada de 5 ingredientes (ver alimentos_icbf_ingredientes.csv), peso total receta = 181.5g",166,511.7,2.0,2.9,"sodio,grasas_saturadas",
+mondongo,estimacion_por_receta,"Suma ponderada de 8 ingredientes (ver alimentos_icbf_ingredientes.csv), peso total receta = 300.0g",140,82.5,0.4,1.5,ninguno,
+natilla,estimacion_por_receta,"Suma ponderada de 4 ingredientes (ver alimentos_icbf_ingredientes.csv), peso total receta = 295.0g",178,35.3,20.3,4.0,"azucares,grasas_saturadas",
+obleas,estimacion_por_receta,"Suma ponderada de 2 ingredientes (ver alimentos_icbf_ingredientes.csv), peso total receta = 50.0g",340,253.2,41.5,4.2,"azucares,grasas_saturadas",

@@ -1,0 +1,25 @@
+alimento_codigo,nombre_pantalla,calorias,es_saludable
+ajiaco,Ajiaco santafereño,82,1
+bandeja_paisa,Bandeja paisa,212,1
+cuy,Cuy asado,229,0
+tamal,"Tamal tolimense, cocido",132,1
+sancocho,Sancocho valluno de gallina,121,0
+arroz,"Arroz blanco, pulido, cocido, sin sal",161,1
+arepa,"Arepa paisa (de maíz precocido, con sal)",163,1
+huevo,"Huevo de gallina, entero, cocido",145,0
+pescado,"Bocachico, entero, cocido, sin sal",138,0
+pollo_frito,"Pollo, pechuga sin piel, frita, sin sal",178,1
+mazorcada,Mazorcada (con pollo),167,0
+empanada_anejo,Empanada de añejo,324,1
+bunuelos,Buñuelo,347,0
+aromatica,"Aromática (hierbas, sin endulzar)",1,1
+frito,Frito pastuso,227,0
+chicharron,Chicharrón,400,0
+fresas_crema,Fresas con crema,142,0
+patacon,Patacón,201,1
+pandebono,Pandebono,345,0
+hornado,Hornado pastuso,269,0
+llapingachos,Llapingachos (sin relleno),166,0
+mondongo,Mondongo,140,1
+natilla,Natilla,178,0
+obleas,Obleas con arequipe,340,0
