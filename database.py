@@ -125,10 +125,22 @@ class BaseDatos:
                 )
             ''')
 
+            # 7. TABLA DE ESTADO DE ÁNIMO (check-in diario, separado del perfil
+            # porque cambia todo el tiempo -- el perfil se llena una sola vez)
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS estado_animo (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    estado VARCHAR(20)
+                )
+            ''')
+
             self.conexion.commit()
             print("Estructura de tablas verificada en MySQL (lumea_db).")
             self._verificar_alimentos_poblados(cursor)
             self._asegurar_columna(cursor, "historial_comida", "alimento_codigo", "alimento_codigo VARCHAR(100) AFTER fecha")
+            self._asegurar_columna(cursor, "perfil", "objetivo", "objetivo VARCHAR(50)")
+            self._asegurar_columna(cursor, "tabla_alimentos", "dato_curioso", "dato_curioso TEXT")
             self.conexion.commit()
 
         except Error as e:
@@ -214,16 +226,26 @@ class BaseDatos:
             cursor.close()
 
     # ================= MÓDULO PERFIL =================
-    def guardar_perfil(self, nombre, email, edad, genero, peso, altura):
+    # Valores válidos para 'objetivo': metas de HÁBITO, deliberadamente NO de
+    # peso corporal (audiencia adolescente). Ver DEFENSA_TECNICA_LUMEA.md sección 5.
+    OBJETIVOS_VALIDOS = {
+        "comer_balanceado", "tomar_agua", "moverse_mas",
+        "dormir_mejor", "conocer_lo_que_como",
+    }
+
+    def guardar_perfil(self, nombre, email, edad, genero, peso, altura, objetivo=None):
         if not self.conexion or not self.conexion.is_connected():
+            return False
+        if objetivo is not None and objetivo not in self.OBJETIVOS_VALIDOS:
+            print(f"Objetivo no reconocido: '{objetivo}'. Válidos: {self.OBJETIVOS_VALIDOS}")
             return False
         cursor = self.conexion.cursor()
         try:
             sql = '''
-                REPLACE INTO perfil (id, nombre, email, edad, genero, peso, altura)
-                VALUES (1, %s, %s, %s, %s, %s, %s)
+                REPLACE INTO perfil (id, nombre, email, edad, genero, peso, altura, objetivo)
+                VALUES (1, %s, %s, %s, %s, %s, %s, %s)
             '''
-            cursor.execute(sql, (nombre, email, edad, genero, peso, altura))
+            cursor.execute(sql, (nombre, email, edad, genero, peso, altura, objetivo))
             self.conexion.commit()
             return True
         except Error as e:
@@ -291,12 +313,49 @@ class BaseDatos:
             return None
         cursor = self.conexion.cursor(dictionary=True)
         try:
-            sql = "SELECT nombre_pantalla, calorias, es_saludable FROM tabla_alimentos WHERE alimento_codigo = %s"
+            sql = "SELECT nombre_pantalla, calorias, es_saludable, dato_curioso FROM tabla_alimentos WHERE alimento_codigo = %s"
             cursor.execute(sql, (codigo_alimento,))
             return cursor.fetchone()
         except Error as e:
             print(f"Error al consultar tabla_alimentos: {e}")
             return None
+        finally:
+            cursor.close()
+
+    # ================= MÓDULO ESTADO DE ÁNIMO =================
+    # Escala de 5 (no texto libre): más rápido de responder en celular, y
+    # estándar en psicología (tipo Likert). Ver DEFENSA_TECNICA_LUMEA.md.
+    ESTADOS_VALIDOS = {"muy_mal", "mal", "neutral", "bien", "muy_bien"}
+
+    def registrar_estado_animo(self, estado):
+        if estado not in self.ESTADOS_VALIDOS:
+            print(f"Estado no reconocido: '{estado}'. Válidos: {self.ESTADOS_VALIDOS}")
+            return False
+        if not self.conexion or not self.conexion.is_connected():
+            return False
+        cursor = self.conexion.cursor()
+        try:
+            cursor.execute("INSERT INTO estado_animo (estado) VALUES (%s)", (estado,))
+            self.conexion.commit()
+            return True
+        except Error as e:
+            print(f"Error al registrar estado de ánimo: {e}")
+            return False
+        finally:
+            cursor.close()
+
+    def obtener_estado_animo_reciente(self, limite=30):
+        if not self.conexion or not self.conexion.is_connected():
+            return []
+        cursor = self.conexion.cursor(dictionary=True)
+        try:
+            cursor.execute(
+                "SELECT id, fecha, estado FROM estado_animo ORDER BY id DESC LIMIT %s", (limite,)
+            )
+            return cursor.fetchall()
+        except Error as e:
+            print(f"Error al obtener estado de ánimo: {e}")
+            return []
         finally:
             cursor.close()
 

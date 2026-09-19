@@ -149,10 +149,12 @@ def predecir():
             nombre_amigable = info_alimento.get("nombre_pantalla") or formatear_nombre(nombre_tecnico)
             calorias = info_alimento.get("calorias", 250)
             es_balanceado = info_alimento.get("es_saludable", 1)
+            dato_curioso = info_alimento.get("dato_curioso")
         else:
             nombre_amigable = formatear_nombre(nombre_tecnico)
             calorias = 250  # Placeholder: revisar cuando tabla_alimentos esté poblada con datos reales
             es_balanceado = 1
+            dato_curioso = None
 
         guardado_exitoso = False
 
@@ -173,6 +175,7 @@ def predecir():
                            else "Predicción realizada pero no se pudo guardar en la base de datos.",
                 'certeza': round(mejor_certeza, 2),
                 'alimento': nombre_amigable,
+                'dato_curioso': dato_curioso,
             }
         else:
             respuesta = {
@@ -182,11 +185,58 @@ def predecir():
                 'mensaje': "La certeza de la IA es muy baja para guardarse automáticamente.",
                 'certeza': round(mejor_certeza, 2),
                 'alimento': nombre_amigable,
+                'dato_curioso': dato_curioso,
             }
 
         return jsonify(respuesta), 200
     except Exception as e:
         return jsonify({'error': f'Error al procesar la imagen: {str(e)}'}), 500
+
+
+# ====== Perfil de usuario ======
+@app.route('/perfil', methods=['POST'])
+def guardar_perfil():
+    datos = request.get_json(silent=True) or {}
+    requeridos = ['nombre', 'email', 'edad', 'genero', 'peso', 'altura']
+    faltantes = [campo for campo in requeridos if campo not in datos]
+    if faltantes:
+        return jsonify({'error': f'Faltan campos: {", ".join(faltantes)}'}), 400
+
+    exito = db.guardar_perfil(
+        datos['nombre'], datos['email'], datos['edad'], datos['genero'],
+        datos['peso'], datos['altura'], datos.get('objetivo'),
+    )
+    if exito:
+        return jsonify({'success': True, 'mensaje': 'Perfil guardado.'}), 200
+    return jsonify({'error': 'No se pudo guardar el perfil (revisa que "objetivo" sea uno de los valores válidos).'}), 400
+
+
+@app.route('/perfil', methods=['GET'])
+def obtener_perfil():
+    perfil = db.obtener_perfil()
+    if perfil:
+        return jsonify({'success': True, 'perfil': perfil}), 200
+    return jsonify({'success': False, 'mensaje': 'No hay perfil guardado todavía.'}), 404
+
+
+# ====== Estado de ánimo (check-in diario, separado del perfil) ======
+@app.route('/estado-animo', methods=['POST'])
+def registrar_estado_animo():
+    datos = request.get_json(silent=True) or {}
+    estado = datos.get('estado')
+    if not estado:
+        return jsonify({'error': 'Falta el campo "estado".'}), 400
+
+    exito = db.registrar_estado_animo(estado)
+    if exito:
+        return jsonify({'success': True, 'mensaje': 'Estado de ánimo registrado.'}), 200
+    return jsonify({'error': f'Estado no válido. Usa uno de: {sorted(db.ESTADOS_VALIDOS)}'}), 400
+
+
+@app.route('/estado-animo', methods=['GET'])
+def obtener_estado_animo():
+    registros = db.obtener_estado_animo_reciente()
+    return jsonify({'success': True, 'cantidad': len(registros), 'historial': registros}), 200
 
 
 # ====== Historial ======
@@ -262,4 +312,3 @@ if __name__ == '__main__':
     # padre y ese hijo -- puede colgar peticiones indefinidamente, sin error
     # ni log. Puerto 5001 evitado por AirPlay Receiver (ver nota anterior).
     app.run(host='0.0.0.0', port=5001, debug=True, use_reloader=False)
-    
