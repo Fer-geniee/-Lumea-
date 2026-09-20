@@ -15,6 +15,16 @@ CORS(app)
 db = BaseDatos()
 print("Conexión a la base de datos establecida, Flask inicializado y CORS habilitado.")
 
+# Ajiaco, sancocho y mondongo son sopas colombianas visualmente muy
+# parecidas entre sí (por eso dataset/ las agrupó en una sola carpeta
+# "sopas" para el reentrenamiento) -- el modelo actualmente en producción
+# (modelo_lumea_comida.keras) SÍ las distingue como 3 clases separadas,
+# pero no es confiable haciéndolo. Se fuerza confirmación manual para
+# estas 3 sin importar la certeza reportada, aunque sea alta -- una
+# certeza alta en una predicción propensa a confundirse no es la misma
+# garantía que en una clase sin ese problema conocido.
+GRUPO_SOPAS_CONFUSION = ["ajiaco", "sancocho", "mondongo"]
+
 
 def formatear_nombre(nombre_tecnico):
     """Retorna el nombre para mostrar en pantalla, dado el código técnico del modelo."""
@@ -168,6 +178,19 @@ def predecir():
             dato_curioso = None
 
         guardado_exitoso = False
+
+        if nombre_tecnico in GRUPO_SOPAS_CONFUSION:
+            respuesta = {
+                'success': False,
+                'guardado_baseDatos': False,
+                'seleccion_manual': True,
+                'mensaje': "Ajiaco, sancocho y mondongo se ven muy parecidos -- confirma cuál es.",
+                'certeza': round(mejor_certeza, 2),
+                'alimento': nombre_amigable,
+                'dato_curioso': dato_curioso,
+                'opciones_sugeridas': GRUPO_SOPAS_CONFUSION,
+            }
+            return jsonify(respuesta), 200
 
         if mejor_certeza >= 70.0:
             guardado_exitoso = db.registrar_comida(
