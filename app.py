@@ -144,6 +144,17 @@ def predecir():
         nombre_tecnico = resultado['alimento_codigo']
         mejor_certeza = resultado['confianza_porcentaje']
 
+        # Campo opcional (multipart/form-data, junto a 'file'): si viene y
+        # corresponde a un perfil existente, la predicción queda ligada a ese
+        # usuario en historial_comida. Sin 'email' (o con uno que no tiene
+        # perfil todavía) la predicción igual se guarda, solo que sin dueño.
+        usuario_id = None
+        email = request.form.get('email')
+        if email:
+            perfil = db.obtener_perfil_por_email(email)
+            if perfil:
+                usuario_id = perfil['id']
+
         info_alimento = db.obtener_informacion_alimento(nombre_tecnico)
         if info_alimento:
             nombre_amigable = info_alimento.get("nombre_pantalla") or formatear_nombre(nombre_tecnico)
@@ -165,6 +176,7 @@ def predecir():
                 mejor_certeza,
                 calorias,
                 es_balanceado,
+                usuario_id,
             )
             respuesta = {
                 'success': True,
@@ -213,10 +225,13 @@ def guardar_perfil():
 
 @app.route('/perfil', methods=['GET'])
 def obtener_perfil():
-    perfil = db.obtener_perfil()
+    email = request.args.get('email')
+    if not email:
+        return jsonify({'error': 'Falta el parámetro "email".'}), 400
+    perfil = db.obtener_perfil_por_email(email)
     if perfil:
         return jsonify({'success': True, 'perfil': perfil}), 200
-    return jsonify({'success': False, 'mensaje': 'No hay perfil guardado todavía.'}), 404
+    return jsonify({'success': False, 'mensaje': 'No hay perfil guardado con ese correo.'}), 404
 
 
 # ====== Estado de ánimo (check-in diario, separado del perfil) ======
@@ -224,10 +239,17 @@ def obtener_perfil():
 def registrar_estado_animo():
     datos = request.get_json(silent=True) or {}
     estado = datos.get('estado')
+    email = datos.get('email')
     if not estado:
         return jsonify({'error': 'Falta el campo "estado".'}), 400
+    if not email:
+        return jsonify({'error': 'Falta el campo "email".'}), 400
 
-    exito = db.registrar_estado_animo(estado)
+    perfil = db.obtener_perfil_por_email(email)
+    if not perfil:
+        return jsonify({'error': 'No existe un perfil con ese correo.'}), 404
+
+    exito = db.registrar_estado_animo(estado, perfil['id'])
     if exito:
         return jsonify({'success': True, 'mensaje': 'Estado de ánimo registrado.'}), 200
     return jsonify({'error': f'Estado no válido. Usa uno de: {sorted(db.ESTADOS_VALIDOS)}'}), 400
@@ -235,15 +257,27 @@ def registrar_estado_animo():
 
 @app.route('/estado-animo', methods=['GET'])
 def obtener_estado_animo():
-    registros = db.obtener_estado_animo_reciente()
+    email = request.args.get('email')
+    if not email:
+        return jsonify({'error': 'Falta el parámetro "email".'}), 400
+    perfil = db.obtener_perfil_por_email(email)
+    if not perfil:
+        return jsonify({'error': 'No existe un perfil con ese correo.'}), 404
+    registros = db.obtener_estado_animo_reciente(perfil['id'])
     return jsonify({'success': True, 'cantidad': len(registros), 'historial': registros}), 200
 
 
 # ====== Historial ======
 @app.route('/historial', methods=['GET'])
 def ruta_historial():
+    email = request.args.get('email')
+    if not email:
+        return jsonify({'error': 'Falta el parámetro "email".'}), 400
+    perfil = db.obtener_perfil_por_email(email)
+    if not perfil:
+        return jsonify({'error': 'No existe un perfil con ese correo.'}), 404
     try:
-        historial = db.obtener_historial_comida()
+        historial = db.obtener_historial_comida(perfil['id'])
         return jsonify({
             'success': True,
             'cantidad_registros': len(historial),

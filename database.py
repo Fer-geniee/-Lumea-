@@ -141,6 +141,12 @@ class BaseDatos:
             self._asegurar_columna(cursor, "historial_comida", "alimento_codigo", "alimento_codigo VARCHAR(100) AFTER fecha")
             self._asegurar_columna(cursor, "perfil", "objetivo", "objetivo VARCHAR(50)")
             self._asegurar_columna(cursor, "tabla_alimentos", "dato_curioso", "dato_curioso TEXT")
+            # Perfiles múltiples identificados por correo (ver DEFENSA_TECNICA_LUMEA.md
+            # sección 5): cada fila de historial_comida/estado_animo queda ligada al
+            # usuario que la generó.
+            self._asegurar_columna(cursor, "historial_comida", "usuario_id", "usuario_id INT AFTER id")
+            self._asegurar_columna(cursor, "estado_animo", "usuario_id", "usuario_id INT AFTER id")
+            self._asegurar_indice_unico(cursor, "perfil", "email", "uq_perfil_email")
             self.conexion.commit()
 
         except Error as e:
@@ -166,6 +172,25 @@ class BaseDatos:
         if not existe:
             cursor.execute(f"ALTER TABLE {tabla} ADD COLUMN {definicion_sql}")
             print(f"Columna agregada: {tabla}.{columna}")
+
+    def _asegurar_indice_unico(self, cursor, tabla, columna, nombre_indice):
+        """Agrega un índice UNIQUE a una tabla existente si todavía no lo tiene.
+
+        Mismo motivo que _asegurar_columna: no hay forma de expresar "UNIQUE
+        si no existe" dentro de CREATE TABLE IF NOT EXISTS para una tabla que
+        ya estaba creada de una versión anterior sin esa restricción.
+        """
+        cursor.execute(
+            """
+            SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS
+            WHERE TABLE_SCHEMA = 'lumea_db' AND TABLE_NAME = %s AND INDEX_NAME = %s
+            """,
+            (tabla, nombre_indice),
+        )
+        (existe,) = cursor.fetchone()
+        if not existe:
+            cursor.execute(f"ALTER TABLE {tabla} ADD UNIQUE KEY {nombre_indice} ({columna})")
+            print(f"Índice único agregado: {tabla}.{columna}")
 
     def _verificar_alimentos_poblados(self, cursor):
         """Avisa si 'tabla_alimentos' está vacía.
@@ -234,6 +259,10 @@ class BaseDatos:
     }
 
     def guardar_perfil(self, nombre, email, edad, genero, peso, altura, objetivo=None):
+        """Crea el perfil si el correo es nuevo, o actualiza el existente si ya
+        existe -- 'email' es el identificador único de cada usuario (ver
+        DEFENSA_TECNICA_LUMEA.md sección 5: perfiles múltiples sin contraseña,
+        decisión de alcance deliberada). Ya no hay un único perfil fijo en id=1."""
         if not self.conexion or not self.conexion.is_connected():
             return False
         if objetivo is not None and objetivo not in self.OBJETIVOS_VALIDOS:
@@ -242,8 +271,11 @@ class BaseDatos:
         cursor = self.conexion.cursor()
         try:
             sql = '''
-                REPLACE INTO perfil (id, nombre, email, edad, genero, peso, altura, objetivo)
-                VALUES (1, %s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO perfil (nombre, email, edad, genero, peso, altura, objetivo)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                    nombre = VALUES(nombre), edad = VALUES(edad), genero = VALUES(genero),
+                    peso = VALUES(peso), altura = VALUES(altura), objetivo = VALUES(objetivo)
             '''
             cursor.execute(sql, (nombre, email, edad, genero, peso, altura, objetivo))
             self.conexion.commit()
@@ -254,12 +286,12 @@ class BaseDatos:
         finally:
             cursor.close()
 
-    def obtener_perfil(self):
+    def obtener_perfil_por_email(self, email):
         if not self.conexion or not self.conexion.is_connected():
             return None
         cursor = self.conexion.cursor(dictionary=True)
         try:
-            cursor.execute('SELECT * FROM perfil WHERE id = 1')
+            cursor.execute('SELECT * FROM perfil WHERE email = %s', (email,))
             return cursor.fetchone()
         except Error as e:
             print(f"Error al obtener perfil: {e}")
@@ -268,8 +300,13 @@ class BaseDatos:
             cursor.close()
 
     # ================= MÓDULO HISTORIAL Y ALIMENTOS =================
-    def registrar_comida(self, alimento_codigo, nombre_amigable, certeza, calorias, balanceado):
+    def registrar_comida(self, alimento_codigo, nombre_amigable, certeza, calorias, balanceado, usuario_id=None):
         """Inserta un registro de comida procesada por la IA.
+
+        `usuario_id=None` cuando la predicción se hace sin sesión iniciada
+        (no se pudo resolver el correo a un perfil existente) -- el registro
+        igual se guarda, solo que no aparece en el historial filtrado de nadie
+        hasta que ese perfil exista.
 
         Antes esta función recibía 4 parámetros pero app.py la llamaba con 5
         argumentos en otro orden (guardaba el nombre bonito en la columna de
@@ -283,10 +320,10 @@ class BaseDatos:
         try:
             sql = '''
                 INSERT INTO historial_comida
-                    (alimento_codigo, alimento_detectado, certeza_ia, calorias_aprox, balanceado)
-                VALUES (%s, %s, %s, %s, %s)
+                    (usuario_id, alimento_codigo, alimento_detectado, certeza_ia, calorias_aprox, balanceado)
+                VALUES (%s, %s, %s, %s, %s, %s)
             '''
-            cursor.execute(sql, (alimento_codigo, nombre_amigable, certeza, calorias, balanceado))
+            cursor.execute(sql, (usuario_id, alimento_codigo, nombre_amigable, certeza, calorias, balanceado))
             self.conexion.commit()
             return True
         except Error as e:
@@ -295,12 +332,15 @@ class BaseDatos:
         finally:
             cursor.close()
 
-    def obtener_historial_comida(self):
+    def obtener_historial_comida(self, usuario_id):
         if not self.conexion or not self.conexion.is_connected():
             return []
         cursor = self.conexion.cursor(dictionary=True)
         try:
-            cursor.execute('SELECT * FROM historial_comida ORDER BY id DESC')
+            cursor.execute(
+                'SELECT * FROM historial_comida WHERE usuario_id = %s ORDER BY id DESC',
+                (usuario_id,),
+            )
             return cursor.fetchall()
         except Error as e:
             print(f"Error al obtener historial: {e}")
@@ -327,7 +367,7 @@ class BaseDatos:
     # estándar en psicología (tipo Likert). Ver DEFENSA_TECNICA_LUMEA.md.
     ESTADOS_VALIDOS = {"muy_mal", "mal", "neutral", "bien", "muy_bien"}
 
-    def registrar_estado_animo(self, estado):
+    def registrar_estado_animo(self, estado, usuario_id):
         if estado not in self.ESTADOS_VALIDOS:
             print(f"Estado no reconocido: '{estado}'. Válidos: {self.ESTADOS_VALIDOS}")
             return False
@@ -335,7 +375,10 @@ class BaseDatos:
             return False
         cursor = self.conexion.cursor()
         try:
-            cursor.execute("INSERT INTO estado_animo (estado) VALUES (%s)", (estado,))
+            cursor.execute(
+                "INSERT INTO estado_animo (usuario_id, estado) VALUES (%s, %s)",
+                (usuario_id, estado),
+            )
             self.conexion.commit()
             return True
         except Error as e:
@@ -344,13 +387,14 @@ class BaseDatos:
         finally:
             cursor.close()
 
-    def obtener_estado_animo_reciente(self, limite=30):
+    def obtener_estado_animo_reciente(self, usuario_id, limite=30):
         if not self.conexion or not self.conexion.is_connected():
             return []
         cursor = self.conexion.cursor(dictionary=True)
         try:
             cursor.execute(
-                "SELECT id, fecha, estado FROM estado_animo ORDER BY id DESC LIMIT %s", (limite,)
+                "SELECT id, fecha, estado FROM estado_animo WHERE usuario_id = %s ORDER BY id DESC LIMIT %s",
+                (usuario_id, limite),
             )
             return cursor.fetchall()
         except Error as e:
