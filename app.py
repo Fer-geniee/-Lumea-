@@ -16,14 +16,23 @@ db = BaseDatos()
 print("Conexión a la base de datos establecida, Flask inicializado y CORS habilitado.")
 
 # Ajiaco, sancocho y mondongo son sopas colombianas visualmente muy
-# parecidas entre sí (por eso dataset/ las agrupó en una sola carpeta
-# "sopas" para el reentrenamiento) -- el modelo actualmente en producción
-# (modelo_lumea_comida.keras) SÍ las distingue como 3 clases separadas,
-# pero no es confiable haciéndolo. Se fuerza confirmación manual para
-# estas 3 sin importar la certeza reportada, aunque sea alta -- una
-# certeza alta en una predicción propensa a confundirse no es la misma
-# garantía que en una clase sin ese problema conocido.
-GRUPO_SOPAS_CONFUSION = ["ajiaco", "sancocho", "mondongo"]
+# parecidas entre sí. Las opciones reales que el usuario puede confirmar
+# -- NUNCA incluye "sopas": ese código es una agrupación visual interna
+# del modelo reentrenado (34 clases), sin fila propia en tabla_alimentos
+# ni en clases.json (agregarle nutrición sería inventar un dato para algo
+# que no es un plato específico). Ver verificar_integridad_clases.py.
+OPCIONES_GRUPO_SOPAS = ["ajiaco", "sancocho", "mondongo"]
+
+# Qué predicción ganadora del ensamble dispara el forzado de confirmación
+# manual para este grupo. Incluye "sopas" (el modelo reentrenado de 34
+# clases fusiona los 3 platos en esa única clase de visión) Y los 3
+# códigos viejos por separado (el modelo de 26 clases sigue en producción
+# hasta que termine el reentrenamiento, y todavía los predice cada uno
+# por su cuenta) -- mantener ambos disparadores mientras convivan los dos
+# modelos. Se fuerza sin importar la certeza reportada, aunque sea alta --
+# una certeza alta en una predicción propensa a confundirse no es la
+# misma garantía que en una clase sin ese problema conocido.
+CODIGOS_DISPARAN_CONFIRMACION_SOPAS = {"sopas"} | set(OPCIONES_GRUPO_SOPAS)
 
 
 def formatear_nombre(nombre_tecnico):
@@ -179,7 +188,7 @@ def predecir():
 
         guardado_exitoso = False
 
-        if nombre_tecnico in GRUPO_SOPAS_CONFUSION:
+        if nombre_tecnico in CODIGOS_DISPARAN_CONFIRMACION_SOPAS:
             respuesta = {
                 'success': False,
                 'guardado_baseDatos': False,
@@ -188,7 +197,7 @@ def predecir():
                 'certeza': round(mejor_certeza, 2),
                 'alimento': nombre_amigable,
                 'dato_curioso': dato_curioso,
-                'opciones_sugeridas': GRUPO_SOPAS_CONFUSION,
+                'opciones_sugeridas': OPCIONES_GRUPO_SOPAS,
             }
             return jsonify(respuesta), 200
 
@@ -226,6 +235,60 @@ def predecir():
         return jsonify(respuesta), 200
     except Exception as e:
         return jsonify({'error': f'Error al procesar la imagen: {str(e)}'}), 500
+
+
+# ====== Confirmación manual ======
+# Genérico -- no es solo para el grupo de sopas. Cubre CUALQUIER caso donde
+# /predecir respondió seleccion_manual=true (certeza <70%, o el forzado del
+# grupo ajiaco/sancocho/mondongo/sopas) y el usuario elige a mano cuál
+# alimento es en realidad. Sin estado compartido con la predicción
+# original -- el cliente simplemente manda el código que el usuario eligió.
+@app.route('/confirmar-alimento', methods=['POST'])
+def confirmar_alimento():
+    datos = request.get_json(silent=True) or {}
+    alimento_codigo = datos.get('alimento_codigo')
+    if not alimento_codigo:
+        return jsonify({'error': 'Falta el campo "alimento_codigo".'}), 400
+
+    info_alimento = db.obtener_informacion_alimento(alimento_codigo)
+    if not info_alimento:
+        # Incluye deliberadamente el caso "sopas": no tiene fila en
+        # tabla_alimentos a propósito (ver OPCIONES_GRUPO_SOPAS más arriba),
+        # así que también se rechaza aquí -- nunca se inventa una fila para
+        # un código de agrupación visual sin nutrición propia real.
+        return jsonify({'error': f'"{alimento_codigo}" no es un alimento reconocido en tabla_alimentos.'}), 400
+
+    usuario_id = None
+    email = datos.get('email')
+    if email:
+        perfil = db.obtener_perfil_por_email(email)
+        if perfil:
+            usuario_id = perfil['id']
+
+    nombre_amigable = info_alimento.get("nombre_pantalla") or formatear_nombre(alimento_codigo)
+    calorias = info_alimento.get("calorias", 250)
+    es_balanceado = info_alimento.get("es_saludable", 1)
+    dato_curioso = info_alimento.get("dato_curioso")
+
+    # 100.0: es una confirmación humana, no una predicción de la IA -- no
+    # hay "certeza" que reportar, así que se usa el máximo por convención
+    # (ver diseño propuesto/aprobado en la conversación del proyecto).
+    guardado_exitoso = db.registrar_comida(
+        alimento_codigo, nombre_amigable, 100.0, calorias, es_balanceado, usuario_id,
+    )
+
+    respuesta = {
+        'success': True,
+        'alimento_codigo': alimento_codigo,
+        'alimento_app': nombre_amigable,
+        'guardado_baseDatos': guardado_exitoso,
+        'mensaje': "Confirmado manualmente y guardado en tu historial." if guardado_exitoso
+                   else "Confirmado, pero no se pudo guardar en la base de datos.",
+        'certeza': 100.0,
+        'alimento': nombre_amigable,
+        'dato_curioso': dato_curioso,
+    }
+    return jsonify(respuesta), 200
 
 
 # ====== Perfil de usuario ======
