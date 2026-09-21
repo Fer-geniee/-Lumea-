@@ -14,6 +14,12 @@ DATASET_PATH = "dataset/"
 # Guardamos junto a este script; muévelo (o ajusta esta ruta) a la carpeta
 # Backend/ antes de entrenar, para que quede en el mismo lugar donde
 # predict.py espera encontrar modelo_lumea_comida.keras y clases.json.
+#
+# OJO: NUNCA cambiar esto a "modelo_lumea101.keras" -- ese es el archivo
+# del modelo de Food-101 (entrenado aparte, en Colab, no reproducible
+# corriendo este script). Este script entrena el modelo REGIONAL; si
+# MODEL_OUT apunta al nombre del otro modelo, la próxima corrida
+# sobreescribe y destruye el modelo de Food-101 sin aviso.
 Base_dir = os.path.dirname(os.path.abspath(__file__))
 MODEL_OUT = os.path.join(Base_dir, "modelo_lumea_comida.keras")
 CLASSES_OUT = os.path.join(Base_dir, "clases.json")

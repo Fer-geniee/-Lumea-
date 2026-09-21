@@ -17,6 +17,11 @@ lumea.db
 # más de ~50MB considera Git LFS o excluirlo y compartirlo por Drive)
 # *.h5
 
+# Dataset de entrenamiento (imágenes) -- no vive en el repo, se sube
+# aparte (596MB+ hoy; ver CLAUDE.md). Si el dataset/ de entrenamiento se
+# copia dentro de Backend/ para correr ia_comida.py, que no termine en git.
+dataset/
+
 # macOS
 .DS_Store
 
