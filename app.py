@@ -15,24 +15,37 @@ CORS(app)
 db = BaseDatos()
 print("Conexión a la base de datos establecida, Flask inicializado y CORS habilitado.")
 
-# Ajiaco, sancocho y mondongo son sopas colombianas visualmente muy
-# parecidas entre sí. Las opciones reales que el usuario puede confirmar
-# -- NUNCA incluye "sopas": ese código es una agrupación visual interna
-# del modelo reentrenado (34 clases), sin fila propia en tabla_alimentos
-# ni en clases.json (agregarle nutrición sería inventar un dato para algo
-# que no es un plato específico). Ver verificar_integridad_clases.py.
-OPCIONES_GRUPO_SOPAS = ["ajiaco", "sancocho", "mondongo"]
-
-# Qué predicción ganadora del ensamble dispara el forzado de confirmación
-# manual para este grupo. Incluye "sopas" (el modelo reentrenado de 34
-# clases fusiona los 3 platos en esa única clase de visión) Y los 3
-# códigos viejos por separado (el modelo de 26 clases sigue en producción
-# hasta que termine el reentrenamiento, y todavía los predice cada uno
-# por su cuenta) -- mantener ambos disparadores mientras convivan los dos
-# modelos. Se fuerza sin importar la certeza reportada, aunque sea alta --
-# una certeza alta en una predicción propensa a confundirse no es la
-# misma garantía que en una clase sin ese problema conocido.
-CODIGOS_DISPARAN_CONFIRMACION_SOPAS = {"sopas"} | set(OPCIONES_GRUPO_SOPAS)
+# Grupos de alimentos visualmente fáciles de confundir entre sí. Cuando la
+# predicción ganadora del ensamble cae en uno de los "disparadores" de un
+# grupo, /predecir fuerza confirmación manual SIN IMPORTAR la certeza
+# reportada (aunque sea alta) -- una certeza alta en una predicción
+# propensa a confundirse no es la misma garantía que en una clase sin ese
+# problema conocido. "opciones" son los códigos reales que el usuario
+# puede confirmar -- SIEMPRE tienen fila en tabla_alimentos; el código de
+# agrupación visual ("sopas", "dulces") nunca aparece ahí ni se busca en
+# tabla_alimentos a propósito (ver verificar_integridad_clases.py, que los
+# trae como excepciones documentadas -- agregarles nutrición sería
+# inventar un dato para algo que no es un plato/producto específico).
+GRUPOS_CONFUSION = [
+    {
+        # "sopas": el modelo reentrenado (35 clases) fusiona los 3 platos en
+        # esa única clase de visión. Los 3 códigos viejos por separado se
+        # mantienen como disparadores también, por si se vuelve a un
+        # checkpoint del modelo anterior (26 clases) que los predecía cada
+        # uno por su cuenta -- no hace daño mantenerlos, el modelo actual ya
+        # no los predice.
+        "disparadores": {"sopas", "ajiaco", "sancocho", "mondongo"},
+        "opciones": ["ajiaco", "sancocho", "mondongo"],
+        "mensaje": "Ajiaco, sancocho y mondongo se ven muy parecidos -- confirma cuál es.",
+    },
+    {
+        # "dulces": dataset/dulces/ tiene 7 subcarpetas (una por marca), que
+        # Keras combina en una sola clase de visión al entrenar.
+        "disparadores": {"dulces"},
+        "opciones": ["nucita", "barrilete", "quipitos", "chororamo", "supercoco", "bonbonbum", "chocolatinas"],
+        "mensaje": "Hay varios dulces parecidos entre sí -- confirma cuál es.",
+    },
+]
 
 
 def formatear_nombre(nombre_tecnico):
@@ -188,16 +201,17 @@ def predecir():
 
         guardado_exitoso = False
 
-        if nombre_tecnico in CODIGOS_DISPARAN_CONFIRMACION_SOPAS:
+        grupo_activado = next((g for g in GRUPOS_CONFUSION if nombre_tecnico in g["disparadores"]), None)
+        if grupo_activado:
             respuesta = {
                 'success': False,
                 'guardado_baseDatos': False,
                 'seleccion_manual': True,
-                'mensaje': "Ajiaco, sancocho y mondongo se ven muy parecidos -- confirma cuál es.",
+                'mensaje': grupo_activado["mensaje"],
                 'certeza': round(mejor_certeza, 2),
                 'alimento': nombre_amigable,
                 'dato_curioso': dato_curioso,
-                'opciones_sugeridas': OPCIONES_GRUPO_SOPAS,
+                'opciones_sugeridas': grupo_activado["opciones"],
             }
             return jsonify(respuesta), 200
 
@@ -252,10 +266,10 @@ def confirmar_alimento():
 
     info_alimento = db.obtener_informacion_alimento(alimento_codigo)
     if not info_alimento:
-        # Incluye deliberadamente el caso "sopas": no tiene fila en
-        # tabla_alimentos a propósito (ver OPCIONES_GRUPO_SOPAS más arriba),
-        # así que también se rechaza aquí -- nunca se inventa una fila para
-        # un código de agrupación visual sin nutrición propia real.
+        # Incluye deliberadamente los códigos de agrupación visual ("sopas",
+        # "dulces", ver GRUPOS_CONFUSION más arriba): no tienen fila en
+        # tabla_alimentos a propósito, así que también se rechazan aquí --
+        # nunca se inventa una fila para algo sin nutrición propia real.
         return jsonify({'error': f'"{alimento_codigo}" no es un alimento reconocido en tabla_alimentos.'}), 400
 
     usuario_id = None
