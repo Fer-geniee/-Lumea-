@@ -210,8 +210,10 @@ def predecir():
                 'mensaje': grupo_activado["mensaje"],
                 'certeza': round(mejor_certeza, 2),
                 'alimento': nombre_amigable,
+                'alimento_codigo': nombre_tecnico,
                 'dato_curioso': dato_curioso,
                 'opciones_sugeridas': grupo_activado["opciones"],
+                'modelo_usado': resultado.get('modelo_usado'),
             }
             return jsonify(respuesta), 200
 
@@ -234,6 +236,7 @@ def predecir():
                 'certeza': round(mejor_certeza, 2),
                 'alimento': nombre_amigable,
                 'dato_curioso': dato_curioso,
+                'modelo_usado': resultado.get('modelo_usado'),
             }
         else:
             respuesta = {
@@ -243,7 +246,9 @@ def predecir():
                 'mensaje': "La certeza de la IA es muy baja para guardarse automáticamente.",
                 'certeza': round(mejor_certeza, 2),
                 'alimento': nombre_amigable,
+                'alimento_codigo': nombre_tecnico,
                 'dato_curioso': dato_curioso,
+                'modelo_usado': resultado.get('modelo_usado'),
             }
 
         return jsonify(respuesta), 200
