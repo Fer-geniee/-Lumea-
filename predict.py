@@ -55,21 +55,23 @@ def predecir_alimento(image_bytes: bytes):
     eligiendo entre el modelo regional (26 clases) y el de Food-101 (101
     clases) según cuál esté más seguro de su propia predicción.
 
-    Nota importante (documentada, no oculta): comparar la confianza cruda
+    Nota importante: comparar la confianza cruda
     entre dos modelos entrenados por separado no es perfectamente comparable
-    estadísticamente -un modelo puede tender a dar valores más altos que el
-    otro en general-. Es una heurística simple y razonable para el alcance
-    de este proyecto, con esa limitación conocida.
+    estadísticamente. 
     """
     image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     image = image.resize((224, 224))
-
     image_array = np.array(image, dtype=np.float32)
     image_array = np.expand_dims(image_array, axis=0)
-    image_array = tf.keras.applications.mobilenet_v2.preprocess_input(image_array)
 
+    # Modelo 26/35 clases: preprocess_input YA está dentro del grafo guardado
+    # -- mandarle la imagen cruda (0-255), NO preprocesarla aquí también.
     alimento_26, confianza_26 = _predecir_con_modelo(modelo_26, classes_26, image_array)
-    alimento_101, confianza_101 = _predecir_con_modelo(modelo_101, classes_101, image_array)
+
+    # Modelo 101 (Food-101): preprocess_input NO está dentro del grafo
+    # -- este sí lo necesita aplicado manualmente antes de predict().
+    image_array_101 = tf.keras.applications.mobilenet_v2.preprocess_input(image_array)
+    alimento_101, confianza_101 = _predecir_con_modelo(modelo_101, classes_101, image_array_101)
 
     if confianza_26 >= confianza_101:
         alimento_codigo, confianza = alimento_26, confianza_26

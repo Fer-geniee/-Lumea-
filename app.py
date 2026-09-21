@@ -445,4 +445,4 @@ if __name__ == '__main__':
     # documentados cuando su inicialización queda dividida entre el proceso
     # padre y ese hijo -- puede colgar peticiones indefinidamente, sin error
     # ni log. Puerto 5001 evitado por AirPlay Receiver (ver nota anterior).
-    app.run(host='0.0.0.0', port=5001, debug=True, use_reloader=False)
+    app.run(host='0.0.0.0', port=5002, debug=True, use_reloader=False)

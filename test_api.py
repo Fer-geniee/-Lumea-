@@ -2,9 +2,9 @@ import requests
 
 # Cambia esto por la ruta de CUALQUIER imagen de comida en tu computador.
 # No necesita estar en la carpeta del proyecto ni tener un nombre especial.
-RUTA_IMAGEN = "/Users/isabfero.o./Python_proyects/Lumea/Backend/prueba.jpeg"
+RUTA_IMAGEN = "/Users/isabfero.o./Downloads/prueba.jpeg"
 
-URL = "http://127.0.0.1:5001/predecir"
+URL = "http://127.0.0.1:5002/predecir"
 
 
 def probar_prediccion():
