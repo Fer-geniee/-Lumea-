@@ -1,0 +1,9 @@
+alimento_codigo,usda_fdcId,usda_descripcion,usda_dataType,usda_url,kcal_100g,sodio_mg_100g,azucares_totales_g_100g,azucares_excluidas_por_fruta_cruda,grasas_sat_g_100g,sellos_activados
+manzana,2709215,"Apple, raw",Survey (FNDDS),https://fdc.nal.usda.gov/food-details/2709215/nutrients,61.0,0.0,12.08,sí,0.028,ninguno
+banano,2709224,"Banana, raw",Survey (FNDDS),https://fdc.nal.usda.gov/food-details/2709224/nutrients,97.0,0.0,15.8,sí,0.112,ninguno
+fresa,2709283,"Strawberries, raw",Survey (FNDDS),https://fdc.nal.usda.gov/food-details/2709283/nutrients,36.0,0.0,4.86,sí,0.0,ninguno
+naranja,2709171,"Orange, raw",Survey (FNDDS),https://fdc.nal.usda.gov/food-details/2709171/nutrients,50.0,4.0,8.96,sí,0.015,ninguno
+uva,2709237,"Grapes, raw",Survey (FNDDS),https://fdc.nal.usda.gov/food-details/2709237/nutrients,83.0,5.0,16.74,sí,0.054,ninguno
+pera,2709254,"Pear, raw",Survey (FNDDS),https://fdc.nal.usda.gov/food-details/2709254/nutrients,59.0,3.0,9.73,sí,0.022,ninguno
+mango,2709242,"Mango, raw",Survey (FNDDS),https://fdc.nal.usda.gov/food-details/2709242/nutrients,60.0,1.0,13.66,sí,0.092,ninguno
+pina,2709260,"Pineapple, raw",Survey (FNDDS),https://fdc.nal.usda.gov/food-details/2709260/nutrients,60.0,0.0,11.42,sí,0.009,ninguno
