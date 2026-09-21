@@ -1,5 +1,5 @@
 import os
-
+os.environ["TF_USE_LEGACY_KERAS"] = "1"
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 import json
@@ -11,15 +11,26 @@ import io
 
 Base_dir = os.path.dirname(os.path.abspath(__file__))
 
-# === Modelo 1: 26 clases regionales colombianas (fine-tuning) ===
+import tf_keras
+
+# === Modelo 1: clases regionales colombianas (fine-tuning) ===
+# Se carga con tf_keras (Keras 2 legacy), NO con `keras` a secas -- este
+# modelo lo guarda ia_comida.py usando tf.keras.* con TF_USE_LEGACY_KERAS=1,
+# es decir en formato Keras 2 real. `keras.models.load_model` (Keras 3
+# siempre, sin importar esa variable -- ver CLAUDE.md) no puede deserializar
+# ese formato: falla con "Could not locate class 'Functional'" porque el
+# submodelo interno de MobileNetV2 queda con `registered_name: 'Functional'`,
+# que Keras 3 trata como una clase custom sin registrar en vez de una clase
+# nativa. modelo_101 SÍ se guardó ya en formato Keras 3 (entrenado aparte,
+# en Colab) y por eso sigue cargando con `keras` normal más abajo.
 Model_path_26 = os.path.join(Base_dir, "modelo_lumea_comida.keras")
 class_path_26 = os.path.join(Base_dir, "clases.json")
-modelo_26 = keras.models.load_model(Model_path_26, compile=False)
+modelo_26 = tf_keras.models.load_model(Model_path_26, compile=False)
 with open(class_path_26, "r", encoding="utf-8") as f:
     classes_26 = json.load(f)
 
 # === Modelo 2: 101 clases de Food-101 (base congelada, weights='imagenet') ===
-Model_path_101 = os.path.join(Base_dir, "modelo_lumea.h5")
+Model_path_101 = os.path.join(Base_dir, "modelo_lumea101.keras")
 class_path_101 = os.path.join(Base_dir, "clases_101.json")
 modelo_101 = keras.models.load_model(Model_path_101, compile=False)
 with open(class_path_101, "r", encoding="utf-8") as f:
