@@ -1,6 +1,7 @@
 import os
 import io
 import csv
+from datetime import date, timedelta
 import mysql.connector
 from mysql.connector import Error
 from dotenv import load_dotenv
@@ -132,6 +133,22 @@ class BaseDatos:
                     id INT AUTO_INCREMENT PRIMARY KEY,
                     fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
                     estado VARCHAR(20)
+                )
+            ''')
+
+            # 8. TABLA DE PUNTOS Y RACHA (infraestructura de gamificación)
+            # Diseño deliberadamente simple: solo el estado acumulado de cada
+            # usuario. Cuántos puntos vale cada acción, niveles, insignias,
+            # etc. NO están definidos todavía -- eso lo diseña el equipo
+            # (ver registrar_actividad_puntos_racha, que por ahora suma
+            # siempre 1 punto fijo). usuario_id es PRIMARY KEY porque cada
+            # usuario tiene un único estado de puntos/racha, no un historial.
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS puntos_racha (
+                    usuario_id INT PRIMARY KEY,
+                    puntos_totales INT DEFAULT 0,
+                    racha_actual_dias INT DEFAULT 0,
+                    ultima_fecha_actividad DATE
                 )
             ''')
 
@@ -400,6 +417,81 @@ class BaseDatos:
         except Error as e:
             print(f"Error al obtener estado de ánimo: {e}")
             return []
+        finally:
+            cursor.close()
+
+    # ================= MÓDULO PUNTOS Y RACHA (gamificación) =================
+    # Infraestructura mínima a propósito: solo sumar puntos y llevar la
+    # racha de días consecutivos. Cuántos puntos vale cada acción, niveles,
+    # insignias, multiplicadores, etc. quedan pendientes del diseño de
+    # gamificación del equipo -- no se inventan aquí.
+    def obtener_puntos_racha(self, usuario_id):
+        """Devuelve el estado de puntos/racha de un usuario, o None si
+        todavía no tiene ninguna actividad registrada (usuario nuevo)."""
+        if not self.conexion or not self.conexion.is_connected():
+            return None
+        cursor = self.conexion.cursor(dictionary=True)
+        try:
+            cursor.execute(
+                "SELECT puntos_totales, racha_actual_dias, ultima_fecha_actividad "
+                "FROM puntos_racha WHERE usuario_id = %s",
+                (usuario_id,),
+            )
+            return cursor.fetchone()
+        except Error as e:
+            print(f"Error al consultar puntos/racha: {e}")
+            return None
+        finally:
+            cursor.close()
+
+    def registrar_actividad_puntos_racha(self, usuario_id):
+        """Suma 1 punto fijo y actualiza la racha de días consecutivos.
+
+        Se llama desde /predecir y /confirmar-alimento cuando guardan un
+        registro de comida exitosamente, y solo si hay usuario_id (no tiene
+        sentido acumular puntos para una predicción sin dueño). Lógica de
+        racha mínima: si la última actividad fue HOY, la racha no cambia
+        (ya contaba); si fue AYER, se extiende +1 día; en cualquier otro
+        caso (más de un día de hueco, o primera vez) arranca/reinicia en 1.
+        """
+        if usuario_id is None:
+            return False
+        if not self.conexion or not self.conexion.is_connected():
+            return False
+        cursor = self.conexion.cursor(dictionary=True)
+        try:
+            cursor.execute(
+                "SELECT racha_actual_dias, ultima_fecha_actividad FROM puntos_racha WHERE usuario_id = %s",
+                (usuario_id,),
+            )
+            fila = cursor.fetchone()
+
+            hoy = date.today()
+            if fila is None:
+                nueva_racha = 1
+            elif fila["ultima_fecha_actividad"] == hoy:
+                nueva_racha = fila["racha_actual_dias"]
+            elif fila["ultima_fecha_actividad"] == hoy - timedelta(days=1):
+                nueva_racha = fila["racha_actual_dias"] + 1
+            else:
+                nueva_racha = 1
+
+            cursor.execute(
+                '''
+                INSERT INTO puntos_racha (usuario_id, puntos_totales, racha_actual_dias, ultima_fecha_actividad)
+                VALUES (%s, 1, %s, %s)
+                ON DUPLICATE KEY UPDATE
+                    puntos_totales = puntos_totales + 1,
+                    racha_actual_dias = VALUES(racha_actual_dias),
+                    ultima_fecha_actividad = VALUES(ultima_fecha_actividad)
+                ''',
+                (usuario_id, nueva_racha, hoy),
+            )
+            self.conexion.commit()
+            return True
+        except Error as e:
+            print(f"Error al registrar puntos/racha: {e}")
+            return False
         finally:
             cursor.close()
 

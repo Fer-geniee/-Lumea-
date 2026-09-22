@@ -226,6 +226,8 @@ def predecir():
                 es_balanceado,
                 usuario_id,
             )
+            if guardado_exitoso and usuario_id:
+                db.registrar_actividad_puntos_racha(usuario_id)
             respuesta = {
                 'success': True,
                 'alimento_codigo': nombre_tecnico,
@@ -295,6 +297,8 @@ def confirmar_alimento():
     guardado_exitoso = db.registrar_comida(
         alimento_codigo, nombre_amigable, 100.0, calorias, es_balanceado, usuario_id,
     )
+    if guardado_exitoso and usuario_id:
+        db.registrar_actividad_puntos_racha(usuario_id)
 
     respuesta = {
         'success': True,
@@ -390,6 +394,29 @@ def ruta_historial():
         }), 200
     except Exception as e:
         return jsonify({'error': f'Error al consultar el historial: {str(e)}'}), 500
+
+
+# ===== Puntos y racha (infraestructura de gamificación) =====
+# Solo expone el estado acumulado -- cuántos puntos vale cada acción,
+# niveles, insignias, etc. no están definidos todavía (ver database.py,
+# módulo puntos y racha). La suma real ocurre dentro de /predecir y
+# /confirmar-alimento cuando guardan exitosamente, no aquí.
+@app.route('/puntos-racha', methods=['GET'])
+def ruta_puntos_racha():
+    email = request.args.get('email')
+    if not email:
+        return jsonify({'error': 'Falta el parámetro "email".'}), 400
+    perfil = db.obtener_perfil_por_email(email)
+    if not perfil:
+        return jsonify({'error': 'No existe un perfil con ese correo.'}), 404
+
+    estado = db.obtener_puntos_racha(perfil['id'])
+    if estado is None:
+        # Perfil válido pero sin actividad registrada todavía -- no es un
+        # error, es el estado inicial de cualquier usuario nuevo.
+        estado = {'puntos_totales': 0, 'racha_actual_dias': 0, 'ultima_fecha_actividad': None}
+
+    return jsonify({'success': True, 'puntos_racha': estado}), 200
 
 
 # ===== Alimentos disponibles =====
