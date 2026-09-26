@@ -1,0 +1,552 @@
+{
+  "info": {
+    "_postman_id": "24291a1b-45fa-5939-9b9b-cf87fc36b9be",
+    "name": "Lumea API",
+    "description": "Todos los endpoints del backend de Lumea (Flask, puerto 5002).\n\nVariables de la colección: `base_url` (por defecto http://127.0.0.1:5002) y `email` (el correo del perfil con el que se prueba; créalo primero con POST /perfil).\n\nContrato detallado de gamificación: Backend/CONTRATO_GAMIFICACION.md. Grupos de confirmación manual: Backend/grupos_confusion.py.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://127.0.0.1:5002"
+    },
+    {
+      "key": "email",
+      "value": "prueba@lumea.test"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Perfil",
+      "item": [
+        {
+          "name": "Crear o actualizar perfil",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/perfil",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "perfil"
+              ]
+            },
+            "description": "Crea el perfil si el correo es nuevo o lo actualiza si ya existe. `objetivo` (opcional) debe ser uno de: comer_balanceado, tomar_agua, moverse_mas, dormir_mejor, conocer_lo_que_como. 400 si faltan campos o el objetivo no es válido.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Ana\",\n  \"email\": \"{{email}}\",\n  \"edad\": 15,\n  \"genero\": \"femenino\",\n  \"peso\": 50,\n  \"altura\": 158,\n  \"objetivo\": \"comer_balanceado\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Ver perfil",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/perfil?email={{email}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "perfil"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "{{email}}"
+                }
+              ]
+            },
+            "description": "404 si el correo no tiene perfil."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Predicción y confirmación",
+      "item": [
+        {
+          "name": "Predecir alimento (foto)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/predecir",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "predecir"
+              ]
+            },
+            "description": "multipart/form-data. En `file` elige una foto de comida de tu computador. `email` es opcional: si corresponde a un perfil, la comida queda en su historial y suma XP.\n\n- Certeza ≥ 70%: se guarda (`success: true`) y trae `gamificacion`.\n- Certeza baja: `seleccion_manual: true`, no se guarda.\n- Grupo de confusión (sopas, dulces...): `seleccion_manual: true` con `opciones_sugeridas` (lista de códigos) y `opciones_detalle` (lista de {codigo, nombre, marca, grupo}), sin importar la certeza.",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                },
+                {
+                  "key": "email",
+                  "value": "{{email}}",
+                  "type": "text"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Confirmar alimento",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/confirmar-alimento",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "confirmar-alimento"
+              ]
+            },
+            "description": "Guarda lo que el usuario eligió a mano después de un `seleccion_manual: true`. Acepta cualquier `alimento_codigo` que exista en tabla_alimentos. Rechaza (400) los códigos de agrupación visual como `sopas` o `dulces`. Trae `gamificacion`.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"alimento_codigo\": \"ajiaco\",\n  \"email\": \"{{email}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Estado de ánimo",
+      "item": [
+        {
+          "name": "Registrar estado de ánimo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/estado-animo",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "estado-animo"
+              ]
+            },
+            "description": "`estado`: muy_mal, mal, neutral, bien o muy_bien. El XP es el mismo para cualquier estado; en `gamificacion.avatar_url` viene la cara del avatar con esa expresión. 404 sin perfil.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"estado\": \"bien\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Ver estados de ánimo recientes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/estado-animo?email={{email}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "estado-animo"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "{{email}}"
+                }
+              ]
+            },
+            "description": "Últimos 30 registros."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Historial y alimentos",
+      "item": [
+        {
+          "name": "Historial de comidas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/historial?email={{email}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "historial"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "{{email}}"
+                }
+              ]
+            },
+            "description": "404 sin perfil."
+          },
+          "response": []
+        },
+        {
+          "name": "Lista de alimentos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/alimentos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "alimentos"
+              ]
+            },
+            "description": "Todos los alimentos de tabla_alimentos con calorías y es_saludable."
+          },
+          "response": []
+        },
+        {
+          "name": "Cargar alimentos desde CSV (¡modifica la base!)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/cargar-alimentos-csv",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "cargar-alimentos-csv"
+              ]
+            },
+            "description": "⚠️ MODIFICA tabla_alimentos (inserta o actualiza filas). No lo corras por probar.\n\nmultipart/form-data, campo `file` con un .csv de columnas: alimento_codigo,nombre_pantalla,calorias,es_saludable",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Gamificación",
+      "item": [
+        {
+          "name": "Progreso",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/progreso?email={{email}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "progreso"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "{{email}}"
+                }
+              ]
+            },
+            "description": "XP, nivel, racha, meta del día, avatar (con la expresión del ánimo de hoy) y las reglas vigentes. Ver CONTRATO_GAMIFICACION.md."
+          },
+          "response": []
+        },
+        {
+          "name": "Avatares",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/avatares?email={{email}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "avatares"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "{{email}}"
+                }
+              ]
+            },
+            "description": "Catálogo con desbloqueado/seleccionado según el XP."
+          },
+          "response": []
+        },
+        {
+          "name": "Elegir avatar",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/avatar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "avatar"
+              ]
+            },
+            "description": "400 si el avatar no existe, 403 si está bloqueado (trae xp_requerido y xp_faltante), 404 sin perfil.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"avatar_id\": \"luna\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. Autenticación (pendiente)",
+      "item": [
+        {
+          "name": "Login (PLACEHOLDER)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 404\", function () { pm.response.to.have.status(404); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "login"
+              ]
+            },
+            "description": "⚠️ PLACEHOLDER: este endpoint todavía NO existe (hoy responde 404). Lo implementa Isabella con Bcrypt. El body de abajo es provisional: ajustarlo, y ajustar la prueba de estado, cuando el endpoint exista.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"(definir cuando exista el endpoint)\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

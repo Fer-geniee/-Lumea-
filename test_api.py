@@ -9,6 +9,7 @@ empieza siempre sin XP ni historial y las expectativas de gamificación son
 exactas. La limpieza final borra SOLO filas de correos con ese patrón.
 """
 
+import os
 import sys
 import time
 
@@ -16,9 +17,9 @@ import requests
 
 import gamificacion_config as config
 
-# Cambia esto por la ruta de CUALQUIER imagen de comida en tu computador.
-# No necesita estar en la carpeta del proyecto ni tener un nombre especial.
-RUTA_IMAGEN = "/Users/isabfero.o./Downloads/prueba.jpeg"
+# Cualquier foto de comida sirve. Por defecto, Backend/prueba.jpeg (no está
+# en el repo: cada quien pone la suya).
+RUTA_IMAGEN = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prueba.jpeg")
 
 BASE_URL = "http://127.0.0.1:5002"
 PATRON_EMAIL_PRUEBA = "__test_api_%__@lumea.test"
