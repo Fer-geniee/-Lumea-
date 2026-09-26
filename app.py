@@ -8,6 +8,7 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from database import BaseDatos
 from gamificacion import registrar_gamificacion, registrar_actividad
+from grupos_confusion import grupo_para, codigos_de_opciones, detalle_de_opciones
 from predict import predecir_alimento  # única fuente de inferencia (fusión con predict.py)
 
 app = Flask(__name__)
@@ -19,37 +20,8 @@ db = BaseDatos()
 registrar_gamificacion(app, db)
 print("Conexión a la base de datos establecida, Flask inicializado y CORS habilitado.")
 
-# Grupos de alimentos visualmente fáciles de confundir entre sí. Cuando la
-# predicción ganadora del ensamble cae en uno de los "disparadores" de un
-# grupo, /predecir fuerza confirmación manual SIN IMPORTAR la certeza
-# reportada (aunque sea alta) -- una certeza alta en una predicción
-# propensa a confundirse no es la misma garantía que en una clase sin ese
-# problema conocido. "opciones" son los códigos reales que el usuario
-# puede confirmar -- SIEMPRE tienen fila en tabla_alimentos; el código de
-# agrupación visual ("sopas", "dulces") nunca aparece ahí ni se busca en
-# tabla_alimentos a propósito (ver verificar_integridad_clases.py, que los
-# trae como excepciones documentadas -- agregarles nutrición sería
-# inventar un dato para algo que no es un plato/producto específico).
-GRUPOS_CONFUSION = [
-    {
-        # "sopas": el modelo reentrenado (35 clases) fusiona los 3 platos en
-        # esa única clase de visión. Los 3 códigos viejos por separado se
-        # mantienen como disparadores también, por si se vuelve a un
-        # checkpoint del modelo anterior (26 clases) que los predecía cada
-        # uno por su cuenta -- no hace daño mantenerlos, el modelo actual ya
-        # no los predice.
-        "disparadores": {"sopas", "ajiaco", "sancocho", "mondongo"},
-        "opciones": ["ajiaco", "sancocho", "mondongo"],
-        "mensaje": "Ajiaco, sancocho y mondongo se ven muy parecidos -- confirma cuál es.",
-    },
-    {
-        # "dulces": dataset/dulces/ tiene 7 subcarpetas (una por marca), que
-        # Keras combina en una sola clase de visión al entrenar.
-        "disparadores": {"dulces"},
-        "opciones": ["nucita", "barrilete", "quipitos", "chororamo", "supercoco", "bonbonbum", "chocolatinas"],
-        "mensaje": "Hay varios dulces parecidos entre sí -- confirma cuál es.",
-    },
-]
+# Los grupos de alimentos que siempre piden confirmación manual (sopas,
+# dulces...) están en grupos_confusion.py.
 
 
 def formatear_nombre(nombre_tecnico):
@@ -205,7 +177,7 @@ def predecir():
 
         guardado_exitoso = False
 
-        grupo_activado = next((g for g in GRUPOS_CONFUSION if nombre_tecnico in g["disparadores"]), None)
+        grupo_activado = grupo_para(nombre_tecnico)
         if grupo_activado:
             respuesta = {
                 'success': False,
@@ -216,7 +188,8 @@ def predecir():
                 'alimento': nombre_amigable,
                 'alimento_codigo': nombre_tecnico,
                 'dato_curioso': dato_curioso,
-                'opciones_sugeridas': grupo_activado["opciones"],
+                'opciones_sugeridas': codigos_de_opciones(grupo_activado),
+                'opciones_detalle': detalle_de_opciones(grupo_activado),
                 'modelo_usado': resultado.get('modelo_usado'),
             }
             return jsonify(respuesta), 200
@@ -278,7 +251,7 @@ def confirmar_alimento():
     info_alimento = db.obtener_informacion_alimento(alimento_codigo)
     if not info_alimento:
         # Incluye deliberadamente los códigos de agrupación visual ("sopas",
-        # "dulces", ver GRUPOS_CONFUSION más arriba): no tienen fila en
+        # "dulces", ver grupos_confusion.py): no tienen fila en
         # tabla_alimentos a propósito, así que también se rechazan aquí --
         # nunca se inventa una fila para algo sin nutrición propia real.
         return jsonify({'error': f'"{alimento_codigo}" no es un alimento reconocido en tabla_alimentos.'}), 400
