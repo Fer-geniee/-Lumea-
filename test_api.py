@@ -17,8 +17,8 @@ import requests
 
 import gamificacion_config as config
 
-# Cualquier foto de comida sirve. Por defecto, Backend/prueba.jpeg (no está
-# en el repo: cada quien pone la suya).
+# Cualquier foto de comida sirve. Por defecto, Backend/prueba.jpeg, que ya
+# viene en el repo.
 RUTA_IMAGEN = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prueba.jpeg")
 
 BASE_URL = "http://127.0.0.1:5002"
