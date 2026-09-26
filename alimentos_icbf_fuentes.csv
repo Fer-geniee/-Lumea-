@@ -15,7 +15,7 @@ bunuelos,estimacion_por_receta,"Suma ponderada de 6 ingredientes (ver alimentos_
 aromatica,estimacion_por_receta,"Suma ponderada de 1 ingredientes (ver alimentos_icbf_ingredientes.csv), peso total receta = 250.0g",2,27.0,0.0,0.0,ninguno,
 frito,estimacion_por_receta,"Suma ponderada de 4 ingredientes (ver alimentos_icbf_ingredientes.csv), peso total receta = 167.0g",227,519.2,0.0,4.7,"sodio,grasas_saturadas",
 chicharron,estimacion_por_receta,"Suma ponderada de 2 ingredientes (ver alimentos_icbf_ingredientes.csv), peso total receta = 101.0g",400,832.7,0.0,11.6,"sodio,grasas_saturadas",
-fresas_crema,estimacion_por_receta,"Suma ponderada de 3 ingredientes (ver alimentos_icbf_ingredientes.csv), peso total receta = 800.0g",142,9.9,5.0,8.4,"azucares,grasas_saturadas",
+fresas_crema,estimacion_por_receta,"Suma ponderada de 3 ingredientes (ver alimentos_icbf_ingredientes.csv), peso total receta = 800.0g",167,19.4,5.0,8.4,"azucares,grasas_saturadas",
 patacon,estimacion_por_receta,"Suma ponderada de 4 ingredientes (ver alimentos_icbf_ingredientes.csv), peso total receta = 171.0g",201,233.3,0.0,1.6,ninguno,
 pandebono,estimacion_por_receta,"Suma ponderada de 6 ingredientes (ver alimentos_icbf_ingredientes.csv), peso total receta = 160.0g",349,341.5,3.4,7.6,"sodio,grasas_saturadas",
 hornado,estimacion_por_receta,"Suma ponderada de 3 ingredientes (ver alimentos_icbf_ingredientes.csv), peso total receta = 152.0g",269,576.3,0.0,6.4,"sodio,grasas_saturadas",
