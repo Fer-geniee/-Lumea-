@@ -16,6 +16,7 @@ import unittest
 
 import app as servidor
 from grupos_confusion import GRUPOS_CONFUSION, codigos_de_opciones, detalle_de_opciones
+from sellos import SELLOS_VALIDOS
 
 EMAIL_PRUEBA = "__test_confirmacion__@lumea.test"
 CODIGOS_SOLO_AGRUPACION = {"sopas", "dulces"}  # nunca pueden ser opción (no tienen nutrición propia)
@@ -103,6 +104,12 @@ class TestEndpoints(unittest.TestCase):
                     self.assertEqual(r.status_code, 200, cuerpo)
                     self.assertTrue(cuerpo["guardado_baseDatos"])
                     self.assertEqual(cuerpo["alimento_codigo"], codigo)
+                    # Los sellos vienen de tabla_alimentos y cuadran con es_saludable.
+                    sellos = cuerpo["sellos_advertencia"]
+                    self.assertIsInstance(sellos, list)
+                    self.assertTrue(set(sellos) <= set(SELLOS_VALIDOS), sellos)
+                    es_saludable = servidor.db.obtener_informacion_alimento(codigo)["es_saludable"]
+                    self.assertEqual(es_saludable == 1, sellos == [], f"es_saludable={es_saludable}, sellos={sellos}")
 
     def test_confirmar_rechaza_codigos_de_agrupacion(self):
         for codigo in sorted(CODIGOS_SOLO_AGRUPACION):

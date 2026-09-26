@@ -98,6 +98,9 @@ def probar_prediccion():
         codigos = [o["codigo"] for o in cuerpo.get("opciones_detalle", [])]
         comprobar("opciones_detalle coincide con opciones_sugeridas", codigos == cuerpo["opciones_sugeridas"])
         return 0
+    if cuerpo.get("success"):
+        comprobar("/predecir trae sellos_advertencia como lista", isinstance(cuerpo.get("sellos_advertencia"), list),
+                  f"sellos_advertencia={cuerpo.get('sellos_advertencia')!r}")
     return (cuerpo.get("gamificacion") or {}).get("xp_ganado", 0)
 
 
@@ -105,6 +108,8 @@ def probar_confirmar_alimento():
     cuerpo = verificar("POST /confirmar-alimento", post("/confirmar-alimento", {"alimento_codigo": "banano", "email": EMAIL_PRUEBA}))
     xp = (cuerpo.get("gamificacion") or {}).get("xp_ganado")
     comprobar("confirmar una comida da el XP de comida", xp == config.ACCIONES["comida_registrada"]["xp"], f"xp_ganado={xp}")
+    comprobar("banano no activa sellos de advertencia (lista vacía)", cuerpo.get("sellos_advertencia") == [],
+              f"sellos_advertencia={cuerpo.get('sellos_advertencia')!r}")
     # Los códigos de agrupación visual nunca deben aceptarse (ver grupos_confusion.py)
     verificar("POST /confirmar-alimento con 'sopas' (debe rechazar)",
               post("/confirmar-alimento", {"alimento_codigo": "sopas", "email": EMAIL_PRUEBA}), esperado=400)

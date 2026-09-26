@@ -72,9 +72,67 @@ Body (JSON): `{"alimento_codigo": "<codigo de una opción>", "email": "<correo>"
 - Rechaza con `400` los códigos de agrupación puros (`sopas`, `dulces`), que no son un alimento real.
 - La respuesta trae `alimento_app` (nombre para mostrar), `certeza: 100.0` (fue una persona quien confirmó) y la clave `gamificacion` (ver `CONTRATO_GAMIFICACION.md`).
 
-## Qué significa `es_saludable`
+## `sellos_advertencia` (campo nuevo en `/predecir` y `/confirmar-alimento`)
 
-`es_saludable = 1` quiere decir **"no dispara ningún sello de advertencia de la Res. 810"** con los datos disponibles. No quiere decir "comida recomendada". Por ejemplo, varias frituras de paquete salen con 1 porque no pasan ninguno de los umbrales de la norma. Para los productos envasados se aplica la Tabla 17 completa del ABECÉ de MinSalud (p. 67): sólidos por 100 g, bebidas por 100 ml, razón sodio/kcal y edulcorantes. El detalle de cada fila (fuente, código de barras, correcciones, datos que faltan) está en `alimentos_confirmacion_fuentes.csv`.
+Lista de los sellos de advertencia de la Res. 810 de 2021 (modificada por la Res. 2492 de 2022) que activa el alimento, por 100 g o 100 ml. Aparece:
+
+- en `POST /confirmar-alimento`, siempre;
+- en `POST /predecir` cuando la comida se registró sola (`success: true`). Cuando hay que confirmar (`seleccion_manual: true`), no viene: todavía no se sabe qué alimento es.
+
+| Valor | Significado |
+|---|---|
+| `["sodio", "grasas_saturadas"]` | Activa esos sellos. |
+| `[]` | No activa ninguno **con los datos que tenemos** (ver abajo). |
+| `null` | No se sabe: el alimento no tiene nutrición propia (los huecos conocidos, como `almuerzos`) o la base no tiene cargados los sellos. No mostrar nada, o "sin información". |
+
+Códigos posibles y el texto oficial de cada sello (ABECÉ de MinSalud, p. 70):
+
+| Código | Texto del sello |
+|---|---|
+| `sodio` | EXCESO EN SODIO |
+| `azucares` | EXCESO EN AZÚCARES |
+| `grasas_saturadas` | EXCESO EN GRASAS SATURADAS |
+| `grasas_trans` | EXCESO EN GRASAS TRANS |
+| `edulcorantes` | CONTIENE EDULCORANTES (solo productos de paquete que los declaran) |
+
+Ejemplo (`POST /confirmar-alimento` con `fresas_crema`, respuesta real, recortada):
+
+```json
+{
+  "alimento_codigo": "fresas_crema",
+  "alimento_app": "Fresas con crema",
+  "sellos_advertencia": ["azucares", "grasas_saturadas"],
+  "success": true
+}
+```
+
+### Cómo mostrarlo: "Sin sellos de advertencia", nunca "saludable"
+
+- Si la lista está vacía, el texto es **"Sin sellos de advertencia"**. Nunca "saludable", "sano", "recomendado" ni un check verde de aprobación.
+  - Los sellos solo miden cuatro excesos (sodio, azúcares, grasas saturadas, grasas trans). No miden porciones, fibra, proteína, frecuencia ni el resto de la dieta.
+  - Varias frituras de paquete (Doritos, NatuChips, De Todito, Super Ricas) salen sin sellos porque no pasan ningún umbral. Llamarlas "saludables" sería falso.
+  - A veces falta un dato en la fuente. Por ejemplo, el TCAC no reporta azúcares para platos preparados, y muchas etiquetas no traen grasa trans. En esos casos, "sin sellos" puede deberse a que no se pudo medir. Cada `*_fuentes.csv` lo anota en `datos_incompletos` o `nutrientes_no_reportados_por_usda`.
+- Si hay sellos, se pueden mostrar como los octágonos negros de la norma, con los textos de la tabla de arriba, o como una lista. Sin tono de regaño: la app no juzga lo que alguien comió (ver DEFENSA, sección 5, fila de gamificación).
+- `es_saludable` sigue existiendo y el frontend actual lo usa: se guarda como `balanceado` en el historial. Vale **1 si y solo si `sellos_advertencia` está vacío**; lo comprueban `verificar_integridad_clases.py` y `test_confirmacion.py`.
+
+### En sentido estricto, los sellos son para productos de paquete
+
+La Res. 810 obliga a poner sellos en **alimentos envasados procesados y ultraprocesados**. El ABECÉ de MinSalud (p. 5) dice que el etiquetado frontal **no aplica** a, entre otros:
+
+- alimentos sin procesar o mínimamente procesados, como las frutas;
+- productos de un solo ingrediente;
+- infusiones de hierbas y frutas sin nada añadido, como la aromática;
+- alimentos a granel;
+- alimentos y bebidas típicos o artesanales, como el tamal o la bandeja paisa.
+
+Por eso hay dos casos:
+
+- **Productos de paquete** (frituras y bebidas de los grupos de confirmación): los sellos son los que la norma les exige. Se usa la Tabla 17 completa del ABECÉ (p. 67), con sólidos por 100 g, bebidas por 100 ml, razón sodio/kcal y edulcorantes, y se verifica contra la etiqueta.
+- **Platos preparados, frutas y comidas típicas** (casi todo lo demás): los sellos son una **referencia**. Responden a "¿qué sellos tendría si fuera un producto de paquete?". Se usan los mismos umbrales, con la adaptación documentada en `criterio_saludable.py`: para sodio, solo el umbral absoluto de 300 mg/100 g. Un restaurante o una fruta **no** llevan estos sellos por ley.
+
+Si el frontend quiere hacer esa distinción en pantalla, algo como "Referencia según los umbrales de la Res. 810" para los platos, el tipo de fuente de cada alimento está en los CSV de fuentes. Ver `DEFENSA_TECNICA_LUMEA.md`, sección 8, para la explicación completa ante el jurado.
+
+De dónde salen: `Pipelines de datos/cargar_sellos.py` copia a `tabla_alimentos.sellos_advertencia` los sellos que cada importador calculó con `criterio_saludable.py`. Hay que correrlo después de cualquier importador. El detalle de cada fila (fuente, código de barras, correcciones, datos que faltan) está en los `alimentos_*_fuentes.csv`.
 
 ## Grupos y opciones
 

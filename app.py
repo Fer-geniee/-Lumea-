@@ -9,6 +9,7 @@ from flask_cors import CORS
 from database import BaseDatos
 from gamificacion import registrar_gamificacion, registrar_actividad
 from grupos_confusion import grupo_para, codigos_de_opciones, detalle_de_opciones
+from sellos import obtener_sellos
 from predict import predecir_alimento  # única fuente de inferencia (fusión con predict.py)
 
 app = Flask(__name__)
@@ -214,6 +215,9 @@ def predecir():
                 'certeza': round(mejor_certeza, 2),
                 'alimento': nombre_amigable,
                 'dato_curioso': dato_curioso,
+                # Lista de sellos de la Res. 810 ([] = ninguno, None = no se sabe).
+                # Mostrar "Sin sellos de advertencia", nunca "saludable": ver CONTRATO_CONFIRMACION.md.
+                'sellos_advertencia': obtener_sellos(db, nombre_tecnico),
                 'modelo_usado': resultado.get('modelo_usado'),
                 'gamificacion': gamificacion,
             }
@@ -286,6 +290,7 @@ def confirmar_alimento():
         'certeza': 100.0,
         'alimento': nombre_amigable,
         'dato_curioso': dato_curioso,
+        'sellos_advertencia': obtener_sellos(db, alimento_codigo),  # ver /predecir
         'gamificacion': gamificacion,
     }
     return jsonify(respuesta), 200
