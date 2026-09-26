@@ -1,0 +1,31 @@
+alimento_codigo,nombre_pantalla,calorias,es_saludable
+margarita_limon,Papas Margarita limón,538,0
+margarita_mayonesa,Papas Margarita mayonesa,504,0
+margarita_onduladas_tomate,Papas Margarita onduladas de tomate,504,0
+yupis,Yupis,541,0
+rizadas_limon,Papas Rizadas limón (Yupi),534,0
+rizadas_mayonesa,Papas Rizadas mayonesa (Yupi),534,0
+tosti_empanadas_limon,Tosti empanadas limón,530,0
+doritos_pizza,Doritos pizza,507,1
+doritos_bbq,Doritos BBQ,510,1
+natuchips_platano,NatuChips plátano verde,502,1
+cheetos_boliqueso,Cheetos Boliqueso,545,0
+cheetos_trissitos,Cheetos Trissitos,501,0
+takis_intense_nacho,Takis Intense Nacho,524,0
+detodito_pollo_parrillero,De Todito pollo parrillero,510,1
+superricas_papas_pollo,Papas Super Ricas pollo,555,1
+superricas_tajaditas_platano,Tajaditas Super Ricas plátano verde,480,1
+cocacola_original,Coca-Cola Original,30,0
+pepsi,Pepsi,20,0
+colombiana,Colombiana,19,0
+postobon_manzana,Manzana Postobón,20,0
+mr_tea,Mr. Tea,20,0
+speed_max,Speed Max,26,0
+vive100,Vive100 Original,20,0
+del_valle_fresh_citricas,Del Valle Fresh frutas cítricas,18,0
+tamal_tolimense,Tamal tolimense,132,1
+envuelto_yuca,Envuelto de yuca,141,1
+envuelto_choclo_queso,Envuelto de choclo con queso,186,0
+tamal,Tamal (otro tipo),132,1
+frituras_empaquetadas,Frituras empaquetadas (papas fritas),571,0
+gaseosas_bebidas_azucaradas,Gaseosa / bebida azucarada,42,0
