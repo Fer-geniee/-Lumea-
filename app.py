@@ -7,12 +7,16 @@ os.environ["TF_USE_LEGACY_KERAS"] = "1"
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from database import BaseDatos
+from gamificacion import registrar_gamificacion, registrar_actividad
 from predict import predecir_alimento  # única fuente de inferencia (fusión con predict.py)
 
 app = Flask(__name__)
 CORS(app)
 
 db = BaseDatos()
+# Tablas y endpoints de gamificación (/progreso, /avatares, /avatar): viven
+# en gamificacion.py; los números, en gamificacion_config.py.
+registrar_gamificacion(app, db)
 print("Conexión a la base de datos establecida, Flask inicializado y CORS habilitado.")
 
 # Grupos de alimentos visualmente fáciles de confundir entre sí. Cuando la
@@ -226,8 +230,7 @@ def predecir():
                 es_balanceado,
                 usuario_id,
             )
-            if guardado_exitoso and usuario_id:
-                db.registrar_actividad_puntos_racha(usuario_id)
+            gamificacion = registrar_actividad(db, usuario_id, "comida_registrada") if guardado_exitoso else None
             respuesta = {
                 'success': True,
                 'alimento_codigo': nombre_tecnico,
@@ -239,6 +242,7 @@ def predecir():
                 'alimento': nombre_amigable,
                 'dato_curioso': dato_curioso,
                 'modelo_usado': resultado.get('modelo_usado'),
+                'gamificacion': gamificacion,
             }
         else:
             respuesta = {
@@ -297,8 +301,7 @@ def confirmar_alimento():
     guardado_exitoso = db.registrar_comida(
         alimento_codigo, nombre_amigable, 100.0, calorias, es_balanceado, usuario_id,
     )
-    if guardado_exitoso and usuario_id:
-        db.registrar_actividad_puntos_racha(usuario_id)
+    gamificacion = registrar_actividad(db, usuario_id, "comida_registrada") if guardado_exitoso else None
 
     respuesta = {
         'success': True,
@@ -310,6 +313,7 @@ def confirmar_alimento():
         'certeza': 100.0,
         'alimento': nombre_amigable,
         'dato_curioso': dato_curioso,
+        'gamificacion': gamificacion,
     }
     return jsonify(respuesta), 200
 
@@ -360,7 +364,10 @@ def registrar_estado_animo():
 
     exito = db.registrar_estado_animo(estado, perfil['id'])
     if exito:
-        return jsonify({'success': True, 'mensaje': 'Estado de ánimo registrado.'}), 200
+        # El XP es el mismo sea cual sea el estado (ver gamificacion_config.py);
+        # el estado solo cambia la expresión del avatar.
+        gamificacion = registrar_actividad(db, perfil['id'], "estado_animo", estado_animo=estado)
+        return jsonify({'success': True, 'mensaje': 'Estado de ánimo registrado.', 'gamificacion': gamificacion}), 200
     return jsonify({'error': f'Estado no válido. Usa uno de: {sorted(db.ESTADOS_VALIDOS)}'}), 400
 
 
@@ -394,29 +401,6 @@ def ruta_historial():
         }), 200
     except Exception as e:
         return jsonify({'error': f'Error al consultar el historial: {str(e)}'}), 500
-
-
-# ===== Puntos y racha (infraestructura de gamificación) =====
-# Solo expone el estado acumulado -- cuántos puntos vale cada acción,
-# niveles, insignias, etc. no están definidos todavía (ver database.py,
-# módulo puntos y racha). La suma real ocurre dentro de /predecir y
-# /confirmar-alimento cuando guardan exitosamente, no aquí.
-@app.route('/puntos-racha', methods=['GET'])
-def ruta_puntos_racha():
-    email = request.args.get('email')
-    if not email:
-        return jsonify({'error': 'Falta el parámetro "email".'}), 400
-    perfil = db.obtener_perfil_por_email(email)
-    if not perfil:
-        return jsonify({'error': 'No existe un perfil con ese correo.'}), 404
-
-    estado = db.obtener_puntos_racha(perfil['id'])
-    if estado is None:
-        # Perfil válido pero sin actividad registrada todavía -- no es un
-        # error, es el estado inicial de cualquier usuario nuevo.
-        estado = {'puntos_totales': 0, 'racha_actual_dias': 0, 'ultima_fecha_actividad': None}
-
-    return jsonify({'success': True, 'puntos_racha': estado}), 200
 
 
 # ===== Alimentos disponibles =====
