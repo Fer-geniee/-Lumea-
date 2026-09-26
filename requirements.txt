@@ -10,3 +10,4 @@ requests  # solo para test_api.py y evaluar_modelo_real.py
 scikit-learn  # solo para evaluar_modelos.py (reporte de clasificación/matriz de confusión)
 matplotlib  # solo para evaluar_modelos.py (heatmaps de la matriz de confusión)
 seaborn  # solo para evaluar_modelos.py (heatmaps de la matriz de confusión)
+imagehash  # solo para limpiar_dataset.py (duplicados y casi-duplicados del dataset)
