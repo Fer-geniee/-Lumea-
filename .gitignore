@@ -24,6 +24,8 @@ dataset/
 # Fotos apartadas por limpiar_dataset.py --aplicar, y sus reportes.
 dataset_removidos/
 reportes_limpieza/
+# Fotos candidatas de recolectar_candidatos.py (se revisan antes de entrar al dataset).
+dataset_candidatos/
 
 # macOS
 .DS_Store

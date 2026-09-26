@@ -47,6 +47,11 @@ AL LADO de dataset/ (no adentro: si quedara adentro, Keras la tomaría
 como una clase más) y escribe un manifiesto CSV con origen y destino de
 cada archivo, para poder deshacerlo.
 
+--conservar RUTA (se puede repetir) protege un archivo: nunca se aparta,
+aunque tenga copias. Sirve para dejar intacta una foto que alguien tiene
+que decidir a mano (p. ej. la misma foto en dos clases). Las copias de
+esa foto que NO estén protegidas sí se apartan.
+
 Además reporta (sin mover nunca nada de eso):
 - Casi-duplicados ENTRE clases distintas: la misma foto en dos clases
   suele ser una foto mal etiquetada. Hay que revisarla a mano.
@@ -61,6 +66,7 @@ import os
 import re
 import shutil
 import sys
+import unicodedata
 from datetime import datetime
 
 import imagehash
@@ -135,16 +141,34 @@ def parecidas(imagen, candidatas_phash, candidatas_color, umbral, umbral_color):
     return np.nonzero((d_forma <= umbral) & (d_color <= umbral_color))[0], d_forma
 
 
-def decidir_por_clase(imagenes_clase, umbral, umbral_color):
+def normalizar(relativa):
+    """La misma ruta escrita igual siempre: macOS puede guardar la tilde
+    como un carácter (NFC) o como letra + tilde (NFD)."""
+    return unicodedata.normalize("NFC", relativa)
+
+
+def decidir_por_clase(imagenes_clase, umbral, umbral_color, protegidas=frozenset()):
     """Aplica el método sin encadenamiento a una clase. Devuelve la lista
-    de movimientos propuestos: (imagen, tipo, gemela_conservada, distancia)."""
+    de movimientos propuestos: (imagen, tipo, gemela_conservada, distancia).
+    Las fotos en `protegidas` (rutas relativas) se recorren primero y
+    siempre se conservan."""
     conservadas, hashes_conservados, colores_conservados = [], [], []
     # md5 de TODA foto ya procesada -> la foto conservada que la representa.
     # Incluye las apartadas: si A se aparta por parecerse a K, una copia
     # exacta de A también es "exacto" (con gemela K), no "casi".
     md5_vistos = {}
     movimientos = []
-    for imagen in sorted(imagenes_clase, key=orden_de_preferencia):
+
+    def es_protegida(imagen):
+        return normalizar(imagen["relativa"]) in protegidas
+
+    for imagen in sorted(imagenes_clase, key=lambda im: (not es_protegida(im), orden_de_preferencia(im))):
+        if es_protegida(imagen):
+            conservadas.append(imagen)
+            hashes_conservados.append(imagen["phash"])
+            colores_conservados.append(imagen["color"])
+            md5_vistos.setdefault(imagen["md5"], imagen)
+            continue
         if imagen["md5"] in md5_vistos:
             movimientos.append((imagen, "exacto", md5_vistos[imagen["md5"]], 0))
             continue
@@ -195,9 +219,9 @@ def escribir_csv(ruta, encabezado, filas):
         escritor.writerows(filas)
 
 
-def generar_reporte(ruta_dataset, imagenes, ilegibles, umbral, umbral_color, minimo):
+def generar_reporte(ruta_dataset, imagenes, ilegibles, umbral, umbral_color, minimo, protegidas=frozenset()):
     por_clase = agrupar_por_clase(imagenes)
-    movimientos = {clase: decidir_por_clase(lista, umbral, umbral_color) for clase, lista in por_clase.items()}
+    movimientos = {clase: decidir_por_clase(lista, umbral, umbral_color, protegidas) for clase, lista in por_clase.items()}
     entre_clases = pares_entre_clases(imagenes, umbral, umbral_color)
 
     carpeta = os.path.join(BASE_DIR, "reportes_limpieza", datetime.now().strftime("%Y%m%d_%H%M%S"))
@@ -240,7 +264,7 @@ def generar_reporte(ruta_dataset, imagenes, ilegibles, umbral, umbral_color, min
     ]
     filas_sensibilidad = []
     for u in UMBRALES_SENSIBILIDAD:
-        propuestas = {c: decidir_por_clase(lista, u, umbral_color) for c, lista in por_clase.items()}
+        propuestas = {c: decidir_por_clase(lista, u, umbral_color, protegidas) for c, lista in por_clase.items()}
         n = sum(len(m) for m in propuestas.values())
         bajo = [c for c, lista in por_clase.items() if len(lista) - len(propuestas[c]) < minimo]
         filas_sensibilidad.append((u, n, len(bajo), " ".join(sorted(bajo))))
@@ -254,6 +278,9 @@ def generar_reporte(ruta_dataset, imagenes, ilegibles, umbral, umbral_color, min
         lineas.append(f"  [{d}] {a}  <->  {b}")
     if len(entre_clases) > 15:
         lineas.append(f"  ... ({len(entre_clases) - 15} más en entre_clases.csv)")
+    if protegidas:
+        lineas += ["", f"Archivos protegidos con --conservar (nunca se apartan): {len(protegidas)}"]
+        lineas += [f"  {relativa}" for relativa in sorted(protegidas)]
     lineas += ["", f"Archivos que no se pudieron abrir como imagen: {len(ilegibles)}"]
     for relativa, error in ilegibles[:10]:
         lineas.append(f"  {relativa}: {error}")
@@ -316,14 +343,20 @@ def main():
     modo = parser.add_mutually_exclusive_group()
     modo.add_argument("--reporte", action="store_true", help="Solo muestra qué se movería (modo por defecto)")
     modo.add_argument("--aplicar", action="store_true", help="Mueve las fotos apartadas a dataset_removidos/ (nunca borra)")
+    parser.add_argument("--conservar", action="append", default=[], metavar="RUTA",
+                        help="Ruta relativa al dataset (p. ej. almuerzos/foto.jpg) que nunca se aparta; se puede repetir")
     args = parser.parse_args()
 
     if not os.path.isdir(args.dataset):
         sys.exit(f"No existe la carpeta: {args.dataset}")
+    protegidas = frozenset(normalizar(r) for r in args.conservar)
 
     print("Leyendo imágenes y calculando huellas (puede tardar un par de minutos)...\n")
     imagenes, ilegibles = leer_imagenes(args.dataset)
-    movimientos = generar_reporte(args.dataset, imagenes, ilegibles, args.umbral, args.umbral_color, args.minimo)
+    faltantes = protegidas - {normalizar(im["relativa"]) for im in imagenes}
+    if faltantes:
+        sys.exit("--conservar: estas rutas no están en el dataset: " + ", ".join(sorted(faltantes)))
+    movimientos = generar_reporte(args.dataset, imagenes, ilegibles, args.umbral, args.umbral_color, args.minimo, protegidas)
 
     if args.aplicar:
         aplicar(args.dataset, movimientos)
