@@ -43,16 +43,17 @@ backend corre en otro computador, se cambia una sola línea.
 ```
 
 Tu `crear-cuenta.html` nueva llama a `http://127.0.0.1:5001/perfil` escrito a
-mano. Ese puerto está mal (es **5002**) y además se salta `api.js`. Cámbialo por
-`crearOActualizarPerfil(datos)`.
+mano. Ese puerto está mal (es **5002**, donde corre `app.py`) y además se salta
+`api.js`. Cámbialo por `crearOActualizarPerfil(datos)`, y agrega la contraseña al
+JSON (pantalla 1).
 
 Funciones que trae `api.js`:
 
 | Función | Ruta del backend | Pantalla |
 |---|---|---|
 | `crearOActualizarPerfil(datos)` | `POST /perfil` | Crear cuenta |
-| `buscarPerfilPorCorreo(email)` | `GET /perfil` | Iniciar sesión (por ahora) |
-| `iniciarSesion(email, contrasena)` | `POST /login` | Iniciar sesión (cuando exista) |
+| `buscarPerfilPorCorreo(email)` | `GET /perfil` | Ver los datos del perfil |
+| `iniciarSesion(email, contrasena)` | `POST /login` | Iniciar sesión |
 | `guardarSesion(email)`, `obtenerSesion()`, `cerrarSesion()` | (ninguna: `localStorage`) | Todas |
 | `obtenerProgreso(email)` | `GET /progreso` | Dashboard |
 | `predecirComida(archivo, email)` | `POST /predecir` | Registrar comida |
@@ -104,7 +105,8 @@ async function cargar() {
   advertencia** oficiales (pantalla 4). Una comida sin sellos es "Sin sellos de
   advertencia", no "saludable".
 - **Sin juicios ni regaños.** La app no califica lo que alguien comió ni cómo se
-  siente. El ánimo da el mismo XP sea cual sea.
+  siente. El ánimo da el mismo XP sea cual sea, y comer algo de paquete **nunca**
+  resta XP (solo trae un `mensaje_educativo` amable).
 - **Sin comparaciones** con otras personas: nada de rankings.
 - **Sin peso ni cuerpo** en ninguna pantalla de progreso.
 
@@ -126,56 +128,70 @@ new Date(registro.fecha).toLocaleDateString("es-CO", {
 
 ---
 
-## Pantalla 1: Iniciar sesión
+## Pantalla 1: Iniciar sesión (y crear cuenta)
 
 **Qué muestra:** correo, contraseña y el botón "Entrar". Si todo sale bien,
 guarda la sesión (`guardarSesion(email)`) y lleva al dashboard.
 
-**Ruta:** el login con contraseña (`POST /login`) **todavía no existe**: Isabella
-lo está programando con Bcrypt. Por eso hay dos momentos.
+**Ruta:** `iniciarSesion(email, contrasena)` → `POST /login` con
+`{"email": "...", "contraseña": "..."}`. El backend compara la contraseña con el
+hash de bcrypt que guardó al crear la cuenta.
 
-**Hoy:** se busca el perfil por correo, sin revisar la contraseña:
-`buscarPerfilPorCorreo(email)` → `GET /perfil?email=...`
-
-Respuesta real si el correo existe (`200`):
+Respuesta real si todo está bien (`200`):
 
 ```json
 {
-  "success": true,
+  "message": "Inicio de sesión exitoso",
   "perfil": {
-    "id": 26,
+    "email": "demo.v2@lumea.test",
+    "id": 16,
     "nombre": "Ana",
-    "email": "demo.guia@lumea.test",
-    "edad": 15,
-    "genero": "femenino",
-    "altura": 158,
-    "peso": 52.0,
     "objetivo": "comer_balanceado"
-  }
+  },
+  "success": true
 }
 ```
 
-Respuesta real si no existe (`404`):
+Respuesta real si la contraseña está mal (`401`). **Es exactamente la misma** si
+el correo no existe o si la cuenta es de antes de las contraseñas:
 
 ```json
-{ "success": false, "mensaje": "No hay perfil guardado con ese correo." }
+{
+  "ayuda": "Si creaste tu cuenta antes de que Lumea pidiera contraseña, vuelve a registrarte con el mismo correo para crear una.",
+  "error": "Correo o contraseña incorrectos."
+}
 ```
 
-**Cuando Isabella termine `/login`:** se cambia a `iniciarSesion(email, contrasena)`.
-No hay ejemplo real todavía, pero ya se sabe cómo va a responder, porque sus
-pruebas (`Backend/test_login.py`) lo exigen:
-
-- `200` si el correo y la contraseña son correctos, con los datos del perfil
-  (nunca la contraseña).
-- `401` si la contraseña está mal **o** si el correo no existe, **con el mismo
-  mensaje en los dos casos**. En pantalla: "Correo o contraseña incorrectos".
-  Nunca digas "ese correo no existe": así nadie puede averiguar quién usa Lumea.
+- Muestra `error` tal cual y, debajo, `ayuda` en letra pequeña. Nunca digas "ese
+  correo no existe": así nadie puede averiguar quién usa Lumea.
 - `400` si falta el correo o la contraseña.
+
+### Crear cuenta: la contraseña ahora es obligatoria
+
+`crearOActualizarPerfil(datos)` → `POST /perfil`. El JSON debe llevar
+`"contraseña"` (mínimo 6 caracteres) además de los datos de siempre:
+
+```js
+const datos = {
+  nombre: "Ana", email: "ana@correo.com", edad: 15, genero: "femenino",
+  peso: 52, altura: 158, objetivo: "comer_balanceado",
+  "contraseña": document.getElementById("contrasena").value,
+};
+```
+
+| Respuesta | Cuándo | Qué mostrar |
+|---|---|---|
+| `200` `{"success": true, "mensaje": "Perfil guardado."}` | Cuenta creada | "¡Cuenta creada!" y llevar a iniciar sesión (o guardar la sesión). |
+| `400` | Falta la contraseña o tiene menos de 6 caracteres | El `error` que manda el backend. |
+| `409` | Ya existe una cuenta con ese correo | "Ya existe una cuenta con ese correo. Inicia sesión con tu contraseña." |
+
+(Guardar el perfil otra vez **sin** contraseña sirve para editar edad, peso,
+etc. de una cuenta que ya existe; nunca cambia la contraseña.)
 
 | Estado | Qué mostrar |
 |---|---|
-| Cargando | Botón deshabilitado con spinner: "Entrando..." |
-| Error | `404` hoy (`401` con `/login`): "Correo o contraseña incorrectos". Sin conexión: el mensaje de conexión. |
+| Cargando | Botón deshabilitado con spinner: "Entrando..." / "Creando tu cuenta..." |
+| Error | `401`: `error` + `ayuda`. `400`/`409`: el `error`. Sin conexión: el mensaje de conexión. |
 | Sin datos | No aplica. |
 
 ---
@@ -233,6 +249,12 @@ Cómo usar cada dato:
   racha" (sin reproches).
 - **Meta del día:** `meta_diaria.xp_hoy` de `meta_diaria.meta`.
   Si `cumplida`, un mensaje de felicitación.
+- **Misiones del día:** `misiones`, una lista con las 3 misiones fijas y si ya se
+  cumplieron hoy. Dibuja una casilla por misión (chulo si `cumplida`). Respuesta
+  real después de registrar una fruta, tres comidas y el ánimo:
+  ```json
+  "misiones": [{"cumplida": true, "id": "fruta", "nombre": "Registra una fruta", "xp": 10}, {"cumplida": true, "id": "tres_comidas", "nombre": "Registra 3 comidas", "xp": 10}, {"cumplida": true, "id": "check_in_animo", "nombre": "Haz tu check-in de ánimo", "xp": 10}]
+  ```
 - **Aviso de regreso:** si `mensaje_regreso` no es `null`, muéstralo arriba, en
   un recuadro amable (por ejemplo `alert alert-success`), con el botón para
   cerrarlo. Llega **una sola vez**: la siguiente vez ya viene `null`. Si
@@ -352,24 +374,51 @@ en forma de octágono):
 
 Los sellos son información, no un regaño: sin rojo, sin "¡cuidado!".
 
-### El XP ganado
+### El XP ganado (Puntos v2)
 
 Si `gamificacion` no es `null`:
 
-- "+`xp_ganado` XP". Si `tope_diario_alcanzado` es `true`, no muestres "+0 XP":
-  basta con "Guardado en tu historial".
+- **"+`xp_ganado` XP"**: es el total de esta acción. Si `tope_diario_alcanzado`
+  es `true` y `xp_ganado` es 0, no muestres "+0 XP": basta con "Guardado en tu
+  historial".
+- **`detalle_xp`** dice de dónde salió cada parte, por si quieres mostrarlo en
+  pequeño. Respuesta real al confirmar un banano (la primera comida del día):
+  ```json
+  "detalle_xp": [{"motivo": "comida_registrada", "xp": 10}, {"motivo": "eleccion_nutritiva", "xp": 5}, {"motivo": "mision_fruta", "xp": 10}]
+  ```
+  `eleccion_nutritiva` es el bonus por un alimento sin sellos que no es de
+  paquete. Puedes mostrarlo como "+5 elección nutritiva", **nunca** como
+  "comiste bien" o "saludable".
+- **`misiones_cumplidas`**: las misiones que se cumplieron con esta acción.
+  Celebración: "¡Misión cumplida: Registra una fruta!".
 - Si `subio_de_nivel` es `true`: celebración ("¡Subiste al nivel 2!"). Puede
   haber ropa o accesorios nuevos para el avatar: un botón a "Personalizar
   avatar".
 - Si `meta_diaria.recien_cumplida` es `true`: "¡Cumpliste la meta de hoy!".
 
-Estos dos avisos vienen en `true` **una sola vez**, en la acción que los provocó.
+Estos avisos vienen **una sola vez**, en la acción que los provocó.
+
+### El mensaje educativo (productos de paquete)
+
+Si la persona registra una gaseosa, un paquete de papas o un dulce, la respuesta
+trae `mensaje_educativo`: un dato y una alternativa para otro día. Respuesta real
+(Coca-Cola):
+
+```json
+"mensaje_educativo": "Dato: las gaseosas y bebidas azucaradas tienen bastante azúcar añadida. Si otro día quieres variar, el agua con limón o un jugo de fruta natural también refrescan."
+```
+
+- Muéstralo en un recuadro neutro (azul o gris, **no rojo**), debajo de los
+  sellos. No es un error ni un regaño.
+- Es `null` para todo lo demás: no muestres nada.
+- Registrar un producto de paquete **no resta XP**. La app nunca castiga lo que
+  alguien comió.
 
 | Estado | Qué mostrar |
 |---|---|
 | Cargando | Ya pasó en la pantalla 3. |
 | Error | `guardado_baseDatos: false` con `success: true`: "Lo reconocimos, pero no se pudo guardar. Intenta de nuevo". |
-| Sin datos | `dato_curioso` puede ser `null`: simplemente no lo muestres. |
+| Sin datos | `dato_curioso` y `mensaje_educativo` pueden ser `null`: simplemente no los muestres. |
 
 ---
 
@@ -564,7 +613,7 @@ Respuesta real:
 ## Pantalla 7: Mis registros
 
 **Qué muestra:** la lista de comidas registradas, de la más reciente a la más
-antigua, con nombre y fecha. (Ya existe: `mis-registros.html`.)
+antigua, con nombre, fecha y sellos. (Ya existe: `mis-registros.html`.)
 
 **Ruta:** `obtenerHistorial(email)` → `GET /historial?email=...`
 
@@ -576,41 +625,44 @@ Respuesta real (recortada a 2 de 3 registros):
   "cantidad_registros": 3,
   "historial": [
     {
-      "id": 223,
-      "usuario_id": 26,
-      "alimento_codigo": "chororamo",
-      "alimento_detectado": "Chocoramo (ponqué cubierto de chocolate)",
-      "certeza_ia": 100.0,
-      "calorias_aprox": 399,
+      "alimento_codigo": "cocacola_original",
+      "alimento_detectado": "Coca-Cola Original",
       "balanceado": 0,
-      "fecha": "Sun, 27 Sep 2026 00:00:00 GMT"
+      "calorias_aprox": 30,
+      "certeza_ia": 100.0,
+      "fecha": "Sun, 27 Sep 2026 00:00:00 GMT",
+      "id": 48,
+      "sellos_advertencia": [
+        "azucares",
+        "edulcorantes"
+      ]
     },
     {
-      "id": 222,
-      "usuario_id": 26,
       "alimento_codigo": "ajiaco",
       "alimento_detectado": "Ajiaco santafereño",
-      "certeza_ia": 100.0,
-      "calorias_aprox": 82,
       "balanceado": 1,
-      "fecha": "Sun, 27 Sep 2026 00:00:00 GMT"
+      "calorias_aprox": 82,
+      "certeza_ia": 100.0,
+      "fecha": "Sun, 27 Sep 2026 00:00:00 GMT",
+      "id": 47,
+      "sellos_advertencia": []
     }
   ]
 }
 ```
 
-- Muestra `alimento_detectado` y la fecha (con `timeZone: "UTC"`, ver "Cómo leer
-  las fechas").
+- Muestra `alimento_detectado`, la fecha (con `timeZone: "UTC"`, ver "Cómo leer
+  las fechas") y los **sellos** (`sellos_advertencia`), con las mismas reglas de
+  la pantalla 4: lista vacía = "Sin sellos de advertencia", `null` = nada.
+  Aquí pueden ir más pequeños que en el resultado.
 - **No muestres `balanceado`** como etiqueta ("Balanceado", "Ocasional", colores
   verde y gris...): es un juicio sobre la comida.
-- Los sellos todavía **no** vienen en `/historial`. Isabella puede agregarlos
-  después. Mientras tanto, la lista va sin sellos.
 
 | Estado | Qué mostrar |
 |---|---|
 | Cargando | "Cargando tu historial..." con spinner. |
 | Error | Sin conexión: el mensaje de conexión. |
-| Sin datos | Respuesta real: `{"success": true, "cantidad_registros": 0, "historial": []}` → "Todavía no tienes comidas registradas" y un enlace a "Registrar comida". |
+| Sin datos | `{"success": true, "cantidad_registros": 0, "historial": []}` → "Todavía no tienes comidas registradas" y un enlace a "Registrar comida". |
 
 ---
 
@@ -837,8 +889,9 @@ conectarla.
 |---|---|---|
 | `200` | Todo bien. | Mostrar la respuesta. |
 | `400` | La petición está mal hecha: faltó un dato o está mal escrito. | Revisar qué se mandó. El `error` lo dice. |
-| `401` | No autorizado: correo o contraseña incorrectos (cuando exista `/login`). | "Correo o contraseña incorrectos". |
+| `401` | No autorizado: correo o contraseña incorrectos en `/login`. | "Correo o contraseña incorrectos". |
 | `403` | Prohibido: existe, pero está bloqueado (un objeto del avatar). | Mostrar el candado. |
+| `409` | Conflicto: ya existe una cuenta con ese correo (al crear cuenta). | "Inicia sesión con tu contraseña". |
 | `404` | No existe: el perfil o la ruta. | Revisar el correo, o volver a iniciar sesión. |
 | `500` | Se rompió algo en el backend. | Mensaje genérico y avisarle a Isabella. |
 | "Failed to fetch" | No se pudo conectar: el backend está apagado o la dirección de `api.js` está mal. | Encender el backend o revisar `API_BASE_URL`. |
