@@ -7,7 +7,9 @@ endpoints y la lógica (gamificacion.py) leen de aquí; ningún número está
 escrito en ellos.
 
 Los valores actuales son PROVISIONALES (acordados el 26 sep 2026 para
-tener algo funcionando), no el diseño final.
+tener algo funcionando), no el diseño final. La pérdida por inactividad y
+el avatar por capas se agregaron el 27 sep 2026 (reunión del equipo).
+Por decisión del equipo NO hay insignias ni logros por ahora.
 
 Reglas de contenido que cualquier cambio debe respetar (ver
 DEFENSA_TECNICA_LUMEA.md, sección 5 -- población adolescente):
@@ -20,6 +22,9 @@ DEFENSA_TECNICA_LUMEA.md, sección 5 -- población adolescente):
   registrar las del día. Premia constancia, no volumen.
 - Sin rankings ni comparaciones entre usuarios (el frontend promete
   "sin comparaciones con otros", guialumea.html).
+- Perder XP nunca le quita a nadie lo que ya logró: el NIVEL no baja y lo
+  desbloqueado no se vuelve a bloquear. Los mensajes de regreso son
+  amables, nunca un regaño.
 """
 
 # XP que da cada acción y cuántas veces al día cuenta. Pasado el máximo,
@@ -40,7 +45,39 @@ META_DIARIA_XP = 15
 # solo a partir de su XP total.
 NIVELES = [0, 30, 80, 150, 250, 400, 600, 850, 1150, 1500]
 
-# ===== Avatares (DiceBear, estilo "avataaars") =====
+# ===== Pérdida de XP por inactividad =====
+# Un "día inactivo" es un día completo sin NINGUNA actividad registrada
+# (ni comida ni estado de ánimo). Hoy nunca cuenta como inactivo: todavía
+# se puede registrar algo.
+#
+# Como no hay servidor encendido todo el tiempo (no hay tareas
+# programadas), la pérdida se calcula "perezosamente": cuando el usuario
+# vuelve (GET /progreso o al registrar una actividad) se descuentan los
+# días que falten. Nunca se descuenta dos veces el mismo día.
+#
+# - XP_PERDIDO_POR_DIA_INACTIVO: cuánto se pierde por cada día inactivo.
+#   Con 0, la pérdida queda desactivada.
+# - TOPE_PERDIDA_POR_PERIODO: lo máximo que se pierde en un mismo
+#   "período" de inactividad (los días seguidos sin actividad entre una
+#   actividad y la siguiente). Quien se va un mes pierde como máximo esto.
+#   Al registrar una actividad empieza un período nuevo.
+#
+# El XP nunca baja de 0. El NIVEL nunca baja (se guarda el nivel máximo
+# alcanzado aparte del XP actual) y nada de lo desbloqueado se vuelve a
+# bloquear, porque se desbloquea por nivel máximo.
+XP_PERDIDO_POR_DIA_INACTIVO = 5
+TOPE_PERDIDA_POR_PERIODO = 20
+
+# Lo que ve el usuario al volver si perdió XP. Amable, nunca un regaño, y
+# sin mencionar comida, peso ni cuerpo.
+MENSAJE_REGRESO = (
+    "¡Te extrañamos! Tu nivel y todo lo que desbloqueaste siguen siendo tuyos. "
+    "Cuando quieras, registra algo hoy y vuelve a sumar XP."
+)
+
+# ===== Avatares DiceBear (la cara que cambia con el estado de ánimo) =====
+# Se usan para el check-in de ánimo, y como avatar de respaldo si las
+# imágenes de Figma (más abajo) no están listas a tiempo.
 # Estilo avataaars de Pablo Stanley: "Free for personal and commercial
 # use" (diseño) + MIT (código de DiceBear). Solo cara y hombros -- nada
 # de cuerpo, a propósito. Versión fija (9.x) porque es la versión cuyos
@@ -55,13 +92,18 @@ DICEBEAR_PARAMETROS_FIJOS = {"facialHairProbability": 0}
 # Cada avatar se dibuja a partir de una semilla FIJA del catálogo -- nunca
 # del correo ni de otro dato del usuario, para no enviarle datos
 # personales a un servicio externo.
+#
+# nivel_requerido se compara con el NIVEL MÁXIMO alcanzado (no con el XP
+# actual), así que perder XP por inactividad nunca vuelve a bloquear un
+# avatar. Son los mismos umbrales que antes estaban en XP (80 XP = nivel
+# 3, 250 = nivel 5, 600 = nivel 7, 1150 = nivel 9).
 AVATARES = [
-    {"id": "sol", "nombre": "Sol", "semilla": "lumea-sol", "xp_requerido": 0},
-    {"id": "luna", "nombre": "Luna", "semilla": "lumea-luna", "xp_requerido": 0},
-    {"id": "rio", "nombre": "Río", "semilla": "lumea-rio", "xp_requerido": 80},
-    {"id": "montana", "nombre": "Montaña", "semilla": "lumea-montana", "xp_requerido": 250},
-    {"id": "orquidea", "nombre": "Orquídea", "semilla": "lumea-orquidea", "xp_requerido": 600},
-    {"id": "colibri", "nombre": "Colibrí", "semilla": "lumea-colibri", "xp_requerido": 1150},
+    {"id": "sol", "nombre": "Sol", "semilla": "lumea-sol", "nivel_requerido": 1},
+    {"id": "luna", "nombre": "Luna", "semilla": "lumea-luna", "nivel_requerido": 1},
+    {"id": "rio", "nombre": "Río", "semilla": "lumea-rio", "nivel_requerido": 3},
+    {"id": "montana", "nombre": "Montaña", "semilla": "lumea-montana", "nivel_requerido": 5},
+    {"id": "orquidea", "nombre": "Orquídea", "semilla": "lumea-orquidea", "nivel_requerido": 7},
+    {"id": "colibri", "nombre": "Colibrí", "semilla": "lumea-colibri", "nivel_requerido": 9},
 ]
 AVATAR_POR_DEFECTO = "sol"
 
@@ -80,3 +122,45 @@ EXPRESION_POR_ESTADO = {
     "bien": {"mouth": "smile", "eyes": "default", "eyebrows": "defaultNatural"},
     "muy_bien": {"mouth": "smile", "eyes": "happy", "eyebrows": "raisedExcitedNatural"},
 }
+
+# ===== Avatar por capas (diseño en Figma) -- OPCIONAL =====
+# El avatar del perfil se arma apilando imágenes PNG del mismo tamaño y
+# con fondo transparente: abajo la BASE, encima la ROPA y encima el
+# ACCESORIO. Lo que se desbloquea subiendo de nivel son la ropa y los
+# accesorios. Especificación para la diseñadora:
+# ESPECIFICACION_AVATARES_FIGMA.md.
+#
+# Es opcional: mientras las imágenes no existan, las rutas responden igual
+# (con los nombres de archivo e "imagen_lista": false) y el frontend
+# muestra un marcador. Si el diseño no llega a tiempo, el perfil usa el
+# avatar DiceBear de arriba.
+#
+# Las imágenes van en Backend/static/<CARPETA_IMAGENES_AVATAR>/ y Flask
+# las sirve en http://127.0.0.1:5002/static/avatar/<archivo>.
+CARPETA_IMAGENES_AVATAR = "avatar"
+
+# Las 2 bases tienen la misma silueta y postura, para que cada prenda y
+# accesorio sirva en las dos. Las dos están disponibles desde el inicio.
+BASES_AVATAR = [
+    {"id": "base_1", "nombre": "Base 1", "archivo": "base_1.png"},
+    {"id": "base_2", "nombre": "Base 2", "archivo": "base_2.png"},
+]
+BASE_POR_DEFECTO = "base_1"
+
+# Tipos de objeto, en el orden en que se apilan encima de la base (el
+# último queda arriba). Cada usuario lleva como máximo UN objeto de cada
+# tipo, o ninguno.
+TIPOS_OBJETO = ["ropa", "accesorio"]
+
+# Propuesta inicial: 3 de ropa y 3 accesorios. nivel_requerido se compara
+# con el NIVEL MÁXIMO alcanzado, así que un objeto desbloqueado nunca se
+# vuelve a bloquear. Sin nada que resalte el cuerpo (población
+# adolescente, ver DEFENSA_TECNICA_LUMEA.md sección 5).
+OBJETOS_AVATAR = [
+    {"id": "buzo_verde", "tipo": "ropa", "nombre": "Buzo verde", "archivo": "ropa_buzo_verde.png", "nivel_requerido": 1},
+    {"id": "camiseta_lumea", "tipo": "ropa", "nombre": "Camiseta Lumea", "archivo": "ropa_camiseta_lumea.png", "nivel_requerido": 3},
+    {"id": "ruana", "tipo": "ropa", "nombre": "Ruana", "archivo": "ropa_ruana.png", "nivel_requerido": 6},
+    {"id": "gafas", "tipo": "accesorio", "nombre": "Gafas", "archivo": "accesorio_gafas.png", "nivel_requerido": 2},
+    {"id": "audifonos", "tipo": "accesorio", "nombre": "Audífonos", "archivo": "accesorio_audifonos.png", "nivel_requerido": 4},
+    {"id": "sombrero_vueltiao", "tipo": "accesorio", "nombre": "Sombrero vueltiao", "archivo": "accesorio_sombrero_vueltiao.png", "nivel_requerido": 8},
+]

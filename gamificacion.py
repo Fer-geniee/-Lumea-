@@ -1,6 +1,6 @@
 """
 gamificacion.py -- Núcleo de gamificación (XP, niveles, racha, meta
-diaria y avatares), solo backend.
+diaria, pérdida por inactividad y avatares), solo backend.
 
 Vive en su propio archivo, separado de app.py y database.py, para que se
 pueda trabajar en paralelo con el resto del backend sin pisarse. app.py
@@ -10,24 +10,31 @@ solo hace dos cosas:
   2. registrar_actividad(db, usuario_id, accion) justo después de guardar
      algo que da XP (una comida, un estado de ánimo).
 
-Todos los números (XP por acción, topes, meta, niveles, avatares) están
-en gamificacion_config.py. Aquí no hay ninguno.
+Todos los números (XP por acción, topes, meta, niveles, pérdida por
+inactividad, avatares, ropa y accesorios) están en gamificacion_config.py.
+Aquí no hay ninguno.
 
 Tablas:
-- progreso_usuario: una fila por usuario con su estado acumulado.
+- progreso_usuario: una fila por usuario con su estado acumulado (XP
+  actual, nivel máximo alcanzado, racha, avatar DiceBear elegido y avatar
+  por capas: base, ropa y accesorio puestos).
 - actividad_diaria: una fila por usuario y día (XP del día, meta cumplida).
 - eventos_xp: una fila por cada acción registrada, con el XP que dio
-  (0 si ya había llegado al tope del día). Sirve para contar cuántas
-  veces se hizo cada acción hoy y para poder explicar de dónde salió el
-  XP de cada usuario.
+  (0 si ya había llegado al tope del día), y una fila con XP negativo
+  ("perdida_inactividad") cada vez que se descuenta XP por días
+  inactivos. Sirve para contar cuántas veces se hizo cada acción hoy y
+  para poder explicar de dónde salió el XP de cada usuario.
 """
 
+import os
 from datetime import date, timedelta
 from urllib.parse import urlencode
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, has_request_context, jsonify, request, url_for
 
 import gamificacion_config as config
+
+CARPETA_STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
 # =====================================================================
 # Lógica pura: no toca la base de datos, así que se puede probar sola
@@ -40,13 +47,23 @@ def calcular_nivel(xp_total):
     return max(1, sum(1 for umbral in config.NIVELES if xp_total >= umbral))
 
 
-def rango_del_nivel(xp_total):
-    """(XP donde empieza el nivel actual, XP donde empieza el siguiente).
-    El segundo es None si ya está en el último nivel."""
-    nivel = calcular_nivel(xp_total)
+def nivel_alcanzado(nivel_maximo, xp_total):
+    """El nivel que se muestra NUNCA baja: es el mayor entre el nivel
+    máximo que ya tenía y el que le da su XP actual."""
+    return max(nivel_maximo or 1, calcular_nivel(xp_total))
+
+
+def limites_del_nivel(nivel):
+    """(XP donde empieza `nivel`, XP donde empieza el siguiente). El
+    segundo es None si ya es el último nivel."""
     inicio = config.NIVELES[nivel - 1]
     siguiente = config.NIVELES[nivel] if nivel < len(config.NIVELES) else None
     return inicio, siguiente
+
+
+def rango_del_nivel(xp_total):
+    """Los límites del nivel que corresponde a `xp_total`."""
+    return limites_del_nivel(calcular_nivel(xp_total))
 
 
 def nueva_racha(racha_actual, ultima_fecha, hoy):
@@ -76,8 +93,82 @@ def xp_a_otorgar(accion, veces_previas_hoy):
     return regla["xp"] if veces_previas_hoy < regla["maximo_por_dia"] else 0
 
 
+def dias_inactivos(ultima_fecha, hoy):
+    """Días completos sin actividad entre la última actividad y hoy. Hoy
+    no cuenta (todavía puede registrar algo). Sin actividad nunca: 0."""
+    if ultima_fecha is None:
+        return 0
+    return max(0, (hoy - ultima_fecha).days - 1)
+
+
+def perdida_por_inactividad(dias, xp_total, ya_descontado):
+    """Cuánto XP hay que restar AHORA por `dias` días inactivos seguidos.
+
+    `ya_descontado` es lo que ya se descontó en este mismo período de
+    inactividad (en visitas anteriores). La cuenta es: "lo que debería
+    llevar perdido a hoy" menos "lo que ya perdió". Por eso preguntar dos
+    veces el mismo día da 0 la segunda vez: un día nunca se descuenta dos
+    veces.
+
+    Devuelve (xp_a_restar, nuevo_ya_descontado). xp_a_restar nunca deja
+    el XP por debajo de 0.
+    """
+    if config.XP_PERDIDO_POR_DIA_INACTIVO <= 0:
+        return 0, ya_descontado
+    deberia_llevar = min(config.TOPE_PERDIDA_POR_PERIODO, dias * config.XP_PERDIDO_POR_DIA_INACTIVO)
+    pendiente = max(0, deberia_llevar - ya_descontado)
+    return min(pendiente, xp_total), ya_descontado + pendiente
+
+
+def progreso_vacio(usuario_id):
+    """El estado de un usuario que todavía no tiene fila en progreso_usuario."""
+    return {
+        "usuario_id": usuario_id, "xp_total": 0, "nivel_maximo": 1, "racha_actual": 0,
+        "racha_maxima": 0, "ultima_fecha_actividad": None, "avatar_id": None,
+        "xp_perdido_periodo": 0, "xp_perdido_sin_avisar": 0,
+        "avatar_base": None, "ropa_id": None, "accesorio_id": None,
+    }
+
+
+def aplicar_inactividad(progreso, hoy):
+    """Descuenta el XP de los días inactivos que todavía no se habían
+    descontado. Modifica `progreso` y devuelve el XP restado ahora.
+
+    El XP restado se acumula en xp_perdido_sin_avisar hasta que el
+    usuario abre /progreso (ahí se le avisa una sola vez). El nivel
+    máximo no se toca."""
+    dias = dias_inactivos(progreso["ultima_fecha_actividad"], hoy)
+    restar, descontado = perdida_por_inactividad(dias, progreso["xp_total"], progreso["xp_perdido_periodo"])
+    progreso["xp_total"] -= restar
+    progreso["xp_perdido_periodo"] = descontado
+    progreso["xp_perdido_sin_avisar"] += restar
+    return restar
+
+
+def sumar_actividad(progreso, xp, hoy):
+    """Suma el XP de una actividad registrada HOY y actualiza nivel máximo
+    y racha. Registrar algo termina el período de inactividad: el próximo
+    empieza con el tope completo. Modifica `progreso` y devuelve True si
+    subió de nivel."""
+    nivel_antes = progreso["nivel_maximo"]
+    progreso["xp_total"] += xp
+    progreso["nivel_maximo"] = nivel_alcanzado(nivel_antes, progreso["xp_total"])
+    progreso["racha_actual"] = nueva_racha(progreso["racha_actual"], progreso["ultima_fecha_actividad"], hoy)
+    progreso["racha_maxima"] = max(progreso["racha_maxima"], progreso["racha_actual"])
+    progreso["ultima_fecha_actividad"] = hoy
+    progreso["xp_perdido_periodo"] = 0
+    return progreso["nivel_maximo"] > nivel_antes
+
+
+def desbloqueado(elemento, nivel_maximo):
+    """Un avatar DiceBear o un objeto (ropa/accesorio) está desbloqueado
+    si el NIVEL MÁXIMO alcanzado llega a su nivel_requerido. Como el nivel
+    máximo nunca baja, nada se vuelve a bloquear al perder XP."""
+    return nivel_maximo >= elemento["nivel_requerido"]
+
+
 def avatar_por_id(avatar_id):
-    """Busca un avatar del catálogo; None si no existe."""
+    """Busca un avatar DiceBear del catálogo; None si no existe."""
     return next((a for a in config.AVATARES if a["id"] == avatar_id), None)
 
 
@@ -89,6 +180,100 @@ def url_avatar(avatar, estado_animo=None):
     return f"{config.DICEBEAR_URL}?{urlencode(parametros)}"
 
 
+def base_por_id(base_id):
+    """Busca una base del avatar por capas; None si no existe."""
+    return next((b for b in config.BASES_AVATAR if b["id"] == base_id), None)
+
+
+def objeto_por_id(item_id):
+    """Busca una prenda o accesorio; None si no existe."""
+    return next((o for o in config.OBJETOS_AVATAR if o["id"] == item_id), None)
+
+
+def columna_de_tipo(tipo):
+    """Columna de progreso_usuario donde se guarda lo puesto de ese tipo
+    ("ropa" -> ropa_id). Solo acepta tipos del config: el nombre de la
+    columna nunca sale directo de lo que manda el usuario."""
+    if tipo not in config.TIPOS_OBJETO:
+        return None
+    return f"{tipo}_id"
+
+
+def imagen_lista(archivo):
+    """True si la diseñadora ya entregó ese archivo (existe en static/)."""
+    return os.path.isfile(os.path.join(CARPETA_STATIC, config.CARPETA_IMAGENES_AVATAR, archivo))
+
+
+def url_imagen(archivo):
+    """URL completa de una capa del avatar. Aunque el archivo no exista
+    todavía, la URL se arma igual (el frontend muestra un marcador)."""
+    ruta = f"{config.CARPETA_IMAGENES_AVATAR}/{archivo}"
+    if has_request_context():
+        return url_for("static", filename=ruta, _external=True)
+    return f"/static/{ruta}"
+
+
+def _describir_imagen(elemento):
+    return {
+        "archivo": elemento["archivo"],
+        "url": url_imagen(elemento["archivo"]),
+        "imagen_lista": imagen_lista(elemento["archivo"]),
+    }
+
+
+def estado_avatar_capas(progreso):
+    """Todo lo que necesita la pantalla "personalizar avatar": la base,
+    lo que tiene puesto, las capas en orden para apilarlas, y cada objeto
+    con si está desbloqueado y cuántos niveles le faltan."""
+    nivel = progreso["nivel_maximo"]
+    base = base_por_id(progreso["avatar_base"]) or base_por_id(config.BASE_POR_DEFECTO)
+
+    # Capas de abajo hacia arriba: base, y luego un objeto por tipo en el
+    # orden de config.TIPOS_OBJETO.
+    capas = [{"tipo": "base", "id": base["id"], **_describir_imagen(base)}]
+    puesto = {}
+    for tipo in config.TIPOS_OBJETO:
+        objeto = objeto_por_id(progreso[columna_de_tipo(tipo)])
+        # Si lo guardado ya no existe en el catálogo, o dejó de estar
+        # disponible (p. ej. se le subió el nivel en el config), no se pone.
+        if objeto is None or objeto["tipo"] != tipo or not desbloqueado(objeto, nivel):
+            puesto[tipo] = None
+            continue
+        puesto[tipo] = {"id": objeto["id"], "nombre": objeto["nombre"], **_describir_imagen(objeto)}
+        capas.append({"tipo": tipo, "id": objeto["id"], **_describir_imagen(objeto)})
+
+    archivos = [b["archivo"] for b in config.BASES_AVATAR] + [o["archivo"] for o in config.OBJETOS_AVATAR]
+    respaldo = avatar_por_id(progreso["avatar_id"]) or avatar_por_id(config.AVATAR_POR_DEFECTO)
+    return {
+        "nivel_maximo": nivel,
+        "imagenes_listas": all(imagen_lista(a) for a in archivos),
+        "base": {"id": base["id"], "nombre": base["nombre"], **_describir_imagen(base)},
+        "puesto": puesto,
+        "capas": capas,
+        "bases": [
+            {"id": b["id"], "nombre": b["nombre"], **_describir_imagen(b), "seleccionada": b["id"] == base["id"]}
+            for b in config.BASES_AVATAR
+        ],
+        "objetos": {
+            tipo: [
+                {
+                    "id": o["id"],
+                    "tipo": o["tipo"],
+                    "nombre": o["nombre"],
+                    **_describir_imagen(o),
+                    "nivel_requerido": o["nivel_requerido"],
+                    "desbloqueado": desbloqueado(o, nivel),
+                    "niveles_faltantes": max(0, o["nivel_requerido"] - nivel),
+                    "puesto": bool(puesto[tipo]) and puesto[tipo]["id"] == o["id"],
+                }
+                for o in config.OBJETOS_AVATAR if o["tipo"] == tipo
+            ]
+            for tipo in config.TIPOS_OBJETO
+        },
+        "respaldo_dicebear": {"id": respaldo["id"], "nombre": respaldo["nombre"], "url": url_avatar(respaldo)},
+    }
+
+
 def reglas_publicas():
     """Las reglas vigentes, para que el frontend no tenga que copiar
     números (si el config cambia, el frontend se entera solo)."""
@@ -96,12 +281,37 @@ def reglas_publicas():
         "acciones": config.ACCIONES,
         "meta_diaria_xp": config.META_DIARIA_XP,
         "niveles": config.NIVELES,
+        "xp_perdido_por_dia_inactivo": config.XP_PERDIDO_POR_DIA_INACTIVO,
+        "tope_perdida_por_periodo": config.TOPE_PERDIDA_POR_PERIODO,
     }
 
 
 # =====================================================================
 # Base de datos
 # =====================================================================
+
+
+def _asegurar_columna(cursor, tabla, columna, definicion_sql):
+    """Agrega una columna a una tabla que ya existía (CREATE TABLE IF NOT
+    EXISTS no modifica tablas viejas). Misma idea que
+    BaseDatos._asegurar_columna en database.py."""
+    cursor.execute(
+        "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS "
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s",
+        (tabla, columna),
+    )
+    if not cursor.fetchone()[0]:
+        cursor.execute(f"ALTER TABLE {tabla} ADD COLUMN {definicion_sql}")
+        print(f"Columna agregada: {tabla}.{columna}")
+
+
+def _existe_columna(cursor, tabla, columna):
+    cursor.execute(
+        "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS "
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s",
+        (tabla, columna),
+    )
+    return bool(cursor.fetchone()[0])
 
 
 def asegurar_tablas(conexion):
@@ -111,13 +321,30 @@ def asegurar_tablas(conexion):
             CREATE TABLE IF NOT EXISTS progreso_usuario (
                 usuario_id INT PRIMARY KEY,
                 xp_total INT NOT NULL DEFAULT 0,
-                nivel INT NOT NULL DEFAULT 1,
+                nivel_maximo INT NOT NULL DEFAULT 1,
                 racha_actual INT NOT NULL DEFAULT 0,
                 racha_maxima INT NOT NULL DEFAULT 0,
                 ultima_fecha_actividad DATE NULL,
-                avatar_id VARCHAR(40) NULL
+                avatar_id VARCHAR(40) NULL,
+                xp_perdido_periodo INT NOT NULL DEFAULT 0,
+                xp_perdido_sin_avisar INT NOT NULL DEFAULT 0,
+                avatar_base VARCHAR(40) NULL,
+                ropa_id VARCHAR(40) NULL,
+                accesorio_id VARCHAR(40) NULL
             )
         """)
+        # Tablas creadas antes del 27 sep 2026: la columna "nivel" pasa a
+        # llamarse "nivel_maximo" (hasta ese día el XP nunca bajaba, así
+        # que el valor guardado ya era el máximo alcanzado).
+        if _existe_columna(cursor, "progreso_usuario", "nivel") and not _existe_columna(cursor, "progreso_usuario", "nivel_maximo"):
+            cursor.execute("ALTER TABLE progreso_usuario CHANGE COLUMN nivel nivel_maximo INT NOT NULL DEFAULT 1")
+            print("Columna renombrada: progreso_usuario.nivel -> nivel_maximo")
+        _asegurar_columna(cursor, "progreso_usuario", "xp_perdido_periodo", "xp_perdido_periodo INT NOT NULL DEFAULT 0")
+        _asegurar_columna(cursor, "progreso_usuario", "xp_perdido_sin_avisar", "xp_perdido_sin_avisar INT NOT NULL DEFAULT 0")
+        _asegurar_columna(cursor, "progreso_usuario", "avatar_base", "avatar_base VARCHAR(40) NULL")
+        _asegurar_columna(cursor, "progreso_usuario", "ropa_id", "ropa_id VARCHAR(40) NULL")
+        _asegurar_columna(cursor, "progreso_usuario", "accesorio_id", "accesorio_id VARCHAR(40) NULL")
+
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS actividad_diaria (
                 usuario_id INT NOT NULL,
@@ -143,13 +370,40 @@ def asegurar_tablas(conexion):
         cursor.close()
 
 
+COLUMNAS_PROGRESO = list(progreso_vacio(None))
+
+
 def _leer_progreso(cursor, usuario_id, bloquear=False):
     sql = "SELECT * FROM progreso_usuario WHERE usuario_id = %s" + (" FOR UPDATE" if bloquear else "")
     cursor.execute(sql, (usuario_id,))
-    return cursor.fetchone() or {
-        "usuario_id": usuario_id, "xp_total": 0, "nivel": 1, "racha_actual": 0,
-        "racha_maxima": 0, "ultima_fecha_actividad": None, "avatar_id": None,
-    }
+    fila = cursor.fetchone()
+    progreso = {**progreso_vacio(usuario_id), **fila} if fila else progreso_vacio(usuario_id)
+    # Por si alguien bajó los umbrales de NIVELES en el config: el nivel
+    # máximo nunca queda por debajo del que da el XP actual.
+    progreso["nivel_maximo"] = nivel_alcanzado(progreso["nivel_maximo"], progreso["xp_total"])
+    return progreso
+
+
+def _guardar_progreso(cursor, progreso):
+    """Crea o reemplaza la fila del usuario con todo `progreso`."""
+    columnas = ", ".join(COLUMNAS_PROGRESO)
+    marcas = ", ".join(["%s"] * len(COLUMNAS_PROGRESO))
+    actualizar = ", ".join(f"{c} = VALUES({c})" for c in COLUMNAS_PROGRESO if c != "usuario_id")
+    cursor.execute(
+        f"INSERT INTO progreso_usuario ({columnas}) VALUES ({marcas}) ON DUPLICATE KEY UPDATE {actualizar}",
+        [progreso[c] for c in COLUMNAS_PROGRESO],
+    )
+
+
+def _descontar_inactividad(cursor, progreso, hoy):
+    """aplicar_inactividad + deja constancia en eventos_xp (XP negativo)."""
+    restado = aplicar_inactividad(progreso, hoy)
+    if restado:
+        cursor.execute(
+            "INSERT INTO eventos_xp (usuario_id, fecha, accion, xp) VALUES (%s, %s, %s, %s)",
+            (progreso["usuario_id"], hoy, "perdida_inactividad", -restado),
+        )
+    return restado
 
 
 def _leer_xp_de_hoy(cursor, usuario_id, hoy):
@@ -162,13 +416,19 @@ def _leer_xp_de_hoy(cursor, usuario_id, hoy):
 
 
 def _avatar_elegido(progreso):
-    """El avatar guardado, o el de por defecto si no hay o ya no existe
-    en el catálogo (p. ej. si se quitó del config)."""
-    return avatar_por_id(progreso["avatar_id"]) or avatar_por_id(config.AVATAR_POR_DEFECTO)
+    """El avatar DiceBear guardado, o el de por defecto si no hay, ya no
+    existe en el catálogo o ya no está disponible."""
+    avatar = avatar_por_id(progreso["avatar_id"])
+    if avatar is None or not desbloqueado(avatar, progreso["nivel_maximo"]):
+        avatar = avatar_por_id(config.AVATAR_POR_DEFECTO)
+    return avatar
 
 
 def registrar_actividad(db, usuario_id, accion, estado_animo=None):
     """Da el XP de `accion`, actualiza nivel, racha y meta del día.
+
+    Antes de sumar, descuenta el XP de los días inactivos pendientes (la
+    pérdida es "perezosa": se calcula cuando el usuario vuelve).
 
     Se llama desde app.py justo DESPUÉS de guardar la comida o el estado
     de ánimo. Devuelve un resumen para el frontend ("+10 XP", "¡subiste
@@ -195,23 +455,9 @@ def registrar_actividad(db, usuario_id, accion, estado_animo=None):
         )
 
         progreso = _leer_progreso(cursor, usuario_id, bloquear=True)
-        nivel_antes = calcular_nivel(progreso["xp_total"])
-        xp_total = progreso["xp_total"] + xp
-        nivel = calcular_nivel(xp_total)
-        racha = nueva_racha(progreso["racha_actual"], progreso["ultima_fecha_actividad"], hoy)
-        racha_maxima = max(progreso["racha_maxima"], racha)
-        cursor.execute(
-            """
-            INSERT INTO progreso_usuario
-                (usuario_id, xp_total, nivel, racha_actual, racha_maxima, ultima_fecha_actividad, avatar_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE
-                xp_total = VALUES(xp_total), nivel = VALUES(nivel),
-                racha_actual = VALUES(racha_actual), racha_maxima = VALUES(racha_maxima),
-                ultima_fecha_actividad = VALUES(ultima_fecha_actividad)
-            """,
-            (usuario_id, xp_total, nivel, racha, racha_maxima, hoy, progreso["avatar_id"]),
-        )
+        _descontar_inactividad(cursor, progreso, hoy)
+        subio = sumar_actividad(progreso, xp, hoy)
+        _guardar_progreso(cursor, progreso)
 
         xp_hoy_antes = _leer_xp_de_hoy(cursor, usuario_id, hoy)
         xp_hoy = xp_hoy_antes + xp
@@ -230,10 +476,10 @@ def registrar_actividad(db, usuario_id, accion, estado_animo=None):
             "accion": accion,
             "xp_ganado": xp,
             "tope_diario_alcanzado": xp == 0,
-            "xp_total": xp_total,
-            "nivel": nivel,
-            "subio_de_nivel": nivel > nivel_antes,
-            "racha_actual": racha,
+            "xp_total": progreso["xp_total"],
+            "nivel": progreso["nivel_maximo"],
+            "subio_de_nivel": subio,
+            "racha_actual": progreso["racha_actual"],
             "meta_diaria": {
                 "xp_hoy": xp_hoy,
                 "meta": config.META_DIARIA_XP,
@@ -263,26 +509,42 @@ def _estado_animo_de_hoy(cursor, usuario_id, hoy):
 
 
 def obtener_progreso(db, usuario_id):
+    """Estado completo para GET /progreso. Aquí también se descuenta
+    (perezosamente) el XP de los días inactivos, y se entrega UNA sola vez
+    el aviso de cuánto XP se perdió desde la última visita."""
     hoy = date.today()
     cursor = db.conexion.cursor(dictionary=True)
     try:
-        progreso = _leer_progreso(cursor, usuario_id)
+        progreso = _leer_progreso(cursor, usuario_id, bloquear=True)
+        _descontar_inactividad(cursor, progreso, hoy)
+        xp_perdido = progreso["xp_perdido_sin_avisar"]
+        if xp_perdido:
+            progreso["xp_perdido_sin_avisar"] = 0  # ya se le avisó
+            _guardar_progreso(cursor, progreso)
+        db.conexion.commit()
         xp_hoy = _leer_xp_de_hoy(cursor, usuario_id, hoy)
         estado_hoy = _estado_animo_de_hoy(cursor, usuario_id, hoy)
+    except Exception:
+        db.conexion.rollback()
+        raise
     finally:
         cursor.close()
 
     avatar = _avatar_elegido(progreso)
-    inicio, siguiente = rango_del_nivel(progreso["xp_total"])
+    nivel = progreso["nivel_maximo"]
+    inicio, siguiente = limites_del_nivel(nivel)
     ultima = progreso["ultima_fecha_actividad"]
     return {
         "xp_total": progreso["xp_total"],
-        "nivel": calcular_nivel(progreso["xp_total"]),
+        "nivel": nivel,
         "xp_inicio_nivel": inicio,
         "xp_siguiente_nivel": siguiente,
+        "xp_faltante_siguiente_nivel": max(0, siguiente - progreso["xp_total"]) if siguiente is not None else None,
         "racha_actual": racha_vigente(progreso["racha_actual"], ultima, hoy),
         "racha_maxima": progreso["racha_maxima"],
         "ultima_fecha_actividad": ultima.isoformat() if ultima else None,
+        "xp_perdido_desde_ultima_visita": xp_perdido,
+        "mensaje_regreso": config.MENSAJE_REGRESO if xp_perdido else None,
         "meta_diaria": {
             "xp_hoy": xp_hoy,
             "meta": config.META_DIARIA_XP,
@@ -307,16 +569,19 @@ def listar_avatares(db, usuario_id):
     finally:
         cursor.close()
     elegido = _avatar_elegido(progreso)
+    nivel = progreso["nivel_maximo"]
     return {
         "xp_total": progreso["xp_total"],
+        "nivel_maximo": nivel,
         "avatar_actual": elegido["id"],
         "avatares": [
             {
                 "id": a["id"],
                 "nombre": a["nombre"],
                 "url": url_avatar(a),
-                "xp_requerido": a["xp_requerido"],
-                "desbloqueado": progreso["xp_total"] >= a["xp_requerido"],
+                "nivel_requerido": a["nivel_requerido"],
+                "desbloqueado": desbloqueado(a, nivel),
+                "niveles_faltantes": max(0, a["nivel_requerido"] - nivel),
                 "seleccionado": a["id"] == elegido["id"],
             }
             for a in config.AVATARES
@@ -324,29 +589,29 @@ def listar_avatares(db, usuario_id):
     }
 
 
+def _respuesta_bloqueado(que, elemento, nivel):
+    return False, 403, {
+        "error": f'{que} "{elemento["id"]}" todavía está bloqueado.',
+        "nivel_requerido": elemento["nivel_requerido"],
+        "nivel_maximo": nivel,
+        "niveles_faltantes": elemento["nivel_requerido"] - nivel,
+    }
+
+
 def elegir_avatar(db, usuario_id, avatar_id):
-    """Guarda el avatar elegido. Devuelve (ok, codigo_http, cuerpo)."""
+    """Guarda el avatar DiceBear elegido. Devuelve (ok, codigo_http, cuerpo)."""
     avatar = avatar_por_id(avatar_id)
     if avatar is None:
         return False, 400, {"error": f'El avatar "{avatar_id}" no existe.'}
 
     cursor = db.conexion.cursor(dictionary=True)
     try:
-        progreso = _leer_progreso(cursor, usuario_id)
-        if progreso["xp_total"] < avatar["xp_requerido"]:
-            faltan = avatar["xp_requerido"] - progreso["xp_total"]
-            return False, 403, {
-                "error": f'El avatar "{avatar_id}" todavía está bloqueado.',
-                "xp_requerido": avatar["xp_requerido"],
-                "xp_faltante": faltan,
-            }
-        cursor.execute(
-            """
-            INSERT INTO progreso_usuario (usuario_id, avatar_id) VALUES (%s, %s)
-            ON DUPLICATE KEY UPDATE avatar_id = VALUES(avatar_id)
-            """,
-            (usuario_id, avatar_id),
-        )
+        progreso = _leer_progreso(cursor, usuario_id, bloquear=True)
+        if not desbloqueado(avatar, progreso["nivel_maximo"]):
+            db.conexion.rollback()
+            return _respuesta_bloqueado("El avatar", avatar, progreso["nivel_maximo"])
+        progreso["avatar_id"] = avatar_id
+        _guardar_progreso(cursor, progreso)
         db.conexion.commit()
     finally:
         cursor.close()
@@ -354,6 +619,72 @@ def elegir_avatar(db, usuario_id, avatar_id):
         "success": True,
         "avatar": {"id": avatar["id"], "nombre": avatar["nombre"], "url": url_avatar(avatar)},
     }
+
+
+def obtener_avatar_capas(db, usuario_id):
+    cursor = db.conexion.cursor(dictionary=True)
+    try:
+        progreso = _leer_progreso(cursor, usuario_id)
+    finally:
+        cursor.close()
+    return estado_avatar_capas(progreso)
+
+
+def _cambiar_avatar_capas(db, usuario_id, cambio):
+    """Lee el progreso bloqueando la fila, le aplica `cambio(progreso)` y
+    guarda. `cambio` devuelve None si todo bien, o (codigo, cuerpo) de
+    error. Devuelve (ok, codigo_http, cuerpo)."""
+    cursor = db.conexion.cursor(dictionary=True)
+    try:
+        progreso = _leer_progreso(cursor, usuario_id, bloquear=True)
+        error = cambio(progreso)
+        if error:
+            db.conexion.rollback()
+            return error
+        _guardar_progreso(cursor, progreso)
+        db.conexion.commit()
+    finally:
+        cursor.close()
+    return True, 200, {"success": True, **estado_avatar_capas(progreso)}
+
+
+def elegir_base(db, usuario_id, base_id):
+    if base_por_id(base_id) is None:
+        return False, 400, {"error": f'La base "{base_id}" no existe.'}
+
+    def cambio(progreso):
+        progreso["avatar_base"] = base_id
+
+    return _cambiar_avatar_capas(db, usuario_id, cambio)
+
+
+def equipar(db, usuario_id, tipo, item_id):
+    columna = columna_de_tipo(tipo)
+    if columna is None:
+        return False, 400, {"error": f'El tipo "{tipo}" no existe. Tipos: {", ".join(config.TIPOS_OBJETO)}.'}
+    objeto = objeto_por_id(item_id)
+    if objeto is None:
+        return False, 400, {"error": f'El objeto "{item_id}" no existe.'}
+    if objeto["tipo"] != tipo:
+        return False, 400, {"error": f'El objeto "{item_id}" es de tipo "{objeto["tipo"]}", no "{tipo}".'}
+
+    def cambio(progreso):
+        if not desbloqueado(objeto, progreso["nivel_maximo"]):
+            return _respuesta_bloqueado("El objeto", objeto, progreso["nivel_maximo"])
+        progreso[columna] = item_id
+
+    return _cambiar_avatar_capas(db, usuario_id, cambio)
+
+
+def quitar(db, usuario_id, tipo):
+    columna = columna_de_tipo(tipo)
+    if columna is None:
+        return False, 400, {"error": f'El tipo "{tipo}" no existe. Tipos: {", ".join(config.TIPOS_OBJETO)}.'}
+
+    def cambio(progreso):
+        progreso[columna] = None
+
+    return _cambiar_avatar_capas(db, usuario_id, cambio)
 
 
 # =====================================================================
@@ -385,6 +716,15 @@ def _usuario_id_desde_email(email):
     return perfil["id"], None
 
 
+def _datos_con_campos(*campos):
+    """(datos, None) o (None, respuesta 400) si falta alguno de `campos`."""
+    datos = request.get_json(silent=True) or {}
+    for campo in campos:
+        if not datos.get(campo):
+            return None, (jsonify({"error": f'Falta el campo "{campo}".'}), 400)
+    return datos, None
+
+
 @bp.route("/progreso", methods=["GET"])
 def ruta_progreso():
     usuario_id, error = _usuario_id_desde_email(request.args.get("email"))
@@ -403,11 +743,57 @@ def ruta_avatares():
 
 @bp.route("/avatar", methods=["POST"])
 def ruta_elegir_avatar():
-    datos = request.get_json(silent=True) or {}
-    if not datos.get("avatar_id"):
-        return jsonify({"error": 'Falta el campo "avatar_id".'}), 400
+    datos, error = _datos_con_campos("avatar_id")
+    if error:
+        return error
     usuario_id, error = _usuario_id_desde_email(datos.get("email"))
     if error:
         return error
     _, codigo, cuerpo = elegir_avatar(_db, usuario_id, datos["avatar_id"])
+    return jsonify(cuerpo), codigo
+
+
+# ----- Avatar por capas (Figma): base + ropa + accesorio -----
+
+@bp.route("/avatar", methods=["GET"])
+def ruta_avatar_capas():
+    usuario_id, error = _usuario_id_desde_email(request.args.get("email"))
+    if error:
+        return error
+    return jsonify({"success": True, **obtener_avatar_capas(_db, usuario_id)}), 200
+
+
+@bp.route("/avatar/base", methods=["POST"])
+def ruta_elegir_base():
+    datos, error = _datos_con_campos("base_id")
+    if error:
+        return error
+    usuario_id, error = _usuario_id_desde_email(datos.get("email"))
+    if error:
+        return error
+    _, codigo, cuerpo = elegir_base(_db, usuario_id, datos["base_id"])
+    return jsonify(cuerpo), codigo
+
+
+@bp.route("/avatar/equipar", methods=["POST"])
+def ruta_equipar():
+    datos, error = _datos_con_campos("tipo", "item_id")
+    if error:
+        return error
+    usuario_id, error = _usuario_id_desde_email(datos.get("email"))
+    if error:
+        return error
+    _, codigo, cuerpo = equipar(_db, usuario_id, datos["tipo"], datos["item_id"])
+    return jsonify(cuerpo), codigo
+
+
+@bp.route("/avatar/quitar", methods=["POST"])
+def ruta_quitar():
+    datos, error = _datos_con_campos("tipo")
+    if error:
+        return error
+    usuario_id, error = _usuario_id_desde_email(datos.get("email"))
+    if error:
+        return error
+    _, codigo, cuerpo = quitar(_db, usuario_id, datos["tipo"])
     return jsonify(cuerpo), codigo

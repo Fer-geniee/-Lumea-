@@ -134,13 +134,17 @@ def probar_gamificacion(xp_esperado):
     comprobar("meta diaria cumplida", (p.get("meta_diaria") or {}).get("cumplida") is (xp_esperado >= config.META_DIARIA_XP))
     comprobar("el avatar muestra el último ánimo de hoy", (p.get("avatar") or {}).get("estado_animo_hoy") == "muy_bien")
     comprobar("GET /progreso expone las reglas del config", (p.get("reglas") or {}).get("meta_diaria_xp") == config.META_DIARIA_XP)
+    # Usuario que registró hoy: no hay días inactivos, así que no pierde nada.
+    comprobar("sin inactividad no hay XP perdido ni mensaje", p.get("xp_perdido_desde_ultima_visita") == 0
+              and p.get("mensaje_regreso") is None, f"perdido={p.get('xp_perdido_desde_ultima_visita')}")
+    nivel = p.get("nivel", 1)
 
     cuerpo = verificar("GET /avatares", get("/avatares", email=EMAIL_PRUEBA), mostrar=False)
     desbloqueados = {a["id"] for a in cuerpo.get("avatares", []) if a["desbloqueado"]}
-    esperados = {a["id"] for a in config.AVATARES if a["xp_requerido"] <= xp_esperado}
-    comprobar("avatares desbloqueados según el XP", desbloqueados == esperados, f"{sorted(desbloqueados)}")
+    esperados = {a["id"] for a in config.AVATARES if a["nivel_requerido"] <= nivel}
+    comprobar("avatares desbloqueados según el nivel máximo", desbloqueados == esperados, f"{sorted(desbloqueados)}")
 
-    bloqueado = max(config.AVATARES, key=lambda a: a["xp_requerido"])["id"]
+    bloqueado = max(config.AVATARES, key=lambda a: a["nivel_requerido"])["id"]
     verificar(f"POST /avatar bloqueado ({bloqueado}) -> 403", post("/avatar", {"email": EMAIL_PRUEBA, "avatar_id": bloqueado}), esperado=403)
     verificar("POST /avatar que no existe -> 400", post("/avatar", {"email": EMAIL_PRUEBA, "avatar_id": "no_existe"}), esperado=400)
     verificar("POST /avatar sin perfil -> 404", post("/avatar", {"email": "nadie@lumea.test", "avatar_id": "luna"}), esperado=404)
@@ -148,6 +152,43 @@ def probar_gamificacion(xp_esperado):
     cuerpo = verificar("GET /avatares después de elegir", get("/avatares", email=EMAIL_PRUEBA), mostrar=False)
     comprobar("avatar_actual quedó en luna", cuerpo.get("avatar_actual") == "luna")
     verificar("GET /progreso sin email -> 400", get("/progreso"), esperado=400)
+    return nivel
+
+
+def probar_avatar_capas(nivel):
+    """Avatar por capas (Figma): base + ropa + accesorio. Funciona aunque
+    las imágenes todavía no existan (responde con los nombres de archivo)."""
+    cuerpo = verificar("GET /avatar", get("/avatar", email=EMAIL_PRUEBA), mostrar=False)
+    comprobar("GET /avatar: base por defecto", (cuerpo.get("base") or {}).get("id") == config.BASE_POR_DEFECTO)
+    comprobar("GET /avatar: trae los nombres de archivo", (cuerpo.get("base") or {}).get("archivo") == "base_1.png")
+    comprobar("GET /avatar: nada puesto al empezar", cuerpo.get("puesto") == {t: None for t in config.TIPOS_OBJETO})
+    objetos = [o for lista in (cuerpo.get("objetos") or {}).values() for o in lista]
+    comprobar("GET /avatar: desbloqueado según el nivel máximo",
+              all(o["desbloqueado"] == (o["nivel_requerido"] <= nivel) for o in objetos) and len(objetos) == len(config.OBJETOS_AVATAR))
+
+    verificar("POST /avatar/base (base_2)", post("/avatar/base", {"email": EMAIL_PRUEBA, "base_id": "base_2"}), mostrar=False)
+    verificar("POST /avatar/base que no existe -> 400", post("/avatar/base", {"email": EMAIL_PRUEBA, "base_id": "base_9"}), esperado=400)
+
+    libre = next(o for o in config.OBJETOS_AVATAR if o["nivel_requerido"] <= nivel)
+    cuerpo = verificar(f"POST /avatar/equipar ({libre['id']})",
+                       post("/avatar/equipar", {"email": EMAIL_PRUEBA, "tipo": libre["tipo"], "item_id": libre["id"]}), mostrar=False)
+    comprobar("las capas quedan base + lo puesto", [c["tipo"] for c in cuerpo.get("capas", [])] == ["base", libre["tipo"]])
+
+    caro = max(config.OBJETOS_AVATAR, key=lambda o: o["nivel_requerido"])
+    cuerpo = verificar(f"POST /avatar/equipar bloqueado ({caro['id']}) -> 403",
+                       post("/avatar/equipar", {"email": EMAIL_PRUEBA, "tipo": caro["tipo"], "item_id": caro["id"]}), esperado=403)
+    comprobar("el 403 dice cuántos niveles faltan", cuerpo.get("niveles_faltantes") == caro["nivel_requerido"] - nivel)
+    otro_tipo = next(t for t in config.TIPOS_OBJETO if t != libre["tipo"])
+    verificar("POST /avatar/equipar con el tipo equivocado -> 400",
+              post("/avatar/equipar", {"email": EMAIL_PRUEBA, "tipo": otro_tipo, "item_id": libre["id"]}), esperado=400)
+    verificar("POST /avatar/equipar sin item_id -> 400", post("/avatar/equipar", {"email": EMAIL_PRUEBA, "tipo": "ropa"}), esperado=400)
+    verificar("POST /avatar/equipar sin perfil -> 404",
+              post("/avatar/equipar", {"email": "nadie@lumea.test", "tipo": libre["tipo"], "item_id": libre["id"]}), esperado=404)
+
+    cuerpo = verificar(f"POST /avatar/quitar ({libre['tipo']})", post("/avatar/quitar", {"email": EMAIL_PRUEBA, "tipo": libre["tipo"]}), mostrar=False)
+    comprobar("después de quitar solo queda la base", [c["tipo"] for c in cuerpo.get("capas", [])] == ["base"])
+    verificar("POST /avatar/quitar tipo que no existe -> 400", post("/avatar/quitar", {"email": EMAIL_PRUEBA, "tipo": "zapatos"}), esperado=400)
+    verificar("GET /avatar sin email -> 400", get("/avatar"), esperado=400)
 
 
 def limpiar_datos_de_prueba():
@@ -173,7 +214,8 @@ if __name__ == "__main__":
     xp += probar_confirmar_alimento()
     probar_historial()
     probar_alimentos()
-    probar_gamificacion(xp)
+    nivel = probar_gamificacion(xp)
+    probar_avatar_capas(nivel)
 
     fallas = [nombre for nombre, ok in resultados if not ok]
     print(f"\n{len(resultados) - len(fallas)}/{len(resultados)} pruebas OK.")
