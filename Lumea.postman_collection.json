@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "24291a1b-45fa-5939-9b9b-cf87fc36b9be",
     "name": "Lumea API",
-    "description": "Todos los endpoints del backend de Lumea (Flask, puerto 5002).\n\nVariables de la colección: `base_url` (por defecto http://127.0.0.1:5002), `email` (el correo del perfil con el que se prueba; créalo primero con POST /perfil) y `contrasena` (para el login, cuando exista).\n\nVarias peticiones traen ejemplos de respuesta REALES guardados (pestaña \"Examples\"/\"e.g.\"), sacados del backend encendido el 27 sep 2026.\n\nGuía pantalla por pantalla: Backend/GUIA_FRONTEND_SARA.md. Contratos: Backend/CONTRATO_GAMIFICACION.md (progreso, pérdida por inactividad, avatar) y Backend/CONTRATO_CONFIRMACION.md (confirmación y sellos). En el frontend, todas estas llamadas están en api.js.",
+    "description": "Todos los endpoints del backend de Lumea (Flask, puerto 5002).\n\nVariables de la colección: `base_url` (por defecto http://127.0.0.1:5002), `email` (el correo del perfil con el que se prueba; créalo primero con POST /perfil) y `contrasena` (la contraseña de la cuenta de prueba, mínimo 6 caracteres).\n\nVarias peticiones traen ejemplos de respuesta REALES guardados (pestaña \"Examples\"/\"e.g.\"), sacados del backend encendido el 27 sep 2026 (login y Puntos v2: esa misma noche).\n\nGuía pantalla por pantalla: Backend/GUIA_FRONTEND_SARA.md. Contratos: Backend/CONTRATO_GAMIFICACION.md (progreso, pérdida por inactividad, avatar) y Backend/CONTRATO_CONFIRMACION.md (confirmación y sellos). En el frontend, todas estas llamadas están en api.js.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -16,22 +16,22 @@
     },
     {
       "key": "contrasena",
-      "value": "cambia-esta-contraseña"
+      "value": "prueba-lumea-2026"
     }
   ],
   "item": [
     {
-      "name": "1. Perfil",
+      "name": "1. Perfil e inicio de sesión",
       "item": [
         {
-          "name": "Crear o actualizar perfil",
+          "name": "Crear cuenta (con contraseña)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                  "pm.test(\"Responde 200 o 409\", function () { pm.expect([200, 409]).to.include(pm.response.code); });"
                 ]
               }
             }
@@ -53,10 +53,10 @@
                 "perfil"
               ]
             },
-            "description": "Crea el perfil si el correo es nuevo o lo actualiza si ya existe. `objetivo` (opcional) debe ser uno de: comer_balanceado, tomar_agua, moverse_mas, dormir_mejor, conocer_lo_que_como. 400 si faltan campos o el objetivo no es válido.",
+            "description": "Crea la cuenta. \"contraseña\" es obligatoria para una cuenta nueva (mínimo 6 caracteres); el backend guarda solo su hash de bcrypt. 409 si el correo ya tiene cuenta. Mandar el perfil SIN contraseña sirve para editar los datos de una cuenta que ya existe (nunca cambia la contraseña).",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Ana\",\n  \"email\": \"{{email}}\",\n  \"edad\": 15,\n  \"genero\": \"femenino\",\n  \"peso\": 50,\n  \"altura\": 158,\n  \"objetivo\": \"comer_balanceado\"\n}",
+              "raw": "{\n  \"nombre\": \"Ana\",\n  \"email\": \"{{email}}\",\n  \"edad\": 15,\n  \"genero\": \"femenino\",\n  \"peso\": 50,\n  \"altura\": 158,\n  \"objetivo\": \"comer_balanceado\",\n  \"contraseña\": \"{{contrasena}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -64,7 +64,342 @@
               }
             }
           },
-          "response": []
+          "response": [
+            {
+              "name": "Cuenta creada",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/perfil",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "perfil"
+                  ]
+                },
+                "description": "Crea la cuenta. \"contraseña\" es obligatoria para una cuenta nueva (mínimo 6 caracteres); el backend guarda solo su hash de bcrypt. 409 si el correo ya tiene cuenta. Mandar el perfil SIN contraseña sirve para editar los datos de una cuenta que ya existe (nunca cambia la contraseña).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Ana\",\n  \"email\": \"{{email}}\",\n  \"edad\": 15,\n  \"genero\": \"femenino\",\n  \"peso\": 50,\n  \"altura\": 158,\n  \"objetivo\": \"comer_balanceado\",\n  \"contraseña\": \"{{contrasena}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"mensaje\": \"Perfil guardado.\",\n  \"success\": true\n}"
+            },
+            {
+              "name": "Sin contraseña (cuenta nueva) -> 400",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/perfil",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "perfil"
+                  ]
+                },
+                "description": "Crea la cuenta. \"contraseña\" es obligatoria para una cuenta nueva (mínimo 6 caracteres); el backend guarda solo su hash de bcrypt. 409 si el correo ya tiene cuenta. Mandar el perfil SIN contraseña sirve para editar los datos de una cuenta que ya existe (nunca cambia la contraseña).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Ana\",\n  \"email\": \"{{email}}\",\n  \"edad\": 15,\n  \"genero\": \"femenino\",\n  \"peso\": 50,\n  \"altura\": 158,\n  \"objetivo\": \"comer_balanceado\",\n  \"contraseña\": \"{{contrasena}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "BAD REQUEST",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"error\": \"La contraseña es obligatoria para crear una cuenta (mínimo 6 caracteres).\"\n}"
+            },
+            {
+              "name": "El correo ya tiene cuenta -> 409",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/perfil",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "perfil"
+                  ]
+                },
+                "description": "Crea la cuenta. \"contraseña\" es obligatoria para una cuenta nueva (mínimo 6 caracteres); el backend guarda solo su hash de bcrypt. 409 si el correo ya tiene cuenta. Mandar el perfil SIN contraseña sirve para editar los datos de una cuenta que ya existe (nunca cambia la contraseña).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"nombre\": \"Ana\",\n  \"email\": \"{{email}}\",\n  \"edad\": 15,\n  \"genero\": \"femenino\",\n  \"peso\": 50,\n  \"altura\": 158,\n  \"objetivo\": \"comer_balanceado\",\n  \"contraseña\": \"{{contrasena}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "CONFLICT",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"error\": \"Ya existe una cuenta con ese correo. Inicia sesión con tu contraseña.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Iniciar sesión",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "login"
+              ]
+            },
+            "description": "POST /login con {\"email\", \"contraseña\"}. 200 con el perfil (nunca el hash). 401 con el MISMO mensaje si la contraseña está mal, el correo no existe o la cuenta es de antes de las contraseñas (trae \"ayuda\"). 400 si falta un dato.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"contraseña\": \"{{contrasena}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Correcto",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/login",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "login"
+                  ]
+                },
+                "description": "POST /login con {\"email\", \"contraseña\"}. 200 con el perfil (nunca el hash). 401 con el MISMO mensaje si la contraseña está mal, el correo no existe o la cuenta es de antes de las contraseñas (trae \"ayuda\"). 400 si falta un dato.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{email}}\",\n  \"contraseña\": \"{{contrasena}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"message\": \"Inicio de sesión exitoso\",\n  \"perfil\": {\n    \"email\": \"demo.postman@lumea.test\",\n    \"id\": 21,\n    \"nombre\": \"Ana\",\n    \"objetivo\": \"comer_balanceado\"\n  },\n  \"success\": true\n}"
+            },
+            {
+              "name": "Contraseña incorrecta -> 401",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/login",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "login"
+                  ]
+                },
+                "description": "POST /login con {\"email\", \"contraseña\"}. 200 con el perfil (nunca el hash). 401 con el MISMO mensaje si la contraseña está mal, el correo no existe o la cuenta es de antes de las contraseñas (trae \"ayuda\"). 400 si falta un dato.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{email}}\",\n  \"contraseña\": \"{{contrasena}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "UNAUTHORIZED",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"ayuda\": \"Si creaste tu cuenta antes de que Lumea pidiera contraseña, vuelve a registrarte con el mismo correo para crear una.\",\n  \"error\": \"Correo o contraseña incorrectos.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Iniciar sesión con contraseña incorrecta (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 401\", function () { pm.response.to.have.status(401); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/login",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "login"
+              ]
+            },
+            "description": "Mismo mensaje que un correo inexistente: así nadie averigua qué correos están registrados.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"contraseña\": \"no-es-esta\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "401",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/login",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "login"
+                  ]
+                },
+                "description": "Mismo mensaje que un correo inexistente: así nadie averigua qué correos están registrados.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{email}}\",\n  \"contraseña\": \"no-es-esta\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "UNAUTHORIZED",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"ayuda\": \"Si creaste tu cuenta antes de que Lumea pidiera contraseña, vuelve a registrarte con el mismo correo para crear una.\",\n  \"error\": \"Correo o contraseña incorrectos.\"\n}"
+            }
+          ]
         },
         {
           "name": "Ver perfil",
@@ -101,7 +436,7 @@
           },
           "response": [
             {
-              "name": "Existe",
+              "name": "Existe (sin password_hash)",
               "originalRequest": {
                 "method": "GET",
                 "header": [],
@@ -131,40 +466,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"perfil\": {\n    \"altura\": 158,\n    \"edad\": 15,\n    \"email\": \"demo.guia@lumea.test\",\n    \"genero\": \"femenino\",\n    \"id\": 26,\n    \"nombre\": \"Ana\",\n    \"objetivo\": \"comer_balanceado\",\n    \"peso\": 52.0\n  },\n  \"success\": true\n}"
-            },
-            {
-              "name": "No existe -> 404",
-              "originalRequest": {
-                "method": "GET",
-                "header": [],
-                "url": {
-                  "raw": "{{base_url}}/perfil?email={{email}}",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "perfil"
-                  ],
-                  "query": [
-                    {
-                      "key": "email",
-                      "value": "{{email}}"
-                    }
-                  ]
-                },
-                "description": "404 si el correo no tiene perfil."
-              },
-              "status": "NOT FOUND",
-              "code": 404,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{\n  \"mensaje\": \"No hay perfil guardado con ese correo.\",\n  \"success\": false\n}"
+              "body": "{\n  \"perfil\": {\n    \"altura\": 158,\n    \"edad\": 15,\n    \"email\": \"demo.postman@lumea.test\",\n    \"genero\": \"femenino\",\n    \"id\": 21,\n    \"nombre\": \"Ana\",\n    \"objetivo\": \"comer_balanceado\",\n    \"peso\": 52.0\n  },\n  \"success\": true\n}"
             }
           ]
         }
@@ -256,7 +558,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"alimento\": \"Arepa paisa (de maíz precocido, con sal)\",\n  \"alimento_app\": \"Arepa paisa (de maíz precocido, con sal)\",\n  \"alimento_codigo\": \"arepa\",\n  \"certeza\": 99.01,\n  \"dato_curioso\": \"La arepa es tan antigua que ya la comían los pueblos indígenas de la región andina y el Caribe antes de la llegada de los españoles, mucho antes de que existiera el maíz precocido en bolsa.\",\n  \"gamificacion\": {\n    \"accion\": \"comida_registrada\",\n    \"meta_diaria\": {\n      \"cumplida\": false,\n      \"meta\": 15,\n      \"recien_cumplida\": false,\n      \"xp_hoy\": 10\n    },\n    \"nivel\": 1,\n    \"racha_actual\": 1,\n    \"subio_de_nivel\": false,\n    \"tope_diario_alcanzado\": false,\n    \"xp_ganado\": 10,\n    \"xp_total\": 10\n  },\n  \"guardado_baseDatos\": true,\n  \"mensaje\": \"Predicción realizada y guardada en la base de datos.\",\n  \"modelo_usado\": \"regional_26\",\n  \"sellos_advertencia\": [],\n  \"success\": true\n}"
+              "body": "{\n  \"alimento\": \"Arepa paisa (de maíz precocido, con sal)\",\n  \"alimento_app\": \"Arepa paisa (de maíz precocido, con sal)\",\n  \"alimento_codigo\": \"arepa\",\n  \"certeza\": 99.01,\n  \"dato_curioso\": \"La arepa es tan antigua que ya la comían los pueblos indígenas de la región andina y el Caribe antes de la llegada de los españoles, mucho antes de que existiera el maíz precocido en bolsa.\",\n  \"gamificacion\": {\n    \"accion\": \"comida_registrada\",\n    \"detalle_xp\": [\n      {\n        \"motivo\": \"comida_registrada\",\n        \"xp\": 10\n      },\n      {\n        \"motivo\": \"eleccion_nutritiva\",\n        \"xp\": 5\n      }\n    ],\n    \"meta_diaria\": {\n      \"cumplida\": true,\n      \"meta\": 15,\n      \"recien_cumplida\": true,\n      \"xp_hoy\": 15\n    },\n    \"misiones_cumplidas\": [],\n    \"nivel\": 1,\n    \"racha_actual\": 1,\n    \"subio_de_nivel\": false,\n    \"tope_diario_alcanzado\": false,\n    \"xp_ganado\": 15,\n    \"xp_total\": 15\n  },\n  \"guardado_baseDatos\": true,\n  \"mensaje\": \"Predicción realizada y guardada en la base de datos.\",\n  \"mensaje_educativo\": null,\n  \"modelo_usado\": \"regional_26\",\n  \"sellos_advertencia\": [],\n  \"success\": true\n}"
             },
             {
               "name": "Hay que confirmar (sopas, con opciones_detalle)",
@@ -343,7 +645,7 @@
               "body": "{\n  \"alimento\": \"Sopa de miso\",\n  \"alimento_codigo\": \"miso_soup\",\n  \"certeza\": 66.77,\n  \"dato_curioso\": \"La sopa de miso se hace con una pasta fermentada de soya que puede tardar entre unos meses y varios años en madurar, según el sabor que se busque.\",\n  \"guardado_baseDatos\": false,\n  \"mensaje\": \"La certeza de la IA es muy baja para guardarse automáticamente.\",\n  \"modelo_usado\": \"food101\",\n  \"seleccion_manual\": true,\n  \"success\": false\n}"
             },
             {
-              "name": "Sin foto -> 400",
+              "name": "Foto vacía -> 400",
               "originalRequest": {
                 "method": "POST",
                 "header": [],
@@ -382,7 +684,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"error\": \"No se encontró el campo de imagen en la petición.\"\n}"
+              "body": "{\n  \"error\": \"La imagen está vacía.\"\n}"
             }
           ]
         },
@@ -429,47 +731,6 @@
           },
           "response": [
             {
-              "name": "Confirmado con sellos (Chocoramo)",
-              "originalRequest": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": {
-                  "raw": "{{base_url}}/confirmar-alimento",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "confirmar-alimento"
-                  ]
-                },
-                "description": "Guarda lo que el usuario eligió a mano después de un `seleccion_manual: true`. Acepta cualquier `alimento_codigo` que exista en tabla_alimentos. Rechaza (400) los códigos de agrupación visual como `sopas` o `dulces`. Trae `gamificacion`.",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"alimento_codigo\": \"ajiaco\",\n  \"email\": \"{{email}}\"\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                }
-              },
-              "status": "OK",
-              "code": 200,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{\n  \"alimento\": \"Chocoramo (ponqué cubierto de chocolate)\",\n  \"alimento_app\": \"Chocoramo (ponqué cubierto de chocolate)\",\n  \"alimento_codigo\": \"chororamo\",\n  \"certeza\": 100.0,\n  \"dato_curioso\": null,\n  \"gamificacion\": {\n    \"accion\": \"comida_registrada\",\n    \"meta_diaria\": {\n      \"cumplida\": true,\n      \"meta\": 15,\n      \"recien_cumplida\": false,\n      \"xp_hoy\": 30\n    },\n    \"nivel\": 2,\n    \"racha_actual\": 1,\n    \"subio_de_nivel\": true,\n    \"tope_diario_alcanzado\": false,\n    \"xp_ganado\": 10,\n    \"xp_total\": 30\n  },\n  \"guardado_baseDatos\": true,\n  \"mensaje\": \"Confirmado manualmente y guardado en tu historial.\",\n  \"sellos_advertencia\": [\n    \"sodio\",\n    \"azucares\",\n    \"grasas_saturadas\"\n  ],\n  \"success\": true\n}"
-            },
-            {
               "name": "Código de agrupación -> 400",
               "originalRequest": {
                 "method": "POST",
@@ -509,6 +770,88 @@
                 }
               ],
               "body": "{\n  \"error\": \"\\\"sopas\\\" no es un alimento reconocido en tabla_alimentos.\"\n}"
+            },
+            {
+              "name": "Fruta: elección nutritiva y misión (banano)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/confirmar-alimento",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "confirmar-alimento"
+                  ]
+                },
+                "description": "Guarda lo que el usuario eligió a mano después de un `seleccion_manual: true`. Acepta cualquier `alimento_codigo` que exista en tabla_alimentos. Rechaza (400) los códigos de agrupación visual como `sopas` o `dulces`. Trae `gamificacion`.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"alimento_codigo\": \"ajiaco\",\n  \"email\": \"{{email}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"alimento\": \"Banano\",\n  \"alimento_app\": \"Banano\",\n  \"alimento_codigo\": \"banano\",\n  \"certeza\": 100.0,\n  \"dato_curioso\": \"El banano no crece en un árbol de verdad: la planta es técnicamente una hierba gigante, la más grande del mundo sin tronco leñoso.\",\n  \"gamificacion\": {\n    \"accion\": \"comida_registrada\",\n    \"detalle_xp\": [\n      {\n        \"motivo\": \"comida_registrada\",\n        \"xp\": 10\n      },\n      {\n        \"motivo\": \"eleccion_nutritiva\",\n        \"xp\": 5\n      },\n      {\n        \"motivo\": \"mision_fruta\",\n        \"xp\": 10\n      }\n    ],\n    \"meta_diaria\": {\n      \"cumplida\": true,\n      \"meta\": 15,\n      \"recien_cumplida\": false,\n      \"xp_hoy\": 40\n    },\n    \"misiones_cumplidas\": [\n      {\n        \"id\": \"fruta\",\n        \"nombre\": \"Registra una fruta\",\n        \"xp\": 10\n      }\n    ],\n    \"nivel\": 2,\n    \"racha_actual\": 1,\n    \"subio_de_nivel\": true,\n    \"tope_diario_alcanzado\": false,\n    \"xp_ganado\": 25,\n    \"xp_total\": 40\n  },\n  \"guardado_baseDatos\": true,\n  \"mensaje\": \"Confirmado manualmente y guardado en tu historial.\",\n  \"mensaje_educativo\": null,\n  \"sellos_advertencia\": [],\n  \"success\": true\n}"
+            },
+            {
+              "name": "Producto de paquete: mensaje_educativo, sin resta (Coca-Cola)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/confirmar-alimento",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "confirmar-alimento"
+                  ]
+                },
+                "description": "Guarda lo que el usuario eligió a mano después de un `seleccion_manual: true`. Acepta cualquier `alimento_codigo` que exista en tabla_alimentos. Rechaza (400) los códigos de agrupación visual como `sopas` o `dulces`. Trae `gamificacion`.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"alimento_codigo\": \"ajiaco\",\n  \"email\": \"{{email}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"alimento\": \"Coca-Cola Original\",\n  \"alimento_app\": \"Coca-Cola Original\",\n  \"alimento_codigo\": \"cocacola_original\",\n  \"certeza\": 100.0,\n  \"dato_curioso\": null,\n  \"gamificacion\": {\n    \"accion\": \"comida_registrada\",\n    \"detalle_xp\": [\n      {\n        \"motivo\": \"comida_registrada\",\n        \"xp\": 10\n      },\n      {\n        \"motivo\": \"mision_tres_comidas\",\n        \"xp\": 10\n      }\n    ],\n    \"meta_diaria\": {\n      \"cumplida\": true,\n      \"meta\": 15,\n      \"recien_cumplida\": false,\n      \"xp_hoy\": 60\n    },\n    \"misiones_cumplidas\": [\n      {\n        \"id\": \"tres_comidas\",\n        \"nombre\": \"Registra 3 comidas\",\n        \"xp\": 10\n      }\n    ],\n    \"nivel\": 2,\n    \"racha_actual\": 1,\n    \"subio_de_nivel\": false,\n    \"tope_diario_alcanzado\": false,\n    \"xp_ganado\": 20,\n    \"xp_total\": 60\n  },\n  \"guardado_baseDatos\": true,\n  \"mensaje\": \"Confirmado manualmente y guardado en tu historial.\",\n  \"mensaje_educativo\": \"Dato: las gaseosas y bebidas azucaradas tienen bastante azúcar añadida. Si otro día quieres variar, el agua con limón o un jugo de fruta natural también refrescan.\",\n  \"sellos_advertencia\": [\n    \"azucares\",\n    \"edulcorantes\"\n  ],\n  \"success\": true\n}"
             }
           ]
         }
@@ -560,47 +903,6 @@
           },
           "response": [
             {
-              "name": "Registrado (bien)",
-              "originalRequest": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "url": {
-                  "raw": "{{base_url}}/estado-animo",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "estado-animo"
-                  ]
-                },
-                "description": "`estado`: muy_mal, mal, neutral, bien o muy_bien. El XP es el mismo para cualquier estado; en `gamificacion.avatar_url` viene la cara del avatar con esa expresión. 404 sin perfil.",
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"email\": \"{{email}}\",\n  \"estado\": \"bien\"\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                }
-              },
-              "status": "OK",
-              "code": 200,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{\n  \"gamificacion\": {\n    \"accion\": \"estado_animo\",\n    \"avatar_url\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=smile&eyes=default&eyebrows=defaultNatural\",\n    \"meta_diaria\": {\n      \"cumplida\": true,\n      \"meta\": 15,\n      \"recien_cumplida\": false,\n      \"xp_hoy\": 35\n    },\n    \"nivel\": 2,\n    \"racha_actual\": 1,\n    \"subio_de_nivel\": false,\n    \"tope_diario_alcanzado\": false,\n    \"xp_ganado\": 5,\n    \"xp_total\": 35\n  },\n  \"mensaje\": \"Estado de ánimo registrado.\",\n  \"success\": true\n}"
-            },
-            {
               "name": "Estado no válido -> 400",
               "originalRequest": {
                 "method": "POST",
@@ -640,6 +942,47 @@
                 }
               ],
               "body": "{\n  \"error\": \"Estado no válido. Usa uno de: ['bien', 'mal', 'muy_bien', 'muy_mal', 'neutral']\"\n}"
+            },
+            {
+              "name": "Registrado (con la misión del check-in)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/estado-animo",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "estado-animo"
+                  ]
+                },
+                "description": "`estado`: muy_mal, mal, neutral, bien o muy_bien. El XP es el mismo para cualquier estado; en `gamificacion.avatar_url` viene la cara del avatar con esa expresión. 404 sin perfil.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{email}}\",\n  \"estado\": \"bien\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"gamificacion\": {\n    \"accion\": \"estado_animo\",\n    \"avatar_url\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=smile&eyes=default&eyebrows=defaultNatural\",\n    \"detalle_xp\": [\n      {\n        \"motivo\": \"estado_animo\",\n        \"xp\": 5\n      },\n      {\n        \"motivo\": \"mision_check_in_animo\",\n        \"xp\": 10\n      }\n    ],\n    \"meta_diaria\": {\n      \"cumplida\": true,\n      \"meta\": 15,\n      \"recien_cumplida\": false,\n      \"xp_hoy\": 75\n    },\n    \"misiones_cumplidas\": [\n      {\n        \"id\": \"check_in_animo\",\n        \"nombre\": \"Haz tu check-in de ánimo\",\n        \"xp\": 10\n      }\n    ],\n    \"nivel\": 2,\n    \"racha_actual\": 1,\n    \"subio_de_nivel\": false,\n    \"tope_diario_alcanzado\": false,\n    \"xp_ganado\": 15,\n    \"xp_total\": 75\n  },\n  \"mensaje\": \"Estado de ánimo registrado.\",\n  \"success\": true\n}"
             }
           ]
         },
@@ -785,39 +1128,6 @@
           },
           "response": [
             {
-              "name": "Con registros",
-              "originalRequest": {
-                "method": "GET",
-                "header": [],
-                "url": {
-                  "raw": "{{base_url}}/historial?email={{email}}",
-                  "host": [
-                    "{{base_url}}"
-                  ],
-                  "path": [
-                    "historial"
-                  ],
-                  "query": [
-                    {
-                      "key": "email",
-                      "value": "{{email}}"
-                    }
-                  ]
-                },
-                "description": "404 sin perfil."
-              },
-              "status": "OK",
-              "code": 200,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{\n  \"cantidad_registros\": 3,\n  \"historial\": [\n    {\n      \"alimento_codigo\": \"chororamo\",\n      \"alimento_detectado\": \"Chocoramo (ponqué cubierto de chocolate)\",\n      \"balanceado\": 0,\n      \"calorias_aprox\": 399,\n      \"certeza_ia\": 100.0,\n      \"fecha\": \"Sun, 27 Sep 2026 00:00:00 GMT\",\n      \"id\": 223,\n      \"usuario_id\": 26\n    },\n    {\n      \"alimento_codigo\": \"ajiaco\",\n      \"alimento_detectado\": \"Ajiaco santafereño\",\n      \"balanceado\": 1,\n      \"calorias_aprox\": 82,\n      \"certeza_ia\": 100.0,\n      \"fecha\": \"Sun, 27 Sep 2026 00:00:00 GMT\",\n      \"id\": 222,\n      \"usuario_id\": 26\n    },\n    {\n      \"alimento_codigo\": \"arepa\",\n      \"alimento_detectado\": \"Arepa paisa (de maíz precocido, con sal)\",\n      \"balanceado\": 1,\n      \"calorias_aprox\": 163,\n      \"certeza_ia\": 99.01,\n      \"fecha\": \"Sun, 27 Sep 2026 00:00:00 GMT\",\n      \"id\": 221,\n      \"usuario_id\": 26\n    }\n  ],\n  \"success\": true\n}"
-            },
-            {
               "name": "Sin registros",
               "originalRequest": {
                 "method": "GET",
@@ -849,6 +1159,39 @@
                 }
               ],
               "body": "{\n  \"cantidad_registros\": 0,\n  \"historial\": [],\n  \"success\": true\n}"
+            },
+            {
+              "name": "Con registros (cada uno con sellos_advertencia)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/historial?email={{email}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "historial"
+                  ],
+                  "query": [
+                    {
+                      "key": "email",
+                      "value": "{{email}}"
+                    }
+                  ]
+                },
+                "description": "404 sin perfil."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"cantidad_registros\": 3,\n  \"historial\": [\n    {\n      \"alimento_codigo\": \"cocacola_original\",\n      \"alimento_detectado\": \"Coca-Cola Original\",\n      \"balanceado\": 0,\n      \"calorias_aprox\": 30,\n      \"certeza_ia\": 100.0,\n      \"fecha\": \"Sun, 27 Sep 2026 00:00:00 GMT\",\n      \"id\": 59,\n      \"sellos_advertencia\": [\n        \"azucares\",\n        \"edulcorantes\"\n      ],\n      \"usuario_id\": 21\n    },\n    {\n      \"alimento_codigo\": \"banano\",\n      \"alimento_detectado\": \"Banano\",\n      \"balanceado\": 1,\n      \"calorias_aprox\": 97,\n      \"certeza_ia\": 100.0,\n      \"fecha\": \"Sun, 27 Sep 2026 00:00:00 GMT\",\n      \"id\": 58,\n      \"sellos_advertencia\": [],\n      \"usuario_id\": 21\n    },\n    {\n      \"alimento_codigo\": \"arepa\",\n      \"alimento_detectado\": \"Arepa paisa (de maíz precocido, con sal)\",\n      \"balanceado\": 1,\n      \"calorias_aprox\": 163,\n      \"certeza_ia\": 99.01,\n      \"fecha\": \"Sun, 27 Sep 2026 00:00:00 GMT\",\n      \"id\": 57,\n      \"sellos_advertencia\": [],\n      \"usuario_id\": 21\n    }\n  ],\n  \"success\": true\n}"
             }
           ]
         },
@@ -956,7 +1299,7 @@
                 }
               ]
             },
-            "description": "XP, nivel (máximo alcanzado: nunca baja), racha, meta del día, avatar DiceBear con la expresión del ánimo de hoy y las reglas vigentes. Aquí se descuenta (perezosamente) el XP de los días inactivos: xp_perdido_desde_ultima_visita y mensaje_regreso llegan UNA sola vez. Ver CONTRATO_GAMIFICACION.md."
+            "description": "XP, nivel (máximo alcanzado: nunca baja), racha, meta del día, avatar DiceBear con la expresión del ánimo de hoy y las reglas vigentes. Aquí se descuenta (perezosamente) el XP de los días inactivos: xp_perdido_desde_ultima_visita y mensaje_regreso llegan UNA sola vez. Ver CONTRATO_GAMIFICACION.md. Puntos v2: trae \"misiones\" (las 3 del día con su estado) y reglas.misiones_diarias."
           },
           "response": [
             {
@@ -1057,6 +1400,39 @@
                 }
               ],
               "body": "{\n  \"progreso\": {\n    \"avatar\": {\n      \"estado_animo_hoy\": \"bien\",\n      \"id\": \"sol\",\n      \"nombre\": \"Sol\",\n      \"url\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural\",\n      \"url_con_animo\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=smile&eyes=default&eyebrows=defaultNatural\",\n      \"urls_por_estado\": {\n        \"bien\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=smile&eyes=default&eyebrows=defaultNatural\",\n        \"mal\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=concerned&eyes=default&eyebrows=sadConcernedNatural\",\n        \"muy_bien\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=smile&eyes=happy&eyebrows=raisedExcitedNatural\",\n        \"muy_mal\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=sad&eyes=default&eyebrows=sadConcerned\",\n        \"neutral\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=serious&eyes=default&eyebrows=defaultNatural\"\n      }\n    },\n    \"mensaje_regreso\": null,\n    \"meta_diaria\": {\n      \"cumplida\": true,\n      \"meta\": 15,\n      \"xp_hoy\": 35\n    },\n    \"nivel\": 2,\n    \"racha_actual\": 0,\n    \"racha_maxima\": 1,\n    \"reglas\": {\n      \"acciones\": {\n        \"comida_registrada\": {\n          \"maximo_por_dia\": 5,\n          \"xp\": 10\n        },\n        \"estado_animo\": {\n          \"maximo_por_dia\": 1,\n          \"xp\": 5\n        }\n      },\n      \"meta_diaria_xp\": 15,\n      \"niveles\": [\n        0,\n        30,\n        80,\n        150,\n        250,\n        400,\n        600,\n        850,\n        1150,\n        1500\n      ],\n      \"tope_perdida_por_periodo\": 20,\n      \"xp_perdido_por_dia_inactivo\": 5\n    },\n    \"ultima_fecha_actividad\": \"2026-09-23\",\n    \"xp_faltante_siguiente_nivel\": 60,\n    \"xp_inicio_nivel\": 30,\n    \"xp_perdido_desde_ultima_visita\": 0,\n    \"xp_siguiente_nivel\": 80,\n    \"xp_total\": 20\n  },\n  \"success\": true\n}"
+            },
+            {
+              "name": "Con las 3 misiones cumplidas (Puntos v2)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/progreso?email={{email}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "progreso"
+                  ],
+                  "query": [
+                    {
+                      "key": "email",
+                      "value": "{{email}}"
+                    }
+                  ]
+                },
+                "description": "XP, nivel (máximo alcanzado: nunca baja), racha, meta del día, avatar DiceBear con la expresión del ánimo de hoy y las reglas vigentes. Aquí se descuenta (perezosamente) el XP de los días inactivos: xp_perdido_desde_ultima_visita y mensaje_regreso llegan UNA sola vez. Ver CONTRATO_GAMIFICACION.md. Puntos v2: trae \"misiones\" (las 3 del día con su estado) y reglas.misiones_diarias."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"progreso\": {\n    \"avatar\": {\n      \"estado_animo_hoy\": \"bien\",\n      \"id\": \"sol\",\n      \"nombre\": \"Sol\",\n      \"url\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural\",\n      \"url_con_animo\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=smile&eyes=default&eyebrows=defaultNatural\",\n      \"urls_por_estado\": {\n        \"bien\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=smile&eyes=default&eyebrows=defaultNatural\",\n        \"mal\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=concerned&eyes=default&eyebrows=sadConcernedNatural\",\n        \"muy_bien\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=smile&eyes=happy&eyebrows=raisedExcitedNatural\",\n        \"muy_mal\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=sad&eyes=default&eyebrows=sadConcerned\",\n        \"neutral\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=serious&eyes=default&eyebrows=defaultNatural\"\n      }\n    },\n    \"mensaje_regreso\": null,\n    \"meta_diaria\": {\n      \"cumplida\": true,\n      \"meta\": 15,\n      \"xp_hoy\": 75\n    },\n    \"misiones\": [\n      {\n        \"cumplida\": true,\n        \"id\": \"fruta\",\n        \"nombre\": \"Registra una fruta\",\n        \"xp\": 10\n      },\n      {\n        \"cumplida\": true,\n        \"id\": \"tres_comidas\",\n        \"nombre\": \"Registra 3 comidas\",\n        \"xp\": 10\n      },\n      {\n        \"cumplida\": true,\n        \"id\": \"check_in_animo\",\n        \"nombre\": \"Haz tu check-in de ánimo\",\n        \"xp\": 10\n      }\n    ],\n    \"nivel\": 2,\n    \"racha_actual\": 1,\n    \"racha_maxima\": 1,\n    \"reglas\": {\n      \"acciones\": {\n        \"comida_registrada\": {\n          \"maximo_por_dia\": 5,\n          \"xp\": 10\n        },\n        \"eleccion_nutritiva\": {\n          \"maximo_por_dia\": 3,\n          \"xp\": 5\n        },\n        \"estado_animo\": {\n          \"maximo_por_dia\": 1,\n          \"xp\": 5\n        }\n      },\n      \"meta_diaria_xp\": 15,\n      \"misiones_diarias\": [\n        {\n          \"id\": \"fruta\",\n          \"nombre\": \"Registra una fruta\",\n          \"xp\": 10\n        },\n        {\n          \"id\": \"tres_comidas\",\n          \"nombre\": \"Registra 3 comidas\",\n          \"xp\": 10\n        },\n        {\n          \"id\": \"check_in_animo\",\n          \"nombre\": \"Haz tu check-in de ánimo\",\n          \"xp\": 10\n        }\n      ],\n      \"niveles\": [\n        0,\n        30,\n        80,\n        150,\n        250,\n        400,\n        600,\n        850,\n        1150,\n        1500\n      ],\n      \"tope_perdida_por_periodo\": 20,\n      \"xp_penalizacion_ultraprocesado\": 0,\n      \"xp_perdido_por_dia_inactivo\": 5\n    },\n    \"ultima_fecha_actividad\": \"2026-09-27\",\n    \"xp_faltante_siguiente_nivel\": 5,\n    \"xp_inicio_nivel\": 30,\n    \"xp_perdido_desde_ultima_visita\": 0,\n    \"xp_siguiente_nivel\": 80,\n    \"xp_total\": 75\n  },\n  \"success\": true\n}"
             }
           ]
         },
@@ -1580,97 +1956,6 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{email}}\",\n  \"avatar_id\": \"luna\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        }
-      ]
-    },
-    {
-      "name": "6. Autenticación (pendiente)",
-      "item": [
-        {
-          "name": "Registrarse con contraseña (pendiente)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/perfil",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "perfil"
-              ]
-            },
-            "description": "POST /perfil con el campo contraseña. Hoy la contraseña se ignora; cuando Isabella termine, se guarda como hash de bcrypt y nunca vuelve en ninguna respuesta (test_login.py, pruebas 1 y 8).",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Ana\",\n  \"email\": \"{{email}}\",\n  \"edad\": 15,\n  \"genero\": \"femenino\",\n  \"peso\": 52.0,\n  \"altura\": 158,\n  \"objetivo\": \"comer_balanceado\",\n  \"contraseña\": \"{{contrasena}}\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Login (pendiente: lo programa Isabella)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test(\"Responde 200 o 401 o 404\", function () { pm.expect([200, 401, 404]).to.include(pm.response.code); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{base_url}}/login",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "login"
-              ]
-            },
-            "description": "⚠️ Todavía NO existe en el código commiteado (responde 404). Lo programa Isabella con Bcrypt; sus pruebas están en Backend/test_login.py. Cuando exista: 200 con el perfil (sin password_hash), 401 con el MISMO mensaje si la contraseña está mal o el correo no existe, 400 si falta un dato.",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{email}}\",\n  \"contraseña\": \"{{contrasena}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
