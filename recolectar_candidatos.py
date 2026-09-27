@@ -134,6 +134,12 @@ BLOQUEOS = os.path.join(CANDIDATOS, "_bloqueos.csv")
 LICENCIA_WEB = "desconocida: solo para entrenar el modelo, no publicar ni redistribuir"
 IMAGENES_POR_PAGINA = 6
 PAUSA_POR_SITIO = 1.0  # segundos entre peticiones al mismo sitio
+# Bots que los sitios bloquean cuando NO quieren que su contenido se use para
+# entrenar IA (Cookpad, por ejemplo, bloquea CCBot "used to create training
+# datasets"). Este script arma un dataset de entrenamiento, así que si un sitio
+# bloquea a cualquiera de estos, se respeta como un "no" y no se usa, aunque su
+# robots.txt no nombre a Lumea.
+BOTS_DE_IA = ("CCBot", "GPTBot", "ClaudeBot", "anthropic-ai", "Google-Extended")
 FUENTES_DISPONIBLES = ("openimages", "web", "commons", "openverse")
 
 # Palabras en el título que casi siempre significan "no es una foto de un
@@ -424,14 +430,19 @@ class ExtractorImagenes(HTMLParser):
     mitad de lo descargado."""
 
     VACIAS = {"img", "meta", "br", "hr", "input", "source", "link", "wbr", "area", "base", "col", "embed", "param", "track"}
-    FUERA = re.compile(r"sidebar|related|relacionad|widget|footer|comment|coment|author|autor|share|social|newsletter|"
-                       r"menu|nav|breadcrumb|banner|advert|publicidad|popular|recomend|trending|tags", re.IGNORECASE)
+    # Se compara contra cada "palabra" de class/id/role, quitando los prefijos de
+    # variante de Tailwind ("md:", "hover:"): en sitios con clases utilitarias,
+    # buscar el texto en cualquier parte excluía la página entera.
+    FUERA = re.compile(r"^(sidebar|related|relacionad|widget|footer|comment|coment|author|autor|share|social|newsletter|"
+                       r"menu|nav|navbar|breadcrumb|banner|advert|ads|publicidad|popular|recomend|trending|tags)([-_].*)?$",
+                       re.IGNORECASE)
 
     def __init__(self):
         super().__init__()
         self.titulo, self._en_titulo = "", False
         self.portada, self.imagenes = [], []
         self.pila = []  # (tag, está_dentro_de_zona_excluida, está_dentro_del_contenido)
+        self.enlaces = []
 
     def _estado(self):
         return self.pila[-1][1:] if self.pila else (False, False)
@@ -440,8 +451,11 @@ class ExtractorImagenes(HTMLParser):
         a = dict(attrs)
         excluida, contenido = self._estado()
         marca = " ".join(str(a.get(k) or "") for k in ("class", "id", "role"))
-        if tag in ("nav", "aside", "footer", "header") or self.FUERA.search(marca):
+        palabras = [p.split(":")[-1] for p in marca.split()]
+        if tag in ("nav", "aside", "footer", "header") or any(self.FUERA.match(p) for p in palabras):
             excluida = True
+        if tag == "a" and a.get("href"):
+            self.enlaces.append(a["href"])
         if tag in ("article", "main") or re.search(r"entry-content|post-content|article-body|recipe|receta|contenido",
                                                   marca, re.IGNORECASE):
             contenido = True
@@ -453,10 +467,16 @@ class ExtractorImagenes(HTMLParser):
         elif tag in ("img", "source") and not excluida:
             srcset = a.get("srcset") or a.get("data-srcset") or a.get("data-lazy-srcset")
             elegida = None
-            if srcset:  # la versión más grande del srcset
+            if srcset:  # la versión más grande del srcset ("800w" o "2x")
                 opciones = [p.strip().split() for p in srcset.split(",") if p.strip()]
                 def ancho(op):
-                    return int(op[1][:-1]) if len(op) > 1 and op[1].endswith("w") and op[1][:-1].isdigit() else 0
+                    if len(op) < 2:
+                        return 0
+                    valor = op[1][:-1]
+                    try:
+                        return float(valor) * (1 if op[1].endswith("w") else 1000 if op[1].endswith("x") else 0)
+                    except ValueError:
+                        return 0
                 if opciones:
                     elegida = max(opciones, key=ancho)[0]
             if not elegida and tag == "img":
@@ -528,6 +548,10 @@ class Web:
         if not self.robots[sitio].can_fetch(AGENTE, url):
             self._anotar_bloqueo(sitio, "robots.txt no permite descargar", url)
             return False
+        bots = [b for b in BOTS_DE_IA if not self.robots[sitio].can_fetch(b, url)]
+        if bots:
+            self._anotar_bloqueo(sitio, f"robots.txt bloquea bots que recolectan datos para IA ({', '.join(bots)})", url)
+            return False
         return True
 
     def get(self, url):
@@ -549,14 +573,43 @@ class Web:
         return r if r.status_code == 200 else None
 
     def descargar(self, candidata):
+        # Se revisa el sitio de la PÁGINA (el dueño del contenido), no solo el
+        # del servidor de imágenes, que casi nunca tiene robots.txt.
+        if not self.permitido(candidata["url_pagina"]):
+            return candidata, None, "el sitio no permite usar su contenido"
         r = self.get(candidata["url_imagen"])
         if r is None:
             return candidata, None, "no se pudo o no se debe descargar"
         return candidata, r.content, ""
 
-    def resultados(self, paginas):
-        """paginas: lista de {"url": ..., "consulta": ...}."""
+    def expandir(self, paginas):
+        """Una página con "seguir": "<texto>" es un LISTADO (p. ej. una búsqueda
+        de Cookpad): no se toman sus fotos, sino las de las páginas a las que
+        enlaza (hasta "maximo", 30 por defecto), cuya URL contiene ese texto."""
         for pagina in paginas:
+            if not pagina.get("seguir"):
+                yield pagina
+                continue
+            r = self.get(pagina["url"])
+            if r is None:
+                continue
+            extractor = ExtractorImagenes()
+            try:
+                extractor.feed(r.text)
+            except Exception:
+                continue
+            vistos = set()
+            for href in extractor.enlaces:
+                enlace = urljoin(pagina["url"], href).split("#")[0]
+                if pagina["seguir"] in enlace and enlace not in vistos and enlace != pagina["url"]:
+                    vistos.add(enlace)
+                    yield {"url": enlace, "consulta": pagina.get("consulta", ""), "fotos": pagina.get("fotos_por_enlace", 2)}
+                    if len(vistos) >= pagina.get("maximo", 30):
+                        break
+
+    def resultados(self, paginas):
+        """paginas: lista de {"url": ..., "consulta": ...} (ver expandir())."""
+        for pagina in self.expandir(paginas):
             url = pagina["url"]
             r = self.get(url)
             if r is None or "html" not in r.headers.get("Content-Type", ""):
@@ -589,7 +642,7 @@ class Web:
                     "autor": urlparse(url).netloc, "licencia": LICENCIA_WEB, "url_licencia": "",
                     "consulta_web": pagina.get("consulta", ""),
                 }
-                if entregadas >= IMAGENES_POR_PAGINA:
+                if entregadas >= pagina.get("fotos", IMAGENES_POR_PAGINA):
                     break
 
 
@@ -739,7 +792,9 @@ def recolectar_clase(clase, cuantas, huellas, vistos, openverse, paginas_openver
             if clave in vistos:
                 continue
             vistos[clave] = clase
-            if candidata["fuente"] != "web" and PATRON_EXCLUIDO.search(candidata["titulo"]):
+            # El filtro de títulos es para títulos escritos por personas (Commons,
+            # Flickr). Los de web y Open Images los arma este script.
+            if candidata["fuente"] not in ("web", "openimages") and PATRON_EXCLUIDO.search(candidata["titulo"]):
                 registrar(clase, candidata["fuente"], candidata["id"], "titulo_excluido", candidata["titulo"][:120])
                 continue
             if candidata["ancho"] and candidata["alto"] and min(candidata["ancho"], candidata["alto"]) < LADO_MINIMO:

@@ -31,7 +31,10 @@ import argparse
 import csv
 import os
 import random
+import shutil
+import subprocess
 import sys
+import tempfile
 
 import requests
 
@@ -109,15 +112,40 @@ sesion = requests.Session()
 sesion.headers["User-Agent"] = AGENTE
 
 
-def _filtrar_en_streaming(url, conservar, salida):
+def _lineas_prefiltradas(url, textos):
+    """curl | grep -F: deja pasar solo las líneas que contienen alguno de los
+    textos (más el encabezado). Para el archivo de 7 GB, leerlo línea por línea
+    en Python tardaba unas 6 horas; así tarda lo que tarda la descarga."""
+    with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as f:
+        f.write("ImageID,\n" + "\n".join(textos) + "\n")
+        patrones = f.name
+    curl = subprocess.Popen(["curl", "-s", "-A", AGENTE, url], stdout=subprocess.PIPE)
+    grep = subprocess.Popen(["grep", "-F", "-f", patrones], stdin=curl.stdout, stdout=subprocess.PIPE, text=True)
+    curl.stdout.close()
+    try:
+        for linea in grep.stdout:
+            yield linea.rstrip("\n")
+    finally:
+        grep.wait(); curl.wait(); os.remove(patrones)
+        if curl.returncode != 0:
+            raise RuntimeError(f"curl falló ({curl.returncode}) bajando {url}")
+
+
+def _filtrar_en_streaming(url, conservar, salida, prefiltro=None):
     """Lee un CSV remoto línea por línea y guarda solo las filas donde
-    conservar(fila) es verdadero. Devuelve cuántas guardó."""
+    conservar(fila) es verdadero. Devuelve cuántas guardó. `prefiltro`
+    (textos fijos) acelera mucho los archivos gigantes, si hay curl y grep."""
     guardadas = 0
     temporal = salida + ".parcial"
-    with sesion.get(url, stream=True, timeout=120) as r, open(temporal, "w", newline="", encoding="utf-8") as f:
-        r.raise_for_status()
-        # Trozos de 1 MB: con el valor por defecto (512 bytes) leer 2 GB tarda más de una hora.
-        lineas = (l.decode("utf-8") for l in r.iter_lines(chunk_size=1 << 20) if l)
+    usar_grep = prefiltro and shutil.which("curl") and shutil.which("grep")
+    with sesion.get(url, stream=True, timeout=120) if not usar_grep else _Nada() as r, \
+            open(temporal, "w", newline="", encoding="utf-8") as f:
+        if usar_grep:
+            lineas = _lineas_prefiltradas(url, prefiltro)
+        else:
+            r.raise_for_status()
+            # Trozos de 1 MB: con el valor por defecto (512 bytes) leer 2 GB tarda más de una hora.
+            lineas = (l.decode("utf-8") for l in r.iter_lines(chunk_size=1 << 20) if l)
         lector = csv.reader(lineas)
         encabezado = next(lector)
         escritor = csv.writer(f)
@@ -131,6 +159,14 @@ def _filtrar_en_streaming(url, conservar, salida):
     return guardadas
 
 
+class _Nada:
+    def __enter__(self):
+        return None
+
+    def __exit__(self, *args):
+        return False
+
+
 def construir_indice():
     """Filtra cada archivo remoto una sola vez: si el filtrado ya existe
     (completo), no se vuelve a bajar."""
@@ -140,20 +176,22 @@ def construir_indice():
     tareas = []
     for split in ("validation", "test", "train"):
         tareas.append((f"recuadros_{split}.csv", RECUADROS[split],
-                       lambda fila, i: fila[i["LabelName"]] in mids_frutas))
+                       lambda fila, i: fila[i["LabelName"]] in mids_frutas, None))
         tareas.append((f"etiquetas_{split}.csv", ETIQUETAS[split],
                        lambda fila, i: fila[i["Confidence"]] == "1"
-                       and (fila[i["LabelName"]] in mids_platos or fila[i["LabelName"]] in COMIDA)))
+                       and (fila[i["LabelName"]] in mids_platos or fila[i["LabelName"]] in COMIDA), None))
+        mids_maquina = sorted(mids_platos | COMIDA_MAQUINA)
         tareas.append((f"maquina_{split}.csv", MAQUINA[split],
                        lambda fila, i: (fila[i["LabelName"]] in mids_platos or fila[i["LabelName"]] in COMIDA_MAQUINA)
-                       and float(fila[i["Confidence"]] or 0) >= UMBRAL_MAQUINA))
-    for nombre, url, conservar in tareas:
+                       and float(fila[i["Confidence"]] or 0) >= UMBRAL_MAQUINA,
+                       [f",{m}," for m in mids_maquina]))
+    for nombre, url, conservar, prefiltro in tareas:
         salida = os.path.join(CACHE, nombre)
         if os.path.exists(salida):
             print(f"{nombre}: ya estaba")
             continue
         print(f"{nombre}: filtrando {url} ...", flush=True)
-        print(f"   {_filtrar_en_streaming(url, conservar, salida)} filas", flush=True)
+        print(f"   {_filtrar_en_streaming(url, conservar, salida, prefiltro)} filas", flush=True)
     print("Índice listo en", CACHE)
 
 
@@ -222,7 +260,7 @@ def resultados_para(clase, maximo):
     else:
         return
     for split, image_id, area, etiqueta in lista[:maximo]:
-        detalle = f"{etiqueta}, fruta ocupa {area:.0%} de la foto" if area else f"etiqueta {etiqueta}"
+        detalle = f"{etiqueta}, fruta ocupa {area:.0%} de la foto" if area else f"marcada como {etiqueta}"
         yield {
             "fuente": "openimages",
             "id": image_id,
