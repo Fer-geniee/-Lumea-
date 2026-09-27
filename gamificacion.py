@@ -521,9 +521,9 @@ def obtener_progreso(db, usuario_id):
         if xp_perdido:
             progreso["xp_perdido_sin_avisar"] = 0  # ya se le avisó
             _guardar_progreso(cursor, progreso)
-        db.conexion.commit()
         xp_hoy = _leer_xp_de_hoy(cursor, usuario_id, hoy)
         estado_hoy = _estado_animo_de_hoy(cursor, usuario_id, hoy)
+        db.conexion.commit()
     except Exception:
         db.conexion.rollback()
         raise
@@ -562,12 +562,21 @@ def obtener_progreso(db, usuario_id):
     }
 
 
-def listar_avatares(db, usuario_id):
+def _leer_progreso_sin_cambiar(db, usuario_id):
+    """Lee el progreso para mostrarlo. Termina la transacción al final:
+    app.py usa UNA sola conexión, y una lectura sin commit deja abierta una
+    transacción que seguiría viendo los datos viejos (MySQL guarda una
+    "foto" de la base al empezar cada transacción)."""
     cursor = db.conexion.cursor(dictionary=True)
     try:
-        progreso = _leer_progreso(cursor, usuario_id)
+        return _leer_progreso(cursor, usuario_id)
     finally:
         cursor.close()
+        db.conexion.commit()
+
+
+def listar_avatares(db, usuario_id):
+    progreso = _leer_progreso_sin_cambiar(db, usuario_id)
     elegido = _avatar_elegido(progreso)
     nivel = progreso["nivel_maximo"]
     return {
@@ -622,12 +631,7 @@ def elegir_avatar(db, usuario_id, avatar_id):
 
 
 def obtener_avatar_capas(db, usuario_id):
-    cursor = db.conexion.cursor(dictionary=True)
-    try:
-        progreso = _leer_progreso(cursor, usuario_id)
-    finally:
-        cursor.close()
-    return estado_avatar_capas(progreso)
+    return estado_avatar_capas(_leer_progreso_sin_cambiar(db, usuario_id))
 
 
 def _cambiar_avatar_capas(db, usuario_id, cambio):
