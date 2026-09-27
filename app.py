@@ -456,6 +456,14 @@ def ruta_historial():
         return jsonify({'error': 'No existe un perfil con ese correo.'}), 404
     try:
         historial = db.obtener_historial_comida(perfil['id'])
+        # Sellos de advertencia de cada registro ([] = ninguno, None = no se
+        # sabe), igual que en /predecir. Se consultan una vez por alimento.
+        sellos_por_codigo = {}
+        for registro in historial:
+            codigo = registro.get('alimento_codigo')
+            if codigo not in sellos_por_codigo:
+                sellos_por_codigo[codigo] = obtener_sellos(db, codigo) if codigo else None
+            registro['sellos_advertencia'] = sellos_por_codigo[codigo]
         return jsonify({
             'success': True,
             'cantidad_registros': len(historial),

@@ -147,7 +147,11 @@ def probar_confirmar_alimento():
 
 
 def probar_historial():
-    verificar("GET /historial", get("/historial", email=EMAIL_PRUEBA), mostrar=False)
+    cuerpo = verificar("GET /historial", get("/historial", email=EMAIL_PRUEBA), mostrar=False)
+    registros = cuerpo.get("historial", [])
+    comprobar("cada registro de /historial trae sellos_advertencia", bool(registros) and all("sellos_advertencia" in r for r in registros))
+    banano = next((r for r in registros if r.get("alimento_codigo") == "banano"), {})
+    comprobar("el banano del historial no tiene sellos", banano.get("sellos_advertencia") == [], f"{banano.get('sellos_advertencia')!r}")
 
 
 def probar_alimentos():
