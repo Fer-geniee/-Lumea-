@@ -13,7 +13,20 @@ persona la apruebe con revisar_candidatos.py.
                                                         # otra ronda: búsquedas NUEVAS (las viejas ya
                                                         # se agotaron) y 60 candidatas más por clase
 
-Fuentes (solo con licencia explícita y atribución):
+Fuentes, en este orden (--fuentes elige cuáles usar):
+- Open Images (openimages.py): fotos de Flickr anotadas por personas,
+  CC BY 2.0. Para las 8 frutas es la fuente principal: se eligen fotos en
+  contexto real donde la fruta sale grande. Primero hay que construir el
+  índice una vez: python3 openimages.py --indice
+- Páginas web (--paginas-web ARCHIVO.json): para platos colombianos que no
+  están en ningún dataset público. El archivo lista, por clase, páginas
+  encontradas con un buscador. De cada página se toman las fotos
+  principales. Se respeta robots.txt, se va despacio (1 petición por
+  segundo por sitio) y, si un sitio bloquea o limita (401, 403, 429), NO
+  se insiste: se anota en dataset_candidatos/_bloqueos.csv y se sigue con
+  otros sitios. Estas fotos tienen licencia DESCONOCIDA: sirven para
+  entrenar el modelo del proyecto escolar, pero no se deben publicar ni
+  redistribuir (queda anotado en fuentes.csv).
 - Wikimedia Commons: todo lo que hay ahí tiene licencia libre (CC0, dominio
   público, CC BY, CC BY-SA...). Se usa por categoría (curada por
   voluntarios) y buscando la frase en el TÍTULO del archivo (intitle):
@@ -32,12 +45,17 @@ Fuentes (solo con licencia explícita y atribución):
   Si la cuota se acaba, volver a correr el script otro día continúa
   donde quedó: las fotos ya vistas no se vuelven a pedir.
 
-NO se usa Google Imágenes ni bancos de fotos: sus fotos no tienen una
-licencia que permita usarlas, y muchas traen marca de agua.
+NO se usa Google Imágenes ni otros buscadores de imágenes directamente: sus
+condiciones y su robots.txt no permiten descargarlas en lote.
 
 Filtros automáticos antes de la revisión (todo lo descartado queda en
 dataset_candidatos/_registro.csv con el motivo):
+- que se pueda abrir: se aceptan JPG, PNG, WebP, AVIF y HEIC, y todo se
+  guarda como JPG (el formato que lee TensorFlow sin problemas); los
+  archivos rotos se descartan;
 - lado menor de al menos 224 px (el tamaño de entrada del modelo);
+- en las frutas, fondo blanco (los bordes de la foto casi todos blancos):
+  son justo las fotos de estudio tipo Fruits-360 que se quieren reemplazar;
 - títulos que delatan que no es una foto de comida (pintura, dibujo,
   árbol, flor, mapa, catálogo...);
 - imágenes sin color (escaneos en blanco y negro, dibujos de línea): en
@@ -70,15 +88,25 @@ import os
 import re
 import sys
 import time
+import urllib.robotparser
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from html.parser import HTMLParser
+from urllib.parse import urljoin, urlparse
 
 import imagehash
 import numpy as np
 import requests
 from PIL import Image, ImageOps
 
+import openimages
 from limpiar_dataset import decidir_por_clase, distancias, leer_imagenes
+
+try:  # fotos de iPhone (.heic)
+    from pillow_heif import register_heif_opener
+    register_heif_opener()
+except ImportError:
+    pass
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATASET = os.path.join(BASE_DIR, "dataset")
@@ -100,6 +128,13 @@ RESERVA_OPENVERSE = 3  # consultas diarias que se dejan sin usar
 MAXIMO_POR_CONSULTA = 300  # resultados revisados por consulta: más allá, casi todo es ruido
 TAMANO_LOTE = 24
 MINIMO_PIXELES_CON_COLOR = 0.03  # menos de 3% de píxeles con color = blanco y negro
+FRUTAS = set(openimages.FRUTAS)
+MAXIMO_BORDE_BLANCO = 0.5  # frutas: si más de la mitad del borde es blanco, es foto de estudio
+BLOQUEOS = os.path.join(CANDIDATOS, "_bloqueos.csv")
+LICENCIA_WEB = "desconocida: solo para entrenar el modelo, no publicar ni redistribuir"
+IMAGENES_POR_PAGINA = 6
+PAUSA_POR_SITIO = 1.0  # segundos entre peticiones al mismo sitio
+FUENTES_DISPONIBLES = ("openimages", "web", "commons", "openverse")
 
 # Palabras en el título que casi siempre significan "no es una foto de un
 # plato o de la fruta lista para comer". Se comparan como palabras
@@ -377,11 +412,198 @@ class Openverse:
 
 
 # --------------------------------------------------------------------------
+# Páginas web (platos colombianos sin dataset público)
+# --------------------------------------------------------------------------
+
+class ExtractorImagenes(HTMLParser):
+    """Saca de una página su título y las URLs de sus fotos: primero la
+    foto "de portada" (og:image / twitter:image), después las <img> del
+    CONTENIDO PRINCIPAL. Se ignoran las que están en menús, barras
+    laterales, pies de página, "artículos relacionados", comentarios o
+    perfiles de autor: en la primera prueba (envueltos) eran más de la
+    mitad de lo descargado."""
+
+    VACIAS = {"img", "meta", "br", "hr", "input", "source", "link", "wbr", "area", "base", "col", "embed", "param", "track"}
+    FUERA = re.compile(r"sidebar|related|relacionad|widget|footer|comment|coment|author|autor|share|social|newsletter|"
+                       r"menu|nav|breadcrumb|banner|advert|publicidad|popular|recomend|trending|tags", re.IGNORECASE)
+
+    def __init__(self):
+        super().__init__()
+        self.titulo, self._en_titulo = "", False
+        self.portada, self.imagenes = [], []
+        self.pila = []  # (tag, está_dentro_de_zona_excluida, está_dentro_del_contenido)
+
+    def _estado(self):
+        return self.pila[-1][1:] if self.pila else (False, False)
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        excluida, contenido = self._estado()
+        marca = " ".join(str(a.get(k) or "") for k in ("class", "id", "role"))
+        if tag in ("nav", "aside", "footer", "header") or self.FUERA.search(marca):
+            excluida = True
+        if tag in ("article", "main") or re.search(r"entry-content|post-content|article-body|recipe|receta|contenido",
+                                                  marca, re.IGNORECASE):
+            contenido = True
+        if tag == "title":
+            self._en_titulo = True
+        elif tag == "meta" and (a.get("property") or a.get("name") or "").lower() in ("og:image", "og:image:url", "twitter:image"):
+            if a.get("content"):
+                self.portada.append(a["content"])
+        elif tag in ("img", "source") and not excluida:
+            srcset = a.get("srcset") or a.get("data-srcset") or a.get("data-lazy-srcset")
+            elegida = None
+            if srcset:  # la versión más grande del srcset
+                opciones = [p.strip().split() for p in srcset.split(",") if p.strip()]
+                def ancho(op):
+                    return int(op[1][:-1]) if len(op) > 1 and op[1].endswith("w") and op[1][:-1].isdigit() else 0
+                if opciones:
+                    elegida = max(opciones, key=ancho)[0]
+            if not elegida and tag == "img":
+                elegida = a.get("data-src") or a.get("data-lazy-src") or a.get("src")
+            if elegida:
+                self.imagenes.append((elegida, a, contenido))
+        if tag not in self.VACIAS:
+            self.pila.append((tag, excluida, contenido))
+
+    def handle_endtag(self, tag):
+        if tag == "title":
+            self._en_titulo = False
+        for k in range(len(self.pila) - 1, -1, -1):  # cierra hasta la etiqueta que abre (HTML mal formado)
+            if self.pila[k][0] == tag:
+                del self.pila[k:]
+                break
+
+    def handle_data(self, data):
+        if self._en_titulo:
+            self.titulo += data
+
+    def fotos(self):
+        """Portada + imágenes del contenido principal (o todas las no
+        excluidas, si la página no marca su contenido)."""
+        del_contenido = [(u, a) for u, a, dentro in self.imagenes if dentro]
+        resto = del_contenido or [(u, a) for u, a, _ in self.imagenes]
+        return [(u, {}) for u in self.portada] + resto
+
+
+PATRON_NO_FOTO = re.compile(r"logo|icon|avatar|sprite|banner|emoji|gravatar|pixel|placeholder|lazy|blank|spinner|/ads?/|badge|button|flag",
+                            re.IGNORECASE)
+
+
+class Web:
+    """Descarga respetuosa: robots.txt, 1 petición por segundo por sitio, y
+    si un sitio bloquea o limita (401/403/429) se deja de usar y se anota."""
+
+    def __init__(self):
+        self.robots = {}
+        self.bloqueados = {}
+        self.ultima = {}
+
+    def _anotar_bloqueo(self, sitio, motivo, url):
+        if sitio in self.bloqueados:
+            return
+        self.bloqueados[sitio] = motivo
+        agregar_csv(BLOQUEOS, ["fecha", "sitio", "motivo", "url"],
+                    [datetime.now().isoformat(timespec="seconds"), sitio, motivo, url])
+        print(f"      [bloqueo] {sitio}: {motivo} (no se insiste; se usan otros sitios)")
+
+    def permitido(self, url):
+        partes = urlparse(url)
+        sitio = partes.netloc
+        if sitio in self.bloqueados:
+            return False
+        if sitio not in self.robots:
+            robots = urllib.robotparser.RobotFileParser()
+            try:
+                r = sesion.get(f"{partes.scheme}://{sitio}/robots.txt", timeout=20)
+                if r.status_code in (401, 403):
+                    robots.disallow_all = True
+                elif r.status_code == 200:
+                    robots.parse(r.text.splitlines())
+                else:
+                    robots.allow_all = True
+            except requests.RequestException:
+                robots.allow_all = True
+            self.robots[sitio] = robots
+        if not self.robots[sitio].can_fetch(AGENTE, url):
+            self._anotar_bloqueo(sitio, "robots.txt no permite descargar", url)
+            return False
+        return True
+
+    def get(self, url):
+        """GET educado. Devuelve la respuesta o None si no se puede o no se debe."""
+        if not self.permitido(url):
+            return None
+        sitio = urlparse(url).netloc
+        espera = PAUSA_POR_SITIO - (time.time() - self.ultima.get(sitio, 0))
+        if espera > 0:
+            time.sleep(espera)
+        self.ultima[sitio] = time.time()
+        try:
+            r = sesion.get(url, timeout=30)
+        except requests.RequestException:
+            return None
+        if r.status_code in (401, 403, 429):
+            self._anotar_bloqueo(sitio, f"HTTP {r.status_code}", url)
+            return None
+        return r if r.status_code == 200 else None
+
+    def descargar(self, candidata):
+        r = self.get(candidata["url_imagen"])
+        if r is None:
+            return candidata, None, "no se pudo o no se debe descargar"
+        return candidata, r.content, ""
+
+    def resultados(self, paginas):
+        """paginas: lista de {"url": ..., "consulta": ...}."""
+        for pagina in paginas:
+            url = pagina["url"]
+            r = self.get(url)
+            if r is None or "html" not in r.headers.get("Content-Type", ""):
+                continue
+            extractor = ExtractorImagenes()
+            try:
+                extractor.feed(r.text)
+            except Exception:
+                continue
+            titulo = sin_html(extractor.titulo)[:150]
+            vistas, entregadas = set(), 0
+            for src, atributos in extractor.fotos():
+                imagen_url = urljoin(url, src.strip())
+                ruta = urlparse(imagen_url).path.lower()
+                if not imagen_url.startswith("http") or imagen_url in vistas or PATRON_NO_FOTO.search(imagen_url):
+                    continue
+                if ruta.endswith((".svg", ".gif")):
+                    continue
+                ancho = int(atributos["width"]) if str(atributos.get("width", "")).isdigit() else 0
+                alto = int(atributos["height"]) if str(atributos.get("height", "")).isdigit() else 0
+                if (ancho and ancho < LADO_MINIMO) or (alto and alto < LADO_MINIMO):
+                    continue
+                vistas.add(imagen_url)
+                entregadas += 1
+                yield {
+                    "fuente": "web",
+                    "id": hashlib.md5(imagen_url.encode()).hexdigest()[:16],
+                    "titulo": titulo, "ancho": ancho, "alto": alto,
+                    "url_imagen": imagen_url, "url_pagina": url,
+                    "autor": urlparse(url).netloc, "licencia": LICENCIA_WEB, "url_licencia": "",
+                    "consulta_web": pagina.get("consulta", ""),
+                }
+                if entregadas >= IMAGENES_POR_PAGINA:
+                    break
+
+
+WEB = Web()
+
+
+# --------------------------------------------------------------------------
 # Descarga y guardado
 # --------------------------------------------------------------------------
 
 def descargar(candidata):
     """Devuelve (candidata, contenido o None, error)."""
+    if candidata["fuente"] == "web":
+        return WEB.descargar(candidata)
     try:
         r = sesion.get(candidata["url_imagen"], timeout=60)
         if r.status_code != 200:
@@ -400,9 +622,21 @@ def fraccion_con_color(imagen_rgb):
     return float((saturacion > 38).mean())
 
 
-def preparar(contenido):
-    """Abre, gira según EXIF, pasa a RGB, reduce a LADO_MAXIMO y vuelve a
-    codificar sin metadatos. Devuelve (imagen, bytes_jpeg) o lanza error."""
+def fraccion_borde_blanco(imagen_rgb):
+    """Fracción del borde de la foto (franja de ~8%) que es blanco o casi
+    blanco y sin color. Las fotos de estudio (Fruits-360, catálogos) dan
+    casi 1; una fruta en una mesa, un mercado o una mano da poco."""
+    a = np.asarray(imagen_rgb.resize((128, 128))).astype(int)
+    borde = np.concatenate([a[:10].reshape(-1, 3), a[-10:].reshape(-1, 3),
+                            a[:, :10].reshape(-1, 3), a[:, -10:].reshape(-1, 3)])
+    blanco = (borde.min(axis=1) > 215) & (borde.max(axis=1) - borde.min(axis=1) < 25)
+    return float(blanco.mean())
+
+
+def preparar(contenido, clase=None):
+    """Abre (JPG, PNG, WebP, AVIF, HEIC...), gira según EXIF, pasa a RGB,
+    aplica los filtros, reduce a LADO_MAXIMO y vuelve a codificar como JPG
+    sin metadatos. Devuelve (imagen, bytes_jpeg) o lanza error."""
     with Image.open(io.BytesIO(contenido)) as im:
         im = ImageOps.exif_transpose(im)
         im = im.convert("RGB")
@@ -410,6 +644,8 @@ def preparar(contenido):
         raise ValueError(f"muy pequeña ({im.size[0]}x{im.size[1]})")
     if fraccion_con_color(im) < MINIMO_PIXELES_CON_COLOR:
         raise ValueError("sin color (blanco y negro o dibujo)")
+    if clase in FRUTAS and fraccion_borde_blanco(im) > MAXIMO_BORDE_BLANCO:
+        raise ValueError("fondo blanco (foto de estudio)")
     im.thumbnail((LADO_MAXIMO, LADO_MAXIMO), Image.LANCZOS)
     salida = io.BytesIO()
     im.save(salida, "JPEG", quality=92)
@@ -424,7 +660,10 @@ def nombre_archivo(candidata):
 def procesar_lote(clase, lote, carpeta, fuentes_csv, huellas, guardadas, cuantas):
     """Descarga el lote en paralelo (4 a la vez) y guarda las que pasan los
     filtros, hasta llegar a `cuantas`. Devuelve el nuevo total guardado."""
-    with ThreadPoolExecutor(max_workers=4) as grupo:
+    # Las páginas web se piden de a una (para no cargar un sitio pequeño);
+    # Open Images, Commons y Flickr aguantan 4 a la vez.
+    en_paralelo = 1 if any(c["fuente"] == "web" for c in lote) else 4
+    with ThreadPoolExecutor(max_workers=en_paralelo) as grupo:
         for candidata, contenido, error in grupo.map(descargar, lote):
             if guardadas >= cuantas:
                 break
@@ -432,7 +671,7 @@ def procesar_lote(clase, lote, carpeta, fuentes_csv, huellas, guardadas, cuantas
                 registrar(clase, candidata["fuente"], candidata["id"], "error_descarga", error)
                 continue
             try:
-                imagen, jpeg = preparar(contenido)
+                imagen, jpeg = preparar(contenido, clase)
             except Exception as e:
                 registrar(clase, candidata["fuente"], candidata["id"], "descartada_al_abrir", str(e)[:120])
                 continue
@@ -461,7 +700,8 @@ ENCABEZADO_FUENTES = ["archivo", "fuente", "id", "titulo", "autor", "licencia", 
                       "url_pagina", "url_imagen", "consulta", "ancho_original", "alto_original", "fecha"]
 
 
-def recolectar_clase(clase, cuantas, huellas, vistos, openverse, paginas_openverse):
+def recolectar_clase(clase, cuantas, huellas, vistos, openverse, paginas_openverse,
+                     fuentes=FUENTES_DISPONIBLES, paginas_web=None):
     carpeta = os.path.join(CANDIDATOS, clase)
     os.makedirs(carpeta, exist_ok=True)
     fuentes_csv = os.path.join(carpeta, "fuentes.csv")
@@ -469,34 +709,44 @@ def recolectar_clase(clase, cuantas, huellas, vistos, openverse, paginas_openver
     if ya >= cuantas:
         print(f"  {clase}: ya tiene {ya} candidatas (se buscaban {cuantas})")
         return ya
-    config = CONSULTAS.get(clase)
-    if not config:
-        print(f"  {clase}: sin consultas definidas en CONSULTAS; se salta")
+    config = CONSULTAS.get(clase, {"categorias": [], "commons": [], "openverse": []})
+
+    # (nombre, generador, máximo de resultados a mirar)
+    generadores = []
+    if "openimages" in fuentes and (clase in openimages.FRUTAS or clase in openimages.PLATOS):
+        generadores.append(("openimages", openimages.resultados_para(clase, 5000), None))
+    if "web" in fuentes and paginas_web and paginas_web.get(clase):
+        generadores.append(("web", WEB.resultados(paginas_web[clase]), None))
+    if "commons" in fuentes:
+        generadores += [(f"commons categoría '{c}'", commons_categoria(c), MAXIMO_POR_CONSULTA) for c in config["categorias"]]
+        generadores += [(f"commons búsqueda '{q}'", commons_busqueda(q), MAXIMO_POR_CONSULTA) for q in config["commons"]]
+    if "openverse" in fuentes:
+        generadores += [(f"openverse '{q}'", openverse.resultados(q, paginas_openverse), MAXIMO_POR_CONSULTA)
+                        for q in config["openverse"]]
+    if not generadores:
+        print(f"  {clase}: ninguna fuente tiene búsquedas para esta clase; se salta")
         return ya
 
-    generadores = [(f"commons categoría '{c}'", commons_categoria(c)) for c in config["categorias"]]
-    generadores += [(f"commons búsqueda '{q}'", commons_busqueda(q)) for q in config["commons"]]
-    generadores += [(f"openverse '{q}'", openverse.resultados(q, paginas_openverse)) for q in config["openverse"]]
-
     guardadas = ya
-    for consulta, generador in generadores:
+    for consulta, generador, maximo in generadores:
         revisadas = 0
         lote = []
         for candidata in generador:
             revisadas += 1
-            if revisadas > MAXIMO_POR_CONSULTA:
+            if maximo and revisadas > maximo:
                 break
             clave = f"{candidata['fuente']}:{candidata['id']}"
             if clave in vistos:
                 continue
             vistos[clave] = clase
-            if PATRON_EXCLUIDO.search(candidata["titulo"]):
+            if candidata["fuente"] != "web" and PATRON_EXCLUIDO.search(candidata["titulo"]):
                 registrar(clase, candidata["fuente"], candidata["id"], "titulo_excluido", candidata["titulo"][:120])
                 continue
             if candidata["ancho"] and candidata["alto"] and min(candidata["ancho"], candidata["alto"]) < LADO_MINIMO:
                 registrar(clase, candidata["fuente"], candidata["id"], "pequena", f"{candidata['ancho']}x{candidata['alto']}")
                 continue
-            candidata["consulta"] = consulta
+            consulta_web = candidata.pop("consulta_web", "")
+            candidata["consulta"] = f"web: {consulta_web}" if consulta_web else consulta
             lote.append(candidata)
             if len(lote) >= TAMANO_LOTE:
                 guardadas = procesar_lote(clase, lote, carpeta, fuentes_csv, huellas, guardadas, cuantas)
@@ -510,8 +760,32 @@ def recolectar_clase(clase, cuantas, huellas, vistos, openverse, paginas_openver
         if guardadas >= cuantas:
             break
     if guardadas < cuantas:
-        print(f"  {clase}: solo se encontraron {guardadas} de {cuantas} (no hay más fotos con licencia abierta en estas búsquedas)")
+        print(f"  {clase}: solo se encontraron {guardadas} de {cuantas} con estas fuentes y búsquedas")
     return guardadas
+
+
+def refiltrar(clases):
+    """Pasa los filtros actuales (tamaño, color, fondo blanco en frutas) a
+    candidatas que se bajaron antes de que existieran. Las que no pasan se
+    MUEVEN a dataset_candidatos/_descartadas/<clase>/ (no se borran)."""
+    for clase in clases:
+        carpeta = os.path.join(CANDIDATOS, clase)
+        if not os.path.isdir(carpeta):
+            continue
+        movidas = 0
+        for archivo in sorted(a for a in os.listdir(carpeta) if a.endswith(".jpg")):
+            ruta = os.path.join(carpeta, archivo)
+            with open(ruta, "rb") as f:
+                contenido = f.read()
+            try:
+                preparar(contenido, clase)
+            except Exception as e:
+                destino = os.path.join(CANDIDATOS, "_descartadas", clase)
+                os.makedirs(destino, exist_ok=True)
+                os.replace(ruta, os.path.join(destino, archivo))
+                registrar(clase, "refiltro", archivo, "descartada_al_refiltrar", str(e)[:120])
+                movidas += 1
+        print(f"  {clase}: {movidas} candidatas no pasan los filtros actuales -> _descartadas/{clase}/")
 
 
 def main():
@@ -526,7 +800,22 @@ def main():
                              "Para una segunda ronda: repetir las búsquedas viejas solo gasta cuota, porque ya se vieron")
     parser.add_argument("--mas", type=int, metavar="N",
                         help="Busca N candidatas nuevas por clase además de las que ya hay (ignora --objetivo y --margen)")
+    parser.add_argument("--fuentes", default=",".join(FUENTES_DISPONIBLES),
+                        help="Fuentes a usar, separadas por coma: " + ", ".join(FUENTES_DISPONIBLES))
+    parser.add_argument("--refiltrar", action="store_true",
+                        help="Solo pasa los filtros actuales a las candidatas que ya existen (no descarga nada)")
+    parser.add_argument("--paginas-web", metavar="ARCHIVO.json",
+                        help='Páginas por clase para la fuente web: {"clase": [{"url": ..., "consulta": ...}, ...]}')
     args = parser.parse_args()
+    fuentes = tuple(f.strip() for f in args.fuentes.split(",") if f.strip())
+    desconocidas_f = set(fuentes) - set(FUENTES_DISPONIBLES)
+    if desconocidas_f:
+        sys.exit(f"Fuentes desconocidas: {sorted(desconocidas_f)}")
+    paginas_web = leer_json(args.paginas_web, {}) if args.paginas_web else {}
+    if args.refiltrar:
+        refiltrar(args.clases or sorted(c for c in os.listdir(CANDIDATOS)
+                                        if os.path.isdir(os.path.join(CANDIDATOS, c)) and not c.startswith("_")))
+        return
     if args.consultas:
         with open(args.consultas, encoding="utf-8") as f:
             CONSULTAS.update(json.load(f))
@@ -572,7 +861,7 @@ def main():
         if cuantas == 0:
             continue
         print(f"\n{clase} (buscar {cuantas}; consultas de Openverse que quedan hoy: {openverse.disponibles})")
-        recolectar_clase(clase, cuantas, huellas, vistos, openverse, args.paginas_openverse)
+        recolectar_clase(clase, cuantas, huellas, vistos, openverse, args.paginas_openverse, fuentes, paginas_web)
 
     print(f"\nListo. Consultas de Openverse que quedan hoy: {openverse.disponibles}")
     print("Revisar con: python3 revisar_candidatos.py")

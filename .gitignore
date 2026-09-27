@@ -26,6 +26,8 @@ dataset_removidos/
 reportes_limpieza/
 # Fotos candidatas de recolectar_candidatos.py (se revisan antes de entrar al dataset).
 dataset_candidatos/
+# Rechazados en la revisión (revisar_candidatos.py --aplicar); nunca se borran.
+dataset_rechazados/
 
 # macOS
 .DS_Store
