@@ -9,13 +9,40 @@ Para quien construya el frontend de la gamificación. Todos los ejemplos son **r
 ## Reglas (para diseñar las pantallas)
 
 - Se gana XP por **registrar**: una comida (guardada por `/predecir` o por `/confirmar-alimento`) o el estado de ánimo del día.
-- El XP **no depende** de qué se comió ni de qué ánimo se reportó. Nunca mostrar mensajes que premien comer "bien", calorías, peso ni cuerpo, ni que premien sentirse bien.
+- **Puntos v2 (27 sep):** un bonus pequeño por **elección nutritiva** (+5, máx. 3 al día) y **misiones diarias** fijas (+10 cada una). Nunca se resta XP por lo que se comió: la penalización por ultraprocesados existe pero vale 0. Ver la sección "Puntos v2" más abajo.
+- El XP **no depende** del ánimo reportado. Nunca mostrar mensajes que premien calorías, peso ni cuerpo, ni que premien sentirse bien, ni que regañen por lo que se comió.
 - Cada acción tiene un **tope diario**. Pasado el tope, la acción se guarda igual, pero da 0 XP (`tope_diario_alcanzado: true`).
 - **Racha:** días seguidos con al menos una actividad. Si un día no hay actividad, se reinicia.
 - **Meta diaria:** llegar a `meta` XP en el día.
 - **Pérdida por inactividad (nuevo, 27 sep):** cada día completo sin ninguna actividad resta `xp_perdido_por_dia_inactivo` XP (hoy 5), con un tope de `tope_perdida_por_periodo` (hoy 20) por cada ausencia. El XP nunca baja de 0. **El nivel nunca baja** y **nada de lo desbloqueado se vuelve a bloquear**: ambos dependen del nivel máximo alcanzado. Con `xp_perdido_por_dia_inactivo = 0` la pérdida está apagada.
 - **Sin rankings** ni comparaciones con otros usuarios (lo promete `guialumea.html`).
 - **Sin insignias ni logros** por ahora (decisión del equipo, 27 sep).
+
+### Puntos v2: cuánto da cada cosa
+
+| Qué | XP | Tope |
+|---|---|---|
+| Registrar una comida | +10 | 5 al día |
+| Elección nutritiva (extra, sobre la comida) | +5 | 3 al día |
+| Misión "Registra una fruta" | +10 | 1 al día |
+| Misión "Registra 3 comidas" | +10 | 1 al día |
+| Misión "Haz tu check-in de ánimo" | +10 | 1 al día |
+| Registrar el estado de ánimo | +5 | 1 al día |
+| Día inactivo | −5 | −20 por ausencia |
+| Registrar un ultraprocesado | **0** (parámetro existe, apagado) | — |
+
+- **Elección nutritiva:** el alimento **final** (el que quedó guardado: el reconocido o el confirmado) no es un código de grupo (`sopas`, `dulces`, `tamal`...), no tiene sellos de advertencia (lista vacía; si no se sabe, no cuenta) y no es un producto de paquete (dulces, papas y chitos, bebidas azucaradas).
+- **Misiones:** fijas, iguales todos los días, una vez al día cada una. Cuentan desde la medianoche.
+- **Ultraprocesados:** al registrar un producto de paquete, `/predecir` y `/confirmar-alimento` devuelven `mensaje_educativo`: un dato y una alternativa para otro día, nunca un regaño. **No se resta XP.**
+
+### Por qué la penalización por ultraprocesados vale 0
+
+El parámetro `XP_PENALIZACION_ULTRAPROCESADO` existe en `gamificacion_config.py`, pero vale 0, y con 0 no resta nada. Es a propósito:
+
+1. **Honestidad de los registros.** Si registrar una gaseosa quita puntos, la forma fácil de no perderlos es no registrarla. La app deja de reflejar lo que de verdad se come y pierde su sentido.
+2. **No asociar culpa a la comida en adolescentes.** La guía de la Academia Americana de Pediatría para prevenir la obesidad y los trastornos alimentarios en adolescentes (Golden et al., 2016, *Pediatrics* 138(3):e20161649) recomienda no promover dietas ni hablar de comida o peso en términos de culpa, y enfocarse en hábitos. Por eso el único efecto de "qué se comió" es un bonus positivo y pequeño.
+
+Cambiarlo es una decisión del equipo, no un ajuste técnico.
 
 ### Cómo funciona la pérdida (para explicarla en la sustentación)
 
@@ -86,6 +113,18 @@ Ejemplo real de alguien que vuelve después de 3 días sin actividad (tenía 35 
 (`meta_diaria.xp_hoy` dice 35 porque en la prueba se registró ese mismo día; con una ausencia de verdad sería 0.)
 
 La segunda llamada del mismo día responde lo mismo pero con `"xp_perdido_desde_ultima_visita": 0` y `"mensaje_regreso": null`: **el aviso se da una sola vez**.
+
+**Misiones del día** (campo `misiones` de `GET /progreso`, respuesta real después de registrar una fruta, tres comidas y el ánimo):
+
+```json
+"misiones": [
+  { "id": "fruta", "nombre": "Registra una fruta", "xp": 10, "cumplida": true },
+  { "id": "tres_comidas", "nombre": "Registra 3 comidas", "xp": 10, "cumplida": true },
+  { "id": "check_in_animo", "nombre": "Haz tu check-in de ánimo", "xp": 10, "cumplida": true }
+]
+```
+
+Y `reglas` trae además `misiones_diarias` y `xp_penalizacion_ultraprocesado` (hoy 0), y `acciones` incluye `eleccion_nutritiva`.
 
 Notas:
 - `nivel` es el **nivel máximo alcanzado**: nunca baja. Después de perder XP, `xp_total` puede quedar **por debajo** de `xp_inicio_nivel` (en el ejemplo, 20 con el nivel 2 empezando en 30). Para la barra de progreso usa `max(0, xp_total - xp_inicio_nivel) / (xp_siguiente_nivel - xp_inicio_nivel)`, o muestra "te faltan `xp_faltante_siguiente_nivel` XP para el nivel 3".
@@ -264,20 +303,49 @@ Respuesta `200`:
 
 ## Cambios en endpoints que ya existían
 
-`POST /predecir` (cuando guarda), `POST /confirmar-alimento` y `POST /estado-animo` traen la clave `gamificacion`. Es `null` cuando no aplica (predicción sin `email`, o si el registro no se guardó). Si no es `null` (respuesta real de `/confirmar-alimento`):
+`POST /predecir` (cuando guarda), `POST /confirmar-alimento` y `POST /estado-animo` traen la clave `gamificacion`. Es `null` cuando no aplica (predicción sin `email`, o si el registro no se guardó). Si no es `null` (respuesta real de `/confirmar-alimento` con banano, la primera comida del día):
 
 ```json
 {
   "accion": "comida_registrada",
-  "xp_ganado": 10,
+  "xp_ganado": 25,
+  "detalle_xp": [
+    { "motivo": "comida_registrada", "xp": 10 },
+    { "motivo": "eleccion_nutritiva", "xp": 5 },
+    { "motivo": "mision_fruta", "xp": 10 }
+  ],
   "tope_diario_alcanzado": false,
-  "xp_total": 30,
-  "nivel": 2,
-  "subio_de_nivel": true,
+  "misiones_cumplidas": [ { "id": "fruta", "nombre": "Registra una fruta", "xp": 10 } ],
+  "xp_total": 25,
+  "nivel": 1,
+  "subio_de_nivel": false,
   "racha_actual": 1,
-  "meta_diaria": { "xp_hoy": 30, "meta": 15, "cumplida": true, "recien_cumplida": false }
+  "meta_diaria": { "xp_hoy": 25, "meta": 15, "cumplida": true, "recien_cumplida": true }
 }
 ```
+
+- **`xp_ganado` es el total de esta acción** (antes era solo el de la acción base): muéstralo como "+25 XP". `detalle_xp` dice de dónde salió cada parte, por si quieres mostrarlo ("+10 comida, +5 elección nutritiva, +10 misión").
+- `misiones_cumplidas` trae las misiones que se cumplieron **con esta acción**: celebración ("¡Misión cumplida: Registra una fruta!").
+- `tope_diario_alcanzado` se refiere a la acción base (la comida o el ánimo).
+
+Y la misma respuesta, con una bebida de paquete (la tercera comida del día), trae además en la raíz:
+
+```json
+{
+  "alimento_codigo": "cocacola_original",
+  "sellos_advertencia": ["azucares", "edulcorantes"],
+  "mensaje_educativo": "Dato: las gaseosas y bebidas azucaradas tienen bastante azúcar añadida. Si otro día quieres variar, el agua con limón o un jugo de fruta natural también refrescan.",
+  "gamificacion": {
+    "xp_ganado": 20,
+    "detalle_xp": [
+      { "motivo": "comida_registrada", "xp": 10 },
+      { "motivo": "mision_tres_comidas", "xp": 10 }
+    ]
+  }
+}
+```
+
+(Recortada.) Sin bonus, **sin resta**, y `mensaje_educativo` para mostrar con tono amable. Es `null` para lo que no es de paquete.
 
 - `subio_de_nivel` y `meta_diaria.recien_cumplida` son `true` solo en la acción que lo provocó: úsalos para mostrar una celebración una sola vez. Al subir de nivel puede haber ropa o accesorios nuevos: `GET /avatar` los muestra desbloqueados.
 - `nivel` es el nivel máximo (nunca baja).
