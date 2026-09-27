@@ -11,3 +11,38 @@ scikit-learn  # solo para evaluar_modelos.py (reporte de clasificación/matriz d
 matplotlib  # solo para evaluar_modelos.py (heatmaps de la matriz de confusión)
 seaborn  # solo para evaluar_modelos.py (heatmaps de la matriz de confusión)
 imagehash  # solo para limpiar_dataset.py (duplicados y casi-duplicados del dataset)
+bcrypt # solo para auth.py (hashing de contraseñas)
+
+@app.route('/login', methods=['POST'])
+
+    data = request.get_json()
+    email = data.get('email')
+    contraseña = data.get('contraseña')
+
+    if not email or not contraseña:
+        return jsonify({"error": "Correo y contraseña son requeridos"}), 400
+
+    cursor = self.conexion.cursor(dictionary=True)
+    try:
+        query = "SELECT id, email, objetivo, password_hash FROM perfil WHERE email = %s"
+        cursor.execute(query, (email,)) #
+        perfil = cursor.fetchone() # 
+
+        if not perfil:
+            return jsonify({"error": "Usuario no encontrado"}), 404
+
+        contraseña_valida = bcrypt.checkpw(contraseña.encode('utf-8'), 
+        perfil['password_hash'].encode('utf-8'))
+        if not contraseña_valida:
+            return jsonify({"error": "Contraseña inválida"}), 401
+
+        if contraseña_valida:
+            del perfil['password_hash']  # No enviar el hash de contraseña al cliente
+            return jsonify({"message": "Inicio de sesión exitoso", "perfil": perfil}), 200
+        else:
+            return jsonify({"error": "Contraseña inválida"}), 401
+    except Error as e:
+        print(f"Error al verificar inicio de sesión: {e}")
+        return jsonify({"error": "Error interno del servidor"}), 500
+    finally:
+        cursor.close()  

@@ -129,8 +129,6 @@ def formatear_nombre(nombre_tecnico):
         'tiramisu': 'Tiramisú',
         'tuna_tartare': 'Tartar de atún',
         'waffles': 'Waffles',
-        # TODO: agregar aquí los 26 códigos de tus platos regionales colombianos
-        # a medida que definas sus nombres_técnicos en el dataset de entrenamiento.
     }
     return traducciones.get(nombre_tecnico, nombre_tecnico.replace('_', ' ').title())
 
@@ -324,6 +322,34 @@ def obtener_perfil():
         return jsonify({'success': True, 'perfil': perfil}), 200
     return jsonify({'success': False, 'mensaje': 'No hay perfil guardado con ese correo.'}), 404
 
+# ==== Login de usuario (verificación de contraseña) ====
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    email = data.get('email')
+    contraseña = data.get('contraseña')
+
+    if not email or not contraseña:
+        return jsonify({"error": "Correo y contraseña son requeridos"}), 400
+
+    try:
+        # 1. Usar el método de verificación segura (maneja usuarios inexistentes y cuentas viejas)
+        if not db.verificar_contraseña(email, contraseña):
+            # 💡 SEGURIDAD: Respondemos 401 tanto para contraseña incorrecta, cuenta vieja o email inexistente
+            return jsonify({"error": "Credenciales inválidas"}), 401
+
+        # 2. Si es válida, obtenemos los datos limpios (sin el password_hash)
+        perfil = db.obtener_datos_login(email)
+        
+        return jsonify({
+            "message": "Inicio de sesión exitoso", 
+            "perfil": perfil
+        }), 200
+        
+    except Exception as e:
+        print(f"Error interno en inicio de sesión: {e}")
+        return jsonify({"error": "Error interno del servidor"}), 500
+
 
 # ====== Estado de ánimo (check-in diario, separado del perfil) ======
 @app.route('/estado-animo', methods=['POST'])
@@ -404,7 +430,7 @@ def lista_alimentos():
         return jsonify({'error': f'Error al obtener la lista de alimentos: {str(e)}'}), 500
 
 
-# ==== Cargar alimentos desde CSV ====
+# ==== Cargar alimentos desde CSV ====  # YA NO SE USA, ASÍ QUE DEBE ELIMINARSE 
 @app.route('/cargar-alimentos-csv', methods=['POST'])
 def cargar_alimentos_csv():
     """

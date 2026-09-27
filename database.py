@@ -1,3 +1,4 @@
+import email
 import os
 import io
 import csv
@@ -5,6 +6,9 @@ from datetime import date, timedelta
 import mysql.connector
 from mysql.connector import Error
 from dotenv import load_dotenv
+from flask import Flask, jsonify, request
+import bcrypt  # Para hashing de contraseñas
+
 
 # Carga las variables definidas en el archivo .env (mismo directorio que este script)
 load_dotenv()
@@ -12,9 +16,6 @@ load_dotenv()
 
 def conectar_mysql():
     """Establece la conexión inicial con el servidor MySQL.
-
-    La contraseña NUNCA debe quedar escrita en el código fuente. Se lee desde
-    una variable de entorno (archivo .env) que no se sube al repositorio.
     """
     password = os.getenv("MYSQL_PASSWORD", "")
     host = os.getenv("MYSQL_HOST", "127.0.0.1")  # Cambiar en .env el día de la sustentación
@@ -79,7 +80,9 @@ class BaseDatos:
                     edad INT,
                     genero VARCHAR(20),
                     peso FLOAT,
-                    altura INT
+                    altura INT, 
+                    password_hash CHAR(60),  -- hash de contraseña (bcrypt)
+                    objetivo VARCHAR(50)  -- metas de HÁBITO 
                 )
             ''')
 
@@ -93,9 +96,6 @@ class BaseDatos:
             ''')
 
             # 4. TABLA DE SUEÑO
-            # Nota: renombrada de 'sueño' a 'sueno' (sin eñe) para evitar problemas
-            # de identificador según el charset/collation del cliente MySQL que use
-            # cada máquina el día de la presentación. Ver explicación en el chat.
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS sueno (
                     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -105,7 +105,7 @@ class BaseDatos:
                 )
             ''')
 
-            # 5. TABLA DE ACTIVIDAD FÍSICA
+            # 5. TABLA DE ACTIVIDAD FÍSICA # REVISIÓN: NO SE HA IMPLEMENTADO HASTA AHORA, PERO SE DEJA PORQUE ES PARTE DEL MVP. ADEMÁS, QUEDA COMO POSIBLE MEJORA
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS actividad_fisica (
                     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -126,8 +126,7 @@ class BaseDatos:
                 )
             ''')
 
-            # 7. TABLA DE ESTADO DE ÁNIMO (check-in diario, separado del perfil
-            # porque cambia todo el tiempo -- el perfil se llena una sola vez)
+            # 7. TABLA DE ESTADO DE ÁNIMO (check-in diario, separado del perfil)
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS estado_animo (
                     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -164,6 +163,7 @@ class BaseDatos:
             self._asegurar_columna(cursor, "historial_comida", "usuario_id", "usuario_id INT AFTER id")
             self._asegurar_columna(cursor, "estado_animo", "usuario_id", "usuario_id INT AFTER id")
             self._asegurar_indice_unico(cursor, "perfil", "email", "uq_perfil_email")
+            self._asegurar_columna(cursor, "perfil", "password_hash", "password_hash CHAR(60) NOT NULL AFTER objetivo") # No after objetivo porque es obligatorio y no puede ser NULL
             self.conexion.commit()
 
         except Error as e:
@@ -230,7 +230,7 @@ class BaseDatos:
         except Error as e:
             print(f"No se pudo verificar tabla_alimentos: {e}")
 
-    # ==== Exportar datos desde EXCEL/CSV ====
+    # ==== Exportar datos desde EXCEL/CSV ==== _> Metodo que se va a ELIMINAR porque es innecesario 
     def cargar_alimentos_desde_csv(self, texto_csv):
         """Carga los alimentos desde un CSV a la tabla maestra.
         Columnas esperadas: alimento_codigo, nombre_pantalla, calorias, es_saludable
@@ -275,11 +275,11 @@ class BaseDatos:
         "dormir_mejor", "conocer_lo_que_como",
     }
 
-    def guardar_perfil(self, nombre, email, edad, genero, peso, altura, objetivo=None):
+    def guardar_perfil(self, nombre, email, edad, genero, peso, altura, objetivo=None, contraseña=None):
         """Crea el perfil si el correo es nuevo, o actualiza el existente si ya
         existe -- 'email' es el identificador único de cada usuario (ver
-        DEFENSA_TECNICA_LUMEA.md sección 5: perfiles múltiples sin contraseña,
-        decisión de alcance deliberada). Ya no hay un único perfil fijo en id=1."""
+        DEFENSA_TECNICA_LUMEA.md sección 5: perfiles múltiples con contraseña.
+        Ya no hay un único perfil fijo en id=1."""
         if not self.conexion or not self.conexion.is_connected():
             return False
         if objetivo is not None and objetivo not in self.OBJETIVOS_VALIDOS:
@@ -287,14 +287,19 @@ class BaseDatos:
             return False
         cursor = self.conexion.cursor()
         try:
+            hash_contraseña = None
+            if contraseña: 
+                salt = bcrypt.gensalt()
+                hash_contraseña = bcrypt.hashpw(contraseña.encode('utf-8'), salt).decode('utf-8')
             sql = '''
-                INSERT INTO perfil (nombre, email, edad, genero, peso, altura, objetivo)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO perfil (nombre, email, edad, genero, peso, altura, objetivo, password_hash)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 ON DUPLICATE KEY UPDATE
                     nombre = VALUES(nombre), edad = VALUES(edad), genero = VALUES(genero),
-                    peso = VALUES(peso), altura = VALUES(altura), objetivo = VALUES(objetivo)
+                    peso = VALUES(peso), altura = VALUES(altura), objetivo = VALUES(objetivo), 
+                    password_hash = IFNULL(VALUES(password_hash), password_hash)  -- no se cambia el hash de contraseña aquí
             '''
-            cursor.execute(sql, (nombre, email, edad, genero, peso, altura, objetivo))
+            cursor.execute(sql, (nombre, email, edad, genero, peso, altura, objetivo, hash_contraseña))
             self.conexion.commit()
             return True
         except Error as e:
@@ -303,19 +308,56 @@ class BaseDatos:
         finally:
             cursor.close()
 
-    def obtener_perfil_por_email(self, email):
+    def obtener_perfil_por_email(self, email): # - Aquí hay un error 
         if not self.conexion or not self.conexion.is_connected():
             return None
-        cursor = self.conexion.cursor(dictionary=True)
+        cursor = self.conexion.cursor(dictionary=True)      
         try:
             cursor.execute('SELECT * FROM perfil WHERE email = %s', (email,))
             return cursor.fetchone()
+            if perfil and "password_hash" in perfil:
+                del perfil["password_hash"]  # No enviar el hash de contraseña al cliente
+            return perfil 
+    
         except Error as e:
             print(f"Error al obtener perfil: {e}")
             return None
         finally:
             cursor.close()
 
+    def verificar_contraseña(self, email, contraseña):
+        """Verifica si la contraseña proporcionada coincide con el hash almacenado."""
+        if not self.conexion or not self.conexion.is_connected():
+            return False
+        cursor = self.conexion.cursor(dictionary=True)
+        try:
+            cursor.execute('SELECT password_hash FROM perfil WHERE email = %s', (email,))
+            fila = cursor.fetchone()
+            if fila is None or fila['password_hash'] is None:
+                return False  # Usuario no encontrado
+            password_hash = fila['password_hash']
+    
+            return bcrypt.checkpw(contraseña.encode('utf-8'), password_hash.encode('utf-8'))
+        except Error as e:
+            print(f"Error al verificar contraseña: {e}")
+            return False
+        finally:
+            cursor.close()
+
+
+    def obtener_datos_login(self, email):
+        """Método para obtener los datos de inicio de sesión del usuario de manera segura, sin exponer el hash de la contraseña."""
+        if not self.conexion or not self.conexion.is_connected():
+            return None
+        cursor = self.conexion.cursor(dictionary=True)
+        try:
+            cursor.execute('SELECT id, email, objetivo FROM perfil WHERE email = %s', (email,))
+            return cursor.fetchone()
+        except Error as e:
+            print(f"Error al obtener datos de login: {e}")
+            return None
+        finally:
+            cursor.close()  
     # ================= MÓDULO HISTORIAL Y ALIMENTOS =================
     def registrar_comida(self, alimento_codigo, nombre_amigable, certeza, calorias, balanceado, usuario_id=None):
         """Inserta un registro de comida procesada por la IA.
