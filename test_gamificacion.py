@@ -20,9 +20,13 @@ import unittest
 from datetime import date, timedelta
 from unittest import mock
 
+import json
+import os
+
 import gamificacion as g
 import gamificacion_config as config
 from database import BaseDatos, conectar_mysql
+from grupos_confusion import GRUPOS_CONFUSION
 
 # Valores válidos de DiceBear avataaars 9.x, copiados del esquema oficial
 # (@dicebear/avataaars 9.4.2, lib/schema.js) el 26 sep 2026. Si alguien
@@ -176,6 +180,99 @@ class TestUrlAvatar(unittest.TestCase):
         # La semilla sale del catálogo; nunca debe parecer un correo.
         for avatar in config.AVATARES:
             self.assertNotIn("@", avatar["semilla"])
+
+
+def opcion_de_grupo(grupo_id, indice=0):
+    grupo = next(gr for gr in GRUPOS_CONFUSION if gr["id"] == grupo_id)
+    return grupo["opciones"][indice]["codigo"]
+
+
+class TestPuntosV2(unittest.TestCase):
+    """Elección nutritiva, ultraprocesados y misiones (lógica pura)."""
+
+    def test_eleccion_nutritiva_fruta_sin_sellos(self):
+        self.assertTrue(g.es_eleccion_nutritiva("banano", []))
+
+    def test_con_sellos_no_es_eleccion_nutritiva(self):
+        self.assertFalse(g.es_eleccion_nutritiva("chicharron", ["sodio", "grasas_saturadas"]))
+
+    def test_sin_saber_los_sellos_no_cuenta(self):
+        self.assertFalse(g.es_eleccion_nutritiva("banano", None))
+
+    def test_los_codigos_de_grupo_nunca_cuentan(self):
+        for codigo in ("sopas", "dulces", "tamal", "frituras_empaquetadas", "gaseosas_bebidas_azucaradas"):
+            with self.subTest(codigo=codigo):
+                self.assertFalse(g.es_eleccion_nutritiva(codigo, []))
+
+    def test_un_producto_de_paquete_sin_sellos_no_cuenta(self):
+        # Algunas frituras de paquete no pasan ningún umbral de sellos:
+        # igual son de paquete, así que no dan el bonus.
+        for grupo_id in config.GRUPOS_PRODUCTO_DE_PAQUETE:
+            with self.subTest(grupo=grupo_id):
+                self.assertFalse(g.es_eleccion_nutritiva(opcion_de_grupo(grupo_id), []))
+
+    def test_platos_confirmados_de_un_grupo_si_cuentan(self):
+        # "ajiaco" es una opción del grupo sopas (no el código del grupo).
+        self.assertTrue(g.es_eleccion_nutritiva("ajiaco", []))
+
+    def test_mensaje_educativo_solo_para_productos_de_paquete(self):
+        self.assertIsNone(g.mensaje_educativo("banano"))
+        self.assertIsNone(g.mensaje_educativo("ajiaco"))
+        for grupo_id in config.GRUPOS_PRODUCTO_DE_PAQUETE:
+            with self.subTest(grupo=grupo_id):
+                self.assertEqual(g.mensaje_educativo(opcion_de_grupo(grupo_id)), config.MENSAJES_ULTRAPROCESADO[grupo_id])
+                self.assertEqual(g.mensaje_educativo(grupo_id), config.MENSAJES_ULTRAPROCESADO[grupo_id])
+
+    def test_mensajes_educativos_amables_y_con_alternativa(self):
+        for grupo_id, mensaje in config.MENSAJES_ULTRAPROCESADO.items():
+            with self.subTest(grupo=grupo_id):
+                texto = mensaje.lower()
+                self.assertIn("otro día", texto)  # propone una alternativa para otro momento
+                for palabra in ("saludable", "malo", "evita", "no deberías", "culpa", "peso", "engorda"):
+                    self.assertNotIn(palabra, texto)
+
+    def test_penalizacion_en_0_no_resta_nada(self):
+        self.assertEqual(config.XP_PENALIZACION_ULTRAPROCESADO, 0)
+        self.assertEqual(g.penalizacion_ultraprocesado(opcion_de_grupo("gaseosas_bebidas_azucaradas")), 0)
+
+    def test_penalizacion_si_se_activara(self):
+        with mock.patch.object(config, "XP_PENALIZACION_ULTRAPROCESADO", 3):
+            self.assertEqual(g.penalizacion_ultraprocesado(opcion_de_grupo("dulces")), 3)
+            self.assertEqual(g.penalizacion_ultraprocesado("banano"), 0)
+
+    def test_mision_fruta(self):
+        self.assertEqual(g.misiones_nuevas("comida_registrada", "mango", 1, set()), ["fruta"])
+        self.assertEqual(g.misiones_nuevas("comida_registrada", "arepa", 1, set()), [])
+
+    def test_mision_tres_comidas(self):
+        self.assertEqual(g.misiones_nuevas("comida_registrada", "arepa", 2, set()), [])
+        self.assertEqual(g.misiones_nuevas("comida_registrada", "arepa", config.COMIDAS_PARA_MISION, set()), ["tres_comidas"])
+
+    def test_mision_check_in_animo(self):
+        self.assertEqual(g.misiones_nuevas("estado_animo", None, 0, set()), ["check_in_animo"])
+
+    def test_cada_mision_una_vez_al_dia(self):
+        ya = {"fruta", "tres_comidas", "check_in_animo"}
+        self.assertEqual(g.misiones_nuevas("comida_registrada", "uva", 5, ya), [])
+        self.assertEqual(g.misiones_nuevas("estado_animo", None, 0, ya), [])
+
+    def test_estado_de_las_misiones(self):
+        estado = g.estado_misiones({"fruta"})
+        self.assertEqual([m["id"] for m in estado], [m["id"] for m in config.MISIONES_DIARIAS])
+        self.assertEqual({m["id"]: m["cumplida"] for m in estado},
+                         {m["id"]: m["id"] == "fruta" for m in config.MISIONES_DIARIAS})
+
+    def test_config_de_puntos_v2_coherente(self):
+        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "clases.json"), encoding="utf-8") as f:
+            clases = json.load(f)
+        clases = set(clases.values()) if isinstance(clases, dict) else set(clases)
+        for fruta in config.FRUTAS:
+            self.assertIn(fruta, clases)
+        ids_grupos = {gr["id"] for gr in GRUPOS_CONFUSION}
+        for grupo_id in config.GRUPOS_PRODUCTO_DE_PAQUETE:
+            self.assertIn(grupo_id, ids_grupos)
+            self.assertIn(grupo_id, config.MENSAJES_ULTRAPROCESADO)
+        self.assertEqual({m["id"] for m in config.MISIONES_DIARIAS}, {"fruta", "tres_comidas", "check_in_animo"})
 
 
 class TestPerdidaPorInactividad(unittest.TestCase):
@@ -401,7 +498,8 @@ class TestConMySQL(unittest.TestCase):
         hoy = date.today()
         self._poner(xp_total=90, nivel_maximo=3, ultima_fecha_actividad=hoy - timedelta(days=3))
         resumen = g.registrar_actividad(self.db, USUARIO_PRUEBA, "estado_animo", estado_animo="bien")
-        xp_animo = config.ACCIONES["estado_animo"]["xp"]
+        xp_animo = config.ACCIONES["estado_animo"]["xp"] + g.mision_por_id("check_in_animo")["xp"]
+        self.assertEqual(resumen["xp_ganado"], xp_animo)
         self.assertEqual(resumen["xp_total"], 90 - 2 * XP_DIA + xp_animo)
         self.assertEqual(resumen["nivel"], 3)
         self.assertFalse(resumen["subio_de_nivel"])
@@ -430,6 +528,47 @@ class TestConMySQL(unittest.TestCase):
         self.assertEqual(cuerpo["base"]["id"], "base_2")
         self.assertEqual(g.elegir_base(self.db, USUARIO_PRUEBA, "base_9")[1], 400)
         self.assertEqual(g.equipar(self.db, USUARIO_PRUEBA, "accesorio", "buzo_verde")[1], 400)
+
+    def test_puntos_v2_comidas_bonus_y_misiones(self):
+        xp_comida = config.ACCIONES["comida_registrada"]["xp"]
+        bonus = config.ACCIONES["eleccion_nutritiva"]["xp"]
+        xp_mision = {m["id"]: m["xp"] for m in config.MISIONES_DIARIAS}
+
+        # 1. Una fruta sin sellos: comida + elección nutritiva + misión "fruta".
+        r = g.registrar_actividad(self.db, USUARIO_PRUEBA, "comida_registrada", alimento_codigo="banano", sellos=[])
+        self.assertEqual(r["xp_ganado"], xp_comida + bonus + xp_mision["fruta"])
+        self.assertEqual([m["id"] for m in r["misiones_cumplidas"]], ["fruta"])
+        self.assertEqual({d["motivo"] for d in r["detalle_xp"]}, {"comida_registrada", "eleccion_nutritiva", "mision_fruta"})
+
+        # 2. Otra fruta: la misión ya estaba cumplida hoy.
+        r = g.registrar_actividad(self.db, USUARIO_PRUEBA, "comida_registrada", alimento_codigo="uva", sellos=[])
+        self.assertEqual(r["xp_ganado"], xp_comida + bonus)
+
+        # 3. Una bebida de paquete: sin bonus, sin castigo (penalización en 0)
+        #    y es la tercera comida: misión "tres_comidas".
+        gaseosa = opcion_de_grupo("gaseosas_bebidas_azucaradas")
+        r = g.registrar_actividad(self.db, USUARIO_PRUEBA, "comida_registrada", alimento_codigo=gaseosa, sellos=["azucares"])
+        self.assertEqual(r["xp_ganado"], xp_comida + xp_mision["tres_comidas"])
+
+        # 4. Cuarta comida nutritiva: el bonus ya se dio 2 veces, queda 1.
+        r = g.registrar_actividad(self.db, USUARIO_PRUEBA, "comida_registrada", alimento_codigo="ajiaco", sellos=[])
+        self.assertEqual(r["xp_ganado"], xp_comida + bonus)
+        # 5. Quinta: el bonus llegó a su tope de 3 al día.
+        r = g.registrar_actividad(self.db, USUARIO_PRUEBA, "comida_registrada", alimento_codigo="pera", sellos=[])
+        self.assertEqual(r["xp_ganado"], xp_comida)
+
+        p = g.obtener_progreso(self.db, USUARIO_PRUEBA)
+        estado = {m["id"]: m["cumplida"] for m in p["misiones"]}
+        self.assertEqual(estado, {"fruta": True, "tres_comidas": True, "check_in_animo": False})
+
+    def test_penalizacion_activada_no_baja_el_nivel(self):
+        self._poner(xp_total=31, nivel_maximo=2, ultima_fecha_actividad=date.today())
+        dulce = opcion_de_grupo("dulces")
+        with mock.patch.object(config, "XP_PENALIZACION_ULTRAPROCESADO", 50):
+            r = g.registrar_actividad(self.db, USUARIO_PRUEBA, "comida_registrada", alimento_codigo=dulce, sellos=["azucares"])
+        # Gana 10 (41), el castigo de 50 lo deja en 0, nunca negativo, y el nivel queda en 2.
+        self.assertEqual(r["xp_total"], 0)
+        self.assertEqual(r["nivel"], 2)
 
 
 if __name__ == "__main__":

@@ -33,6 +33,7 @@ from urllib.parse import urlencode
 from flask import Blueprint, has_request_context, jsonify, request, url_for
 
 import gamificacion_config as config
+from grupos_confusion import GRUPOS_CONFUSION
 
 CARPETA_STATIC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")
 
@@ -91,6 +92,74 @@ def xp_a_otorgar(accion, veces_previas_hoy):
     """XP que da `accion` si ya se hizo `veces_previas_hoy` veces hoy."""
     regla = config.ACCIONES[accion]
     return regla["xp"] if veces_previas_hoy < regla["maximo_por_dia"] else 0
+
+
+# ---- Puntos v2: elección nutritiva, ultraprocesados y misiones ----
+
+CODIGOS_DE_GRUPO = {grupo["id"] for grupo in GRUPOS_CONFUSION}
+
+
+def grupo_de_paquete(alimento_codigo):
+    """El id del grupo de productos de paquete al que pertenece el
+    alimento ("gaseosas_bebidas_azucaradas"...), o None si no es de paquete.
+    Cuenta tanto las opciones del grupo como el código genérico del grupo."""
+    for grupo in GRUPOS_CONFUSION:
+        if grupo["id"] not in config.GRUPOS_PRODUCTO_DE_PAQUETE:
+            continue
+        codigos = {opcion["codigo"] for opcion in grupo["opciones"]} | {grupo["id"]}
+        if alimento_codigo in codigos:
+            return grupo["id"]
+    return None
+
+
+def es_eleccion_nutritiva(alimento_codigo, sellos):
+    """True si el alimento final da el bonus de elección nutritiva: no es
+    un código de grupo, no tiene sellos (lista vacía; None = no se sabe, no
+    cuenta) y no es un producto de paquete."""
+    if not alimento_codigo or alimento_codigo in CODIGOS_DE_GRUPO:
+        return False
+    if sellos is None or len(sellos) > 0:
+        return False
+    return grupo_de_paquete(alimento_codigo) is None
+
+
+def mensaje_educativo(alimento_codigo):
+    """Mensaje amable con una alternativa si el alimento es un producto de
+    paquete; None si no lo es."""
+    grupo = grupo_de_paquete(alimento_codigo)
+    return config.MENSAJES_ULTRAPROCESADO.get(grupo) if grupo else None
+
+
+def penalizacion_ultraprocesado(alimento_codigo):
+    """XP que se resta por registrar un producto de paquete. Con el valor
+    del config en 0 (el de siempre, ver su comentario) nunca resta nada."""
+    if config.XP_PENALIZACION_ULTRAPROCESADO <= 0 or grupo_de_paquete(alimento_codigo) is None:
+        return 0
+    return config.XP_PENALIZACION_ULTRAPROCESADO
+
+
+def misiones_nuevas(accion, alimento_codigo, comidas_hoy, ya_cumplidas):
+    """Ids de las misiones que se cumplen CON esta acción (y no se habían
+    cumplido hoy). comidas_hoy cuenta las comidas registradas hoy, incluida
+    esta."""
+    cumple = {
+        "fruta": accion == "comida_registrada" and alimento_codigo in config.FRUTAS,
+        "tres_comidas": accion == "comida_registrada" and comidas_hoy >= config.COMIDAS_PARA_MISION,
+        "check_in_animo": accion == "estado_animo",
+    }
+    return [m["id"] for m in config.MISIONES_DIARIAS if cumple.get(m["id"]) and m["id"] not in ya_cumplidas]
+
+
+def mision_por_id(mision_id):
+    return next((m for m in config.MISIONES_DIARIAS if m["id"] == mision_id), None)
+
+
+def estado_misiones(ya_cumplidas):
+    """Las misiones del día con su estado, para GET /progreso."""
+    return [
+        {"id": m["id"], "nombre": m["nombre"], "xp": m["xp"], "cumplida": m["id"] in ya_cumplidas}
+        for m in config.MISIONES_DIARIAS
+    ]
 
 
 def dias_inactivos(ultima_fecha, hoy):
@@ -283,6 +352,8 @@ def reglas_publicas():
         "niveles": config.NIVELES,
         "xp_perdido_por_dia_inactivo": config.XP_PERDIDO_POR_DIA_INACTIVO,
         "tope_perdida_por_periodo": config.TOPE_PERDIDA_POR_PERIODO,
+        "misiones_diarias": config.MISIONES_DIARIAS,
+        "xp_penalizacion_ultraprocesado": config.XP_PENALIZACION_ULTRAPROCESADO,
     }
 
 
@@ -424,15 +495,46 @@ def _avatar_elegido(progreso):
     return avatar
 
 
-def registrar_actividad(db, usuario_id, accion, estado_animo=None):
+PREFIJO_MISION = "mision_"  # en eventos_xp, la misión "fruta" se guarda como accion "mision_fruta"
+
+
+def _veces_hoy(cursor, usuario_id, hoy, accion):
+    cursor.execute(
+        "SELECT COUNT(*) AS veces FROM eventos_xp WHERE usuario_id = %s AND fecha = %s AND accion = %s",
+        (usuario_id, hoy, accion),
+    )
+    return cursor.fetchone()["veces"]
+
+
+def _misiones_cumplidas_hoy(cursor, usuario_id, hoy):
+    cursor.execute(
+        "SELECT accion FROM eventos_xp WHERE usuario_id = %s AND fecha = %s AND accion LIKE %s",
+        (usuario_id, hoy, PREFIJO_MISION + "%"),
+    )
+    return {fila["accion"][len(PREFIJO_MISION):] for fila in cursor.fetchall()}
+
+
+def _anotar(cursor, usuario_id, hoy, accion, xp):
+    cursor.execute(
+        "INSERT INTO eventos_xp (usuario_id, fecha, accion, xp) VALUES (%s, %s, %s, %s)",
+        (usuario_id, hoy, accion, xp),
+    )
+
+
+def registrar_actividad(db, usuario_id, accion, estado_animo=None, alimento_codigo=None, sellos=None):
     """Da el XP de `accion`, actualiza nivel, racha y meta del día.
+
+    Para una comida (`alimento_codigo` y `sellos` del alimento FINAL, el
+    que quedó guardado) también da el bonus de elección nutritiva y aplica
+    la penalización por ultraprocesados (que vale 0). Para cualquier acción
+    revisa las misiones diarias.
 
     Antes de sumar, descuenta el XP de los días inactivos pendientes (la
     pérdida es "perezosa": se calcula cuando el usuario vuelve).
 
     Se llama desde app.py justo DESPUÉS de guardar la comida o el estado
-    de ánimo. Devuelve un resumen para el frontend ("+10 XP", "¡subiste
-    de nivel!", "¡meta cumplida!"), o None si no aplica (sin usuario) o
+    de ánimo. Devuelve un resumen para el frontend ("+25 XP", "¡misión
+    cumplida!", "¡subiste de nivel!"), o None si no aplica (sin usuario) o
     si algo falla. Nunca lanza una excepción: un error de gamificación no
     debe impedir que la comida o el ánimo se guarden.
     """
@@ -444,23 +546,47 @@ def registrar_actividad(db, usuario_id, accion, estado_animo=None):
     hoy = date.today()
     cursor = db.conexion.cursor(dictionary=True)
     try:
-        cursor.execute(
-            "SELECT COUNT(*) AS veces FROM eventos_xp WHERE usuario_id = %s AND fecha = %s AND accion = %s",
-            (usuario_id, hoy, accion),
-        )
-        xp = xp_a_otorgar(accion, cursor.fetchone()["veces"])
-        cursor.execute(
-            "INSERT INTO eventos_xp (usuario_id, fecha, accion, xp) VALUES (%s, %s, %s, %s)",
-            (usuario_id, hoy, accion, xp),
-        )
+        # 1. XP de la acción (con su tope diario)
+        xp = xp_a_otorgar(accion, _veces_hoy(cursor, usuario_id, hoy, accion))
+        _anotar(cursor, usuario_id, hoy, accion, xp)
+        detalle = [{"motivo": accion, "xp": xp}]
+
+        es_comida = accion == "comida_registrada"
+        # 2. Bonus por elección nutritiva (solo comidas, con su propio tope)
+        if es_comida and es_eleccion_nutritiva(alimento_codigo, sellos):
+            bonus = xp_a_otorgar("eleccion_nutritiva", _veces_hoy(cursor, usuario_id, hoy, "eleccion_nutritiva"))
+            _anotar(cursor, usuario_id, hoy, "eleccion_nutritiva", bonus)
+            if bonus:
+                detalle.append({"motivo": "eleccion_nutritiva", "xp": bonus})
+
+        # 3. Misiones del día que se cumplen con esta acción
+        comidas_hoy = _veces_hoy(cursor, usuario_id, hoy, "comida_registrada") if es_comida else 0
+        cumplidas = misiones_nuevas(accion, alimento_codigo, comidas_hoy, _misiones_cumplidas_hoy(cursor, usuario_id, hoy))
+        misiones = []
+        for mision_id in cumplidas:
+            mision = mision_por_id(mision_id)
+            _anotar(cursor, usuario_id, hoy, PREFIJO_MISION + mision_id, mision["xp"])
+            detalle.append({"motivo": PREFIJO_MISION + mision_id, "xp": mision["xp"]})
+            misiones.append({"id": mision_id, "nombre": mision["nombre"], "xp": mision["xp"]})
+        ganado = sum(d["xp"] for d in detalle)
 
         progreso = _leer_progreso(cursor, usuario_id, bloquear=True)
         _descontar_inactividad(cursor, progreso, hoy)
-        subio = sumar_actividad(progreso, xp, hoy)
+        subio = sumar_actividad(progreso, ganado, hoy)
+
+        # 4. Penalización por ultraprocesados: con el config en 0 no pasa nada.
+        #    El XP no baja de 0 y el nivel máximo no se toca.
+        if es_comida:
+            castigo = min(penalizacion_ultraprocesado(alimento_codigo), progreso["xp_total"])
+            if castigo:
+                progreso["xp_total"] -= castigo
+                _anotar(cursor, usuario_id, hoy, "penalizacion_ultraprocesado", -castigo)
+                detalle.append({"motivo": "penalizacion_ultraprocesado", "xp": -castigo})
         _guardar_progreso(cursor, progreso)
 
+        # La meta del día cuenta solo lo ganado (lo positivo).
         xp_hoy_antes = _leer_xp_de_hoy(cursor, usuario_id, hoy)
-        xp_hoy = xp_hoy_antes + xp
+        xp_hoy = xp_hoy_antes + ganado
         cumplida = xp_hoy >= config.META_DIARIA_XP
         cursor.execute(
             """
@@ -474,8 +600,10 @@ def registrar_actividad(db, usuario_id, accion, estado_animo=None):
 
         resumen = {
             "accion": accion,
-            "xp_ganado": xp,
+            "xp_ganado": sum(d["xp"] for d in detalle),
+            "detalle_xp": detalle,
             "tope_diario_alcanzado": xp == 0,
+            "misiones_cumplidas": misiones,
             "xp_total": progreso["xp_total"],
             "nivel": progreso["nivel_maximo"],
             "subio_de_nivel": subio,
@@ -523,6 +651,7 @@ def obtener_progreso(db, usuario_id):
             _guardar_progreso(cursor, progreso)
         xp_hoy = _leer_xp_de_hoy(cursor, usuario_id, hoy)
         estado_hoy = _estado_animo_de_hoy(cursor, usuario_id, hoy)
+        misiones_hoy = _misiones_cumplidas_hoy(cursor, usuario_id, hoy)
         db.conexion.commit()
     except Exception:
         db.conexion.rollback()
@@ -550,6 +679,7 @@ def obtener_progreso(db, usuario_id):
             "meta": config.META_DIARIA_XP,
             "cumplida": xp_hoy >= config.META_DIARIA_XP,
         },
+        "misiones": estado_misiones(misiones_hoy),
         "avatar": {
             "id": avatar["id"],
             "nombre": avatar["nombre"],

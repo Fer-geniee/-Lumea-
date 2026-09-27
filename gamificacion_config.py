@@ -10,12 +10,17 @@ Los valores actuales son PROVISIONALES (acordados el 26 sep 2026 para
 tener algo funcionando), no el diseño final. La pérdida por inactividad y
 el avatar por capas se agregaron el 27 sep 2026 (reunión del equipo).
 Por decisión del equipo NO hay insignias ni logros por ahora.
+"Puntos v2" (27 sep 2026, diseño decidido por el equipo): bonus por
+elección nutritiva, misiones diarias fijas y penalización por
+ultraprocesados que existe pero vale 0.
 
 Reglas de contenido que cualquier cambio debe respetar (ver
 DEFENSA_TECNICA_LUMEA.md, sección 5 -- población adolescente):
-- El XP premia SOLO la constancia en el hábito de registrar. Nunca debe
-  depender de QUÉ se comió (saludable o no, calorías), de peso, de
-  calorías "quemadas" ni de nada del cuerpo.
+- La mayor parte del XP premia la constancia en el hábito de registrar.
+  Lo único que depende de QUÉ se comió es un bonus pequeño y POSITIVO
+  (elección nutritiva, con tope diario). Nunca se resta XP por lo que se
+  comió: XP_PENALIZACION_ULTRAPROCESADO vale 0 (ver su comentario). Nada
+  depende de peso, calorías "quemadas" ni del cuerpo.
 - Registrar el estado de ánimo da el mismo XP sea cual sea el ánimo:
   premiar "estar bien" empujaría a reportar un ánimo falso.
 - Hay tope diario por acción: registrar 20 comidas no da más que
@@ -33,8 +38,70 @@ DEFENSA_TECNICA_LUMEA.md, sección 5 -- población adolescente):
 # registrar_actividad(db, usuario_id, "<accion>") desde el endpoint.
 ACCIONES = {
     "comida_registrada": {"xp": 10, "maximo_por_dia": 5},
+    # Extra que se suma a comida_registrada si el alimento FINAL es una
+    # elección nutritiva (ver ELECCION_NUTRITIVA más abajo). No se registra
+    # sola: la otorga gamificacion.py al registrar una comida.
+    "eleccion_nutritiva": {"xp": 5, "maximo_por_dia": 3},
     "estado_animo": {"xp": 5, "maximo_por_dia": 1},
 }
+
+# ===== Elección nutritiva =====
+# Un alimento cuenta como elección nutritiva si, al registrarlo:
+# - es el alimento FINAL (el reconocido o el confirmado), nunca un código
+#   de grupo de confirmación ("sopas", "dulces", "tamal"...);
+# - no tiene sellos de advertencia (lista vacía; si no se sabe, no cuenta);
+# - no es un producto de paquete (los de GRUPOS_PRODUCTO_DE_PAQUETE).
+# Es un bonus pequeño y positivo. No convierte lo demás en "malo".
+#
+# Grupos de grupos_confusion.py cuyos productos son de paquete
+# (ultraprocesados): dulces, papas/chitos y bebidas azucaradas.
+GRUPOS_PRODUCTO_DE_PAQUETE = ["dulces", "frituras_empaquetadas", "gaseosas_bebidas_azucaradas"]
+
+# ===== Ultraprocesados: penalización (apagada) y mensaje educativo =====
+# XP que se RESTARÍA al registrar un producto de paquete. EXISTE para poder
+# discutirlo, pero vale 0 A PROPÓSITO, y con 0 no resta nada:
+# - Honestidad de los registros: si registrar una gaseosa quita puntos, la
+#   forma fácil de no perderlos es no registrarla. La app deja de reflejar
+#   lo que de verdad se come y pierde su sentido.
+# - No asociar culpa a la comida en adolescentes: la guía de la Academia
+#   Americana de Pediatría para prevenir obesidad y trastornos
+#   alimentarios en adolescentes (Golden et al., 2016, Pediatrics
+#   138(3):e20161649) recomienda no promover dietas ni hablar de comida o
+#   peso en términos de culpa, y enfocarse en hábitos.
+# Cambiarlo es una decisión del equipo, no un ajuste técnico.
+XP_PENALIZACION_ULTRAPROCESADO = 0
+
+# Lo que se muestra al registrar un producto de paquete: un dato y una
+# alternativa para otro día. Nunca un regaño, sin "malo", "evita" ni
+# "saludable".
+MENSAJES_ULTRAPROCESADO = {
+    "gaseosas_bebidas_azucaradas": (
+        "Dato: las gaseosas y bebidas azucaradas tienen bastante azúcar añadida. "
+        "Si otro día quieres variar, el agua con limón o un jugo de fruta natural también refrescan."
+    ),
+    "frituras_empaquetadas": (
+        "Dato: los paquetes de papas y chitos suelen tener bastante sal y grasa. "
+        "Si otro día se te antoja algo crujiente, las palomitas hechas en casa o el maní sin sal son otra opción."
+    ),
+    "dulces": (
+        "Dato: los dulces de paquete tienen bastante azúcar añadida. "
+        "Si otro día quieres algo dulce distinto, una fruta como el mango o el banano también lo es."
+    ),
+}
+
+# ===== Misiones diarias (fijas, una vez al día cada una) =====
+# Las condiciones están en gamificacion.py (misiones_nuevas); aquí van el
+# nombre que se muestra y el XP. Los ids no se cambian sin cambiar también
+# gamificacion.py.
+MISIONES_DIARIAS = [
+    {"id": "fruta", "nombre": "Registra una fruta", "xp": 10},
+    {"id": "tres_comidas", "nombre": "Registra 3 comidas", "xp": 10},
+    {"id": "check_in_animo", "nombre": "Haz tu check-in de ánimo", "xp": 10},
+]
+# Qué alimentos cuentan como fruta para la misión (clases del modelo).
+FRUTAS = ["banano", "fresa", "mango", "manzana", "naranja", "pera", "pina", "uva"]
+# Cuántas comidas pide la misión "tres_comidas".
+COMIDAS_PARA_MISION = 3
 
 # XP diario para "cumplir la meta" (1 comida + estado de ánimo, o 2 comidas).
 META_DIARIA_XP = 15

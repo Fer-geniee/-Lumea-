@@ -7,7 +7,7 @@ os.environ["TF_USE_LEGACY_KERAS"] = "1"
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from database import BaseDatos
-from gamificacion import registrar_gamificacion, registrar_actividad
+from gamificacion import registrar_gamificacion, registrar_actividad, mensaje_educativo
 from grupos_confusion import grupo_para, codigos_de_opciones, detalle_de_opciones
 from sellos import obtener_sellos
 from predict import predecir_alimento  # única fuente de inferencia (fusión con predict.py)
@@ -202,7 +202,12 @@ def predecir():
                 es_balanceado,
                 usuario_id,
             )
-            gamificacion = registrar_actividad(db, usuario_id, "comida_registrada") if guardado_exitoso else None
+            # Lista de sellos de la Res. 810 ([] = ninguno, None = no se sabe).
+            # Mostrar "Sin sellos de advertencia", nunca "saludable": ver CONTRATO_CONFIRMACION.md.
+            sellos = obtener_sellos(db, nombre_tecnico)
+            gamificacion = registrar_actividad(
+                db, usuario_id, "comida_registrada", alimento_codigo=nombre_tecnico, sellos=sellos,
+            ) if guardado_exitoso else None
             respuesta = {
                 'success': True,
                 'alimento_codigo': nombre_tecnico,
@@ -213,9 +218,9 @@ def predecir():
                 'certeza': round(mejor_certeza, 2),
                 'alimento': nombre_amigable,
                 'dato_curioso': dato_curioso,
-                # Lista de sellos de la Res. 810 ([] = ninguno, None = no se sabe).
-                # Mostrar "Sin sellos de advertencia", nunca "saludable": ver CONTRATO_CONFIRMACION.md.
-                'sellos_advertencia': obtener_sellos(db, nombre_tecnico),
+                'sellos_advertencia': sellos,
+                # Producto de paquete: un dato y una alternativa, nunca un regaño.
+                'mensaje_educativo': mensaje_educativo(nombre_tecnico),
                 'modelo_usado': resultado.get('modelo_usado'),
                 'gamificacion': gamificacion,
             }
@@ -276,7 +281,10 @@ def confirmar_alimento():
     guardado_exitoso = db.registrar_comida(
         alimento_codigo, nombre_amigable, 100.0, calorias, es_balanceado, usuario_id,
     )
-    gamificacion = registrar_actividad(db, usuario_id, "comida_registrada") if guardado_exitoso else None
+    sellos = obtener_sellos(db, alimento_codigo)  # ver /predecir
+    gamificacion = registrar_actividad(
+        db, usuario_id, "comida_registrada", alimento_codigo=alimento_codigo, sellos=sellos,
+    ) if guardado_exitoso else None
 
     respuesta = {
         'success': True,
@@ -288,7 +296,8 @@ def confirmar_alimento():
         'certeza': 100.0,
         'alimento': nombre_amigable,
         'dato_curioso': dato_curioso,
-        'sellos_advertencia': obtener_sellos(db, alimento_codigo),  # ver /predecir
+        'sellos_advertencia': sellos,
+        'mensaje_educativo': mensaje_educativo(alimento_codigo),
         'gamificacion': gamificacion,
     }
     return jsonify(respuesta), 200

@@ -16,6 +16,7 @@ import time
 import requests
 
 import gamificacion_config as config
+from grupos_confusion import GRUPOS_CONFUSION
 
 # Cualquier foto de comida sirve. Por defecto, Backend/prueba.jpeg, que ya
 # viene en el repo.
@@ -76,23 +77,31 @@ def probar_perfil():
     comprobar("GET /perfil no trae password_hash", "password_hash" not in (cuerpo.get("perfil") or {}))
 
 
+def xp_por_motivo(gami):
+    return {d["motivo"]: d["xp"] for d in gami.get("detalle_xp", [])}
+
+
 def probar_estado_animo():
     xp_animo = config.ACCIONES["estado_animo"]["xp"]
+    xp_mision = next(m["xp"] for m in config.MISIONES_DIARIAS if m["id"] == "check_in_animo")
     cuerpo = verificar("POST /estado-animo (muy_mal)", post("/estado-animo", {"email": EMAIL_PRUEBA, "estado": "muy_mal"}))
     gami = cuerpo.get("gamificacion") or {}
     # Regla de contenido: el XP NO depende del ánimo reportado.
-    comprobar("estado 'muy_mal' da el XP normal (no se castiga el ánimo)", gami.get("xp_ganado") == xp_animo,
-              f"xp_ganado={gami.get('xp_ganado')}")
+    comprobar("estado 'muy_mal' da el XP normal (no se castiga el ánimo)", xp_por_motivo(gami).get("estado_animo") == xp_animo,
+              f"detalle_xp={gami.get('detalle_xp')}")
+    comprobar("el primer check-in cumple la misión del día", [m["id"] for m in gami.get("misiones_cumplidas", [])] == ["check_in_animo"]
+              and gami.get("xp_ganado") == xp_animo + xp_mision, f"xp_ganado={gami.get('xp_ganado')}")
+    xp_total = gami.get("xp_ganado", 0)
     comprobar("avatar_url trae la expresión de 'muy_mal'",
               "mouth=" + config.EXPRESION_POR_ESTADO["muy_mal"]["mouth"] in (gami.get("avatar_url") or ""))
 
     cuerpo = verificar("POST /estado-animo otra vez (muy_bien)", post("/estado-animo", {"email": EMAIL_PRUEBA, "estado": "muy_bien"}))
     gami = cuerpo.get("gamificacion") or {}
     esperado = xp_animo if config.ACCIONES["estado_animo"]["maximo_por_dia"] > 1 else 0
-    comprobar("el tope diario se respeta en estado de ánimo", gami.get("xp_ganado") == esperado,
+    comprobar("el tope diario se respeta en estado de ánimo (y la misión no se repite)", gami.get("xp_ganado") == esperado,
               f"xp_ganado={gami.get('xp_ganado')}, esperado={esperado}")
     verificar("GET /estado-animo", get("/estado-animo", email=EMAIL_PRUEBA), mostrar=False)
-    return xp_animo
+    return xp_total + gami.get("xp_ganado", 0)
 
 
 def probar_prediccion():
@@ -113,14 +122,28 @@ def probar_prediccion():
 
 def probar_confirmar_alimento():
     cuerpo = verificar("POST /confirmar-alimento", post("/confirmar-alimento", {"alimento_codigo": "banano", "email": EMAIL_PRUEBA}))
-    xp = (cuerpo.get("gamificacion") or {}).get("xp_ganado")
-    comprobar("confirmar una comida da el XP de comida", xp == config.ACCIONES["comida_registrada"]["xp"], f"xp_ganado={xp}")
+    gami = cuerpo.get("gamificacion") or {}
+    motivos = xp_por_motivo(gami)
+    comprobar("confirmar una comida da el XP de comida", motivos.get("comida_registrada") == config.ACCIONES["comida_registrada"]["xp"],
+              f"detalle_xp={gami.get('detalle_xp')}")
+    comprobar("banano (fruta sin sellos) da elección nutritiva y la misión fruta",
+              "eleccion_nutritiva" in motivos and "mision_fruta" in motivos, f"detalle_xp={gami.get('detalle_xp')}")
     comprobar("banano no activa sellos de advertencia (lista vacía)", cuerpo.get("sellos_advertencia") == [],
               f"sellos_advertencia={cuerpo.get('sellos_advertencia')!r}")
+    comprobar("banano no trae mensaje educativo", cuerpo.get("mensaje_educativo") is None)
+    xp = gami.get("xp_ganado", 0)
+
+    gaseosa = next(gr for gr in GRUPOS_CONFUSION if gr["id"] == "gaseosas_bebidas_azucaradas")["opciones"][0]["codigo"]
+    cuerpo = verificar(f"POST /confirmar-alimento ({gaseosa})", post("/confirmar-alimento", {"alimento_codigo": gaseosa, "email": EMAIL_PRUEBA}), mostrar=False)
+    gami = cuerpo.get("gamificacion") or {}
+    comprobar("un producto de paquete trae mensaje educativo", bool(cuerpo.get("mensaje_educativo")), f"{cuerpo.get('mensaje_educativo')!r}")
+    comprobar("un producto de paquete no da bonus ni resta XP",
+              "eleccion_nutritiva" not in xp_por_motivo(gami) and all(d["xp"] >= 0 for d in gami.get("detalle_xp", [])))
+    xp += gami.get("xp_ganado", 0)
     # Los códigos de agrupación visual nunca deben aceptarse (ver grupos_confusion.py)
     verificar("POST /confirmar-alimento con 'sopas' (debe rechazar)",
               post("/confirmar-alimento", {"alimento_codigo": "sopas", "email": EMAIL_PRUEBA}), esperado=400)
-    return xp or 0
+    return xp
 
 
 def probar_historial():
@@ -141,6 +164,10 @@ def probar_gamificacion(xp_esperado):
     comprobar("meta diaria cumplida", (p.get("meta_diaria") or {}).get("cumplida") is (xp_esperado >= config.META_DIARIA_XP))
     comprobar("el avatar muestra el último ánimo de hoy", (p.get("avatar") or {}).get("estado_animo_hoy") == "muy_bien")
     comprobar("GET /progreso expone las reglas del config", (p.get("reglas") or {}).get("meta_diaria_xp") == config.META_DIARIA_XP)
+    misiones = {m["id"]: m["cumplida"] for m in p.get("misiones", [])}
+    comprobar("GET /progreso trae las misiones del día con su estado",
+              misiones.get("fruta") is True and misiones.get("check_in_animo") is True and set(misiones) == {m["id"] for m in config.MISIONES_DIARIAS},
+              f"misiones={misiones}")
     # Usuario que registró hoy: no hay días inactivos, así que no pierde nada.
     comprobar("sin inactividad no hay XP perdido ni mensaje", p.get("xp_perdido_desde_ultima_visita") == 0
               and p.get("mensaje_regreso") is None, f"perdido={p.get('xp_perdido_desde_ultima_visita')}")
