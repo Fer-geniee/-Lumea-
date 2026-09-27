@@ -117,6 +117,12 @@ def main():
           "(normal: no actúan al predecir)")
 
     # 5. Predicciones distintas para imágenes distintas
+    faltan = [ruta for ruta in args.imagenes if not os.path.exists(ruta)]
+    if faltan:
+        revisar("las 3 imágenes de prueba existen", False,
+                f"no encontré {', '.join(faltan)}; pasa otras con --imagenes a.jpg b.jpg c.jpg")
+        print(f"\n{resultados.count(True)}/{len(resultados)} comprobaciones OK.")
+        sys.exit(1)
     predichas = []
     for ruta in args.imagenes:
         ruta_real, arreglo = cargar_imagen(ruta)

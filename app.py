@@ -5,6 +5,7 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 os.environ["TF_USE_LEGACY_KERAS"] = "1"
 
 from flask import Flask, request, jsonify
+from PIL import UnidentifiedImageError
 from flask_cors import CORS
 from database import BaseDatos
 from gamificacion import registrar_gamificacion, registrar_actividad, mensaje_educativo
@@ -146,7 +147,14 @@ def predecir():
     try:
         # Una sola lectura de los bytes (evita el bug de doble .read() del stream)
         img_bytes = file.read()
-        resultado = predecir_alimento(img_bytes)
+        # Foto vacía o archivo que no es imagen: es un error de quien envía
+        # (400), no del servidor (500).
+        if not img_bytes:
+            return jsonify({'error': 'La imagen está vacía.'}), 400
+        try:
+            resultado = predecir_alimento(img_bytes)
+        except UnidentifiedImageError:
+            return jsonify({'error': 'El archivo no es una imagen válida (usa una foto JPG o PNG).'}), 400
 
         nombre_tecnico = resultado['alimento_codigo']
         mejor_certeza = resultado['confianza_porcentaje']
