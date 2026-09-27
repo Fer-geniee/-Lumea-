@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "24291a1b-45fa-5939-9b9b-cf87fc36b9be",
     "name": "Lumea API",
-    "description": "Todos los endpoints del backend de Lumea (Flask, puerto 5002).\n\nVariables de la colección: `base_url` (por defecto http://127.0.0.1:5002) y `email` (el correo del perfil con el que se prueba; créalo primero con POST /perfil).\n\nContrato detallado de gamificación: Backend/CONTRATO_GAMIFICACION.md. Grupos de confirmación manual: Backend/grupos_confusion.py.",
+    "description": "Todos los endpoints del backend de Lumea (Flask, puerto 5002).\n\nVariables de la colección: `base_url` (por defecto http://127.0.0.1:5002), `email` (el correo del perfil con el que se prueba; créalo primero con POST /perfil) y `contrasena` (para el login, cuando exista).\n\nVarias peticiones traen ejemplos de respuesta REALES guardados (pestaña \"Examples\"/\"e.g.\"), sacados del backend encendido el 27 sep 2026.\n\nGuía pantalla por pantalla: Backend/GUIA_FRONTEND_SARA.md. Contratos: Backend/CONTRATO_GAMIFICACION.md (progreso, pérdida por inactividad, avatar) y Backend/CONTRATO_CONFIRMACION.md (confirmación y sellos). En el frontend, todas estas llamadas están en api.js.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -13,6 +13,10 @@
     {
       "key": "email",
       "value": "prueba@lumea.test"
+    },
+    {
+      "key": "contrasena",
+      "value": "cambia-esta-contraseña"
     }
   ],
   "item": [
@@ -95,7 +99,74 @@
             },
             "description": "404 si el correo no tiene perfil."
           },
-          "response": []
+          "response": [
+            {
+              "name": "Existe",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/perfil?email={{email}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "perfil"
+                  ],
+                  "query": [
+                    {
+                      "key": "email",
+                      "value": "{{email}}"
+                    }
+                  ]
+                },
+                "description": "404 si el correo no tiene perfil."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"perfil\": {\n    \"altura\": 158,\n    \"edad\": 15,\n    \"email\": \"demo.guia@lumea.test\",\n    \"genero\": \"femenino\",\n    \"id\": 26,\n    \"nombre\": \"Ana\",\n    \"objetivo\": \"comer_balanceado\",\n    \"peso\": 52.0\n  },\n  \"success\": true\n}"
+            },
+            {
+              "name": "No existe -> 404",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/perfil?email={{email}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "perfil"
+                  ],
+                  "query": [
+                    {
+                      "key": "email",
+                      "value": "{{email}}"
+                    }
+                  ]
+                },
+                "description": "404 si el correo no tiene perfil."
+              },
+              "status": "NOT FOUND",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"mensaje\": \"No hay perfil guardado con ese correo.\",\n  \"success\": false\n}"
+            }
+          ]
         }
       ]
     },
@@ -144,7 +215,176 @@
               ]
             }
           },
-          "response": []
+          "response": [
+            {
+              "name": "Reconocido y guardado (arepa)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/predecir",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "predecir"
+                  ]
+                },
+                "description": "multipart/form-data. En `file` elige una foto de comida de tu computador. `email` es opcional: si corresponde a un perfil, la comida queda en su historial y suma XP.\n\n- Certeza ≥ 70%: se guarda (`success: true`) y trae `gamificacion`.\n- Certeza baja: `seleccion_manual: true`, no se guarda.\n- Grupo de confusión (sopas, dulces...): `seleccion_manual: true` con `opciones_sugeridas` (lista de códigos) y `opciones_detalle` (lista de {codigo, nombre, marca, grupo}), sin importar la certeza.",
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": ""
+                    },
+                    {
+                      "key": "email",
+                      "value": "{{email}}",
+                      "type": "text"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"alimento\": \"Arepa paisa (de maíz precocido, con sal)\",\n  \"alimento_app\": \"Arepa paisa (de maíz precocido, con sal)\",\n  \"alimento_codigo\": \"arepa\",\n  \"certeza\": 99.01,\n  \"dato_curioso\": \"La arepa es tan antigua que ya la comían los pueblos indígenas de la región andina y el Caribe antes de la llegada de los españoles, mucho antes de que existiera el maíz precocido en bolsa.\",\n  \"gamificacion\": {\n    \"accion\": \"comida_registrada\",\n    \"meta_diaria\": {\n      \"cumplida\": false,\n      \"meta\": 15,\n      \"recien_cumplida\": false,\n      \"xp_hoy\": 10\n    },\n    \"nivel\": 1,\n    \"racha_actual\": 1,\n    \"subio_de_nivel\": false,\n    \"tope_diario_alcanzado\": false,\n    \"xp_ganado\": 10,\n    \"xp_total\": 10\n  },\n  \"guardado_baseDatos\": true,\n  \"mensaje\": \"Predicción realizada y guardada en la base de datos.\",\n  \"modelo_usado\": \"regional_26\",\n  \"sellos_advertencia\": [],\n  \"success\": true\n}"
+            },
+            {
+              "name": "Hay que confirmar (sopas, con opciones_detalle)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/predecir",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "predecir"
+                  ]
+                },
+                "description": "multipart/form-data. En `file` elige una foto de comida de tu computador. `email` es opcional: si corresponde a un perfil, la comida queda en su historial y suma XP.\n\n- Certeza ≥ 70%: se guarda (`success: true`) y trae `gamificacion`.\n- Certeza baja: `seleccion_manual: true`, no se guarda.\n- Grupo de confusión (sopas, dulces...): `seleccion_manual: true` con `opciones_sugeridas` (lista de códigos) y `opciones_detalle` (lista de {codigo, nombre, marca, grupo}), sin importar la certeza.",
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": ""
+                    },
+                    {
+                      "key": "email",
+                      "value": "{{email}}",
+                      "type": "text"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"alimento\": \"Sopas\",\n  \"alimento_codigo\": \"sopas\",\n  \"certeza\": 99.75,\n  \"dato_curioso\": null,\n  \"guardado_baseDatos\": false,\n  \"mensaje\": \"Ajiaco, sancocho y mondongo se ven muy parecidos -- confirma cuál es.\",\n  \"modelo_usado\": \"regional_26\",\n  \"opciones_detalle\": [\n    {\n      \"codigo\": \"ajiaco\",\n      \"grupo\": \"sopa\",\n      \"marca\": null,\n      \"nombre\": \"Ajiaco\"\n    },\n    {\n      \"codigo\": \"sancocho\",\n      \"grupo\": \"sopa\",\n      \"marca\": null,\n      \"nombre\": \"Sancocho\"\n    },\n    {\n      \"codigo\": \"mondongo\",\n      \"grupo\": \"sopa\",\n      \"marca\": null,\n      \"nombre\": \"Mondongo\"\n    }\n  ],\n  \"opciones_sugeridas\": [\n    \"ajiaco\",\n    \"sancocho\",\n    \"mondongo\"\n  ],\n  \"seleccion_manual\": true,\n  \"success\": false\n}"
+            },
+            {
+              "name": "Certeza baja (sin opciones)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/predecir",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "predecir"
+                  ]
+                },
+                "description": "multipart/form-data. En `file` elige una foto de comida de tu computador. `email` es opcional: si corresponde a un perfil, la comida queda en su historial y suma XP.\n\n- Certeza ≥ 70%: se guarda (`success: true`) y trae `gamificacion`.\n- Certeza baja: `seleccion_manual: true`, no se guarda.\n- Grupo de confusión (sopas, dulces...): `seleccion_manual: true` con `opciones_sugeridas` (lista de códigos) y `opciones_detalle` (lista de {codigo, nombre, marca, grupo}), sin importar la certeza.",
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": ""
+                    },
+                    {
+                      "key": "email",
+                      "value": "{{email}}",
+                      "type": "text"
+                    }
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"alimento\": \"Sopa de miso\",\n  \"alimento_codigo\": \"miso_soup\",\n  \"certeza\": 66.77,\n  \"dato_curioso\": \"La sopa de miso se hace con una pasta fermentada de soya que puede tardar entre unos meses y varios años en madurar, según el sabor que se busque.\",\n  \"guardado_baseDatos\": false,\n  \"mensaje\": \"La certeza de la IA es muy baja para guardarse automáticamente.\",\n  \"modelo_usado\": \"food101\",\n  \"seleccion_manual\": true,\n  \"success\": false\n}"
+            },
+            {
+              "name": "Sin foto -> 400",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/predecir",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "predecir"
+                  ]
+                },
+                "description": "multipart/form-data. En `file` elige una foto de comida de tu computador. `email` es opcional: si corresponde a un perfil, la comida queda en su historial y suma XP.\n\n- Certeza ≥ 70%: se guarda (`success: true`) y trae `gamificacion`.\n- Certeza baja: `seleccion_manual: true`, no se guarda.\n- Grupo de confusión (sopas, dulces...): `seleccion_manual: true` con `opciones_sugeridas` (lista de códigos) y `opciones_detalle` (lista de {codigo, nombre, marca, grupo}), sin importar la certeza.",
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": ""
+                    },
+                    {
+                      "key": "email",
+                      "value": "{{email}}",
+                      "type": "text"
+                    }
+                  ]
+                }
+              },
+              "status": "BAD REQUEST",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"error\": \"No se encontró el campo de imagen en la petición.\"\n}"
+            }
+          ]
         },
         {
           "name": "Confirmar alimento",
@@ -187,7 +427,90 @@
               }
             }
           },
-          "response": []
+          "response": [
+            {
+              "name": "Confirmado con sellos (Chocoramo)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/confirmar-alimento",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "confirmar-alimento"
+                  ]
+                },
+                "description": "Guarda lo que el usuario eligió a mano después de un `seleccion_manual: true`. Acepta cualquier `alimento_codigo` que exista en tabla_alimentos. Rechaza (400) los códigos de agrupación visual como `sopas` o `dulces`. Trae `gamificacion`.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"alimento_codigo\": \"ajiaco\",\n  \"email\": \"{{email}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"alimento\": \"Chocoramo (ponqué cubierto de chocolate)\",\n  \"alimento_app\": \"Chocoramo (ponqué cubierto de chocolate)\",\n  \"alimento_codigo\": \"chororamo\",\n  \"certeza\": 100.0,\n  \"dato_curioso\": null,\n  \"gamificacion\": {\n    \"accion\": \"comida_registrada\",\n    \"meta_diaria\": {\n      \"cumplida\": true,\n      \"meta\": 15,\n      \"recien_cumplida\": false,\n      \"xp_hoy\": 30\n    },\n    \"nivel\": 2,\n    \"racha_actual\": 1,\n    \"subio_de_nivel\": true,\n    \"tope_diario_alcanzado\": false,\n    \"xp_ganado\": 10,\n    \"xp_total\": 30\n  },\n  \"guardado_baseDatos\": true,\n  \"mensaje\": \"Confirmado manualmente y guardado en tu historial.\",\n  \"sellos_advertencia\": [\n    \"sodio\",\n    \"azucares\",\n    \"grasas_saturadas\"\n  ],\n  \"success\": true\n}"
+            },
+            {
+              "name": "Código de agrupación -> 400",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/confirmar-alimento",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "confirmar-alimento"
+                  ]
+                },
+                "description": "Guarda lo que el usuario eligió a mano después de un `seleccion_manual: true`. Acepta cualquier `alimento_codigo` que exista en tabla_alimentos. Rechaza (400) los códigos de agrupación visual como `sopas` o `dulces`. Trae `gamificacion`.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"alimento_codigo\": \"ajiaco\",\n  \"email\": \"{{email}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "BAD REQUEST",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"error\": \"\\\"sopas\\\" no es un alimento reconocido en tabla_alimentos.\"\n}"
+            }
+          ]
         }
       ]
     },
@@ -235,7 +558,90 @@
               }
             }
           },
-          "response": []
+          "response": [
+            {
+              "name": "Registrado (bien)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/estado-animo",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "estado-animo"
+                  ]
+                },
+                "description": "`estado`: muy_mal, mal, neutral, bien o muy_bien. El XP es el mismo para cualquier estado; en `gamificacion.avatar_url` viene la cara del avatar con esa expresión. 404 sin perfil.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{email}}\",\n  \"estado\": \"bien\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"gamificacion\": {\n    \"accion\": \"estado_animo\",\n    \"avatar_url\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=smile&eyes=default&eyebrows=defaultNatural\",\n    \"meta_diaria\": {\n      \"cumplida\": true,\n      \"meta\": 15,\n      \"recien_cumplida\": false,\n      \"xp_hoy\": 35\n    },\n    \"nivel\": 2,\n    \"racha_actual\": 1,\n    \"subio_de_nivel\": false,\n    \"tope_diario_alcanzado\": false,\n    \"xp_ganado\": 5,\n    \"xp_total\": 35\n  },\n  \"mensaje\": \"Estado de ánimo registrado.\",\n  \"success\": true\n}"
+            },
+            {
+              "name": "Estado no válido -> 400",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/estado-animo",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "estado-animo"
+                  ]
+                },
+                "description": "`estado`: muy_mal, mal, neutral, bien o muy_bien. El XP es el mismo para cualquier estado; en `gamificacion.avatar_url` viene la cara del avatar con esa expresión. 404 sin perfil.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{email}}\",\n  \"estado\": \"bien\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "BAD REQUEST",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"error\": \"Estado no válido. Usa uno de: ['bien', 'mal', 'muy_bien', 'muy_mal', 'neutral']\"\n}"
+            }
+          ]
         },
         {
           "name": "Ver estados de ánimo recientes",
@@ -270,7 +676,74 @@
             },
             "description": "Últimos 30 registros."
           },
-          "response": []
+          "response": [
+            {
+              "name": "Con un registro",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/estado-animo?email={{email}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "estado-animo"
+                  ],
+                  "query": [
+                    {
+                      "key": "email",
+                      "value": "{{email}}"
+                    }
+                  ]
+                },
+                "description": "Últimos 30 registros."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"cantidad\": 1,\n  \"historial\": [\n    {\n      \"estado\": \"bien\",\n      \"fecha\": \"Sun, 27 Sep 2026 00:00:00 GMT\",\n      \"id\": 20\n    }\n  ],\n  \"success\": true\n}"
+            },
+            {
+              "name": "Sin registros",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/estado-animo?email={{email}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "estado-animo"
+                  ],
+                  "query": [
+                    {
+                      "key": "email",
+                      "value": "{{email}}"
+                    }
+                  ]
+                },
+                "description": "Últimos 30 registros."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"cantidad\": 0,\n  \"historial\": [],\n  \"success\": true\n}"
+            }
+          ]
         }
       ]
     },
@@ -310,7 +783,74 @@
             },
             "description": "404 sin perfil."
           },
-          "response": []
+          "response": [
+            {
+              "name": "Con registros",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/historial?email={{email}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "historial"
+                  ],
+                  "query": [
+                    {
+                      "key": "email",
+                      "value": "{{email}}"
+                    }
+                  ]
+                },
+                "description": "404 sin perfil."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"cantidad_registros\": 3,\n  \"historial\": [\n    {\n      \"alimento_codigo\": \"chororamo\",\n      \"alimento_detectado\": \"Chocoramo (ponqué cubierto de chocolate)\",\n      \"balanceado\": 0,\n      \"calorias_aprox\": 399,\n      \"certeza_ia\": 100.0,\n      \"fecha\": \"Sun, 27 Sep 2026 00:00:00 GMT\",\n      \"id\": 223,\n      \"usuario_id\": 26\n    },\n    {\n      \"alimento_codigo\": \"ajiaco\",\n      \"alimento_detectado\": \"Ajiaco santafereño\",\n      \"balanceado\": 1,\n      \"calorias_aprox\": 82,\n      \"certeza_ia\": 100.0,\n      \"fecha\": \"Sun, 27 Sep 2026 00:00:00 GMT\",\n      \"id\": 222,\n      \"usuario_id\": 26\n    },\n    {\n      \"alimento_codigo\": \"arepa\",\n      \"alimento_detectado\": \"Arepa paisa (de maíz precocido, con sal)\",\n      \"balanceado\": 1,\n      \"calorias_aprox\": 163,\n      \"certeza_ia\": 99.01,\n      \"fecha\": \"Sun, 27 Sep 2026 00:00:00 GMT\",\n      \"id\": 221,\n      \"usuario_id\": 26\n    }\n  ],\n  \"success\": true\n}"
+            },
+            {
+              "name": "Sin registros",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/historial?email={{email}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "historial"
+                  ],
+                  "query": [
+                    {
+                      "key": "email",
+                      "value": "{{email}}"
+                    }
+                  ]
+                },
+                "description": "404 sin perfil."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"cantidad_registros\": 0,\n  \"historial\": [],\n  \"success\": true\n}"
+            }
+          ]
         },
         {
           "name": "Lista de alimentos",
@@ -416,12 +956,529 @@
                 }
               ]
             },
-            "description": "XP, nivel, racha, meta del día, avatar (con la expresión del ánimo de hoy) y las reglas vigentes. Ver CONTRATO_GAMIFICACION.md."
+            "description": "XP, nivel (máximo alcanzado: nunca baja), racha, meta del día, avatar DiceBear con la expresión del ánimo de hoy y las reglas vigentes. Aquí se descuenta (perezosamente) el XP de los días inactivos: xp_perdido_desde_ultima_visita y mensaje_regreso llegan UNA sola vez. Ver CONTRATO_GAMIFICACION.md."
           },
-          "response": []
+          "response": [
+            {
+              "name": "Cuenta nueva (todo en 0)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/progreso?email={{email}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "progreso"
+                  ],
+                  "query": [
+                    {
+                      "key": "email",
+                      "value": "{{email}}"
+                    }
+                  ]
+                },
+                "description": "XP, nivel (máximo alcanzado: nunca baja), racha, meta del día, avatar DiceBear con la expresión del ánimo de hoy y las reglas vigentes. Aquí se descuenta (perezosamente) el XP de los días inactivos: xp_perdido_desde_ultima_visita y mensaje_regreso llegan UNA sola vez. Ver CONTRATO_GAMIFICACION.md."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"progreso\": {\n    \"avatar\": {\n      \"estado_animo_hoy\": null,\n      \"id\": \"sol\",\n      \"nombre\": \"Sol\",\n      \"url\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural\",\n      \"url_con_animo\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural\",\n      \"urls_por_estado\": {\n        \"bien\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=smile&eyes=default&eyebrows=defaultNatural\",\n        \"mal\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=concerned&eyes=default&eyebrows=sadConcernedNatural\",\n        \"muy_bien\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=smile&eyes=happy&eyebrows=raisedExcitedNatural\",\n        \"muy_mal\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=sad&eyes=default&eyebrows=sadConcerned\",\n        \"neutral\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=serious&eyes=default&eyebrows=defaultNatural\"\n      }\n    },\n    \"mensaje_regreso\": null,\n    \"meta_diaria\": {\n      \"cumplida\": false,\n      \"meta\": 15,\n      \"xp_hoy\": 0\n    },\n    \"nivel\": 1,\n    \"racha_actual\": 0,\n    \"racha_maxima\": 0,\n    \"reglas\": {\n      \"acciones\": {\n        \"comida_registrada\": {\n          \"maximo_por_dia\": 5,\n          \"xp\": 10\n        },\n        \"estado_animo\": {\n          \"maximo_por_dia\": 1,\n          \"xp\": 5\n        }\n      },\n      \"meta_diaria_xp\": 15,\n      \"niveles\": [\n        0,\n        30,\n        80,\n        150,\n        250,\n        400,\n        600,\n        850,\n        1150,\n        1500\n      ],\n      \"tope_perdida_por_periodo\": 20,\n      \"xp_perdido_por_dia_inactivo\": 5\n    },\n    \"ultima_fecha_actividad\": null,\n    \"xp_faltante_siguiente_nivel\": 30,\n    \"xp_inicio_nivel\": 0,\n    \"xp_perdido_desde_ultima_visita\": 0,\n    \"xp_siguiente_nivel\": 30,\n    \"xp_total\": 0\n  },\n  \"success\": true\n}"
+            },
+            {
+              "name": "Regreso tras 3 días inactivos",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/progreso?email={{email}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "progreso"
+                  ],
+                  "query": [
+                    {
+                      "key": "email",
+                      "value": "{{email}}"
+                    }
+                  ]
+                },
+                "description": "XP, nivel (máximo alcanzado: nunca baja), racha, meta del día, avatar DiceBear con la expresión del ánimo de hoy y las reglas vigentes. Aquí se descuenta (perezosamente) el XP de los días inactivos: xp_perdido_desde_ultima_visita y mensaje_regreso llegan UNA sola vez. Ver CONTRATO_GAMIFICACION.md."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"progreso\": {\n    \"avatar\": {\n      \"estado_animo_hoy\": \"bien\",\n      \"id\": \"sol\",\n      \"nombre\": \"Sol\",\n      \"url\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural\",\n      \"url_con_animo\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=smile&eyes=default&eyebrows=defaultNatural\",\n      \"urls_por_estado\": {\n        \"bien\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=smile&eyes=default&eyebrows=defaultNatural\",\n        \"mal\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=concerned&eyes=default&eyebrows=sadConcernedNatural\",\n        \"muy_bien\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=smile&eyes=happy&eyebrows=raisedExcitedNatural\",\n        \"muy_mal\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=sad&eyes=default&eyebrows=sadConcerned\",\n        \"neutral\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=serious&eyes=default&eyebrows=defaultNatural\"\n      }\n    },\n    \"mensaje_regreso\": \"¡Te extrañamos! Tu nivel y todo lo que desbloqueaste siguen siendo tuyos. Cuando quieras, registra algo hoy y vuelve a sumar XP.\",\n    \"meta_diaria\": {\n      \"cumplida\": true,\n      \"meta\": 15,\n      \"xp_hoy\": 35\n    },\n    \"nivel\": 2,\n    \"racha_actual\": 0,\n    \"racha_maxima\": 1,\n    \"reglas\": {\n      \"acciones\": {\n        \"comida_registrada\": {\n          \"maximo_por_dia\": 5,\n          \"xp\": 10\n        },\n        \"estado_animo\": {\n          \"maximo_por_dia\": 1,\n          \"xp\": 5\n        }\n      },\n      \"meta_diaria_xp\": 15,\n      \"niveles\": [\n        0,\n        30,\n        80,\n        150,\n        250,\n        400,\n        600,\n        850,\n        1150,\n        1500\n      ],\n      \"tope_perdida_por_periodo\": 20,\n      \"xp_perdido_por_dia_inactivo\": 5\n    },\n    \"ultima_fecha_actividad\": \"2026-09-23\",\n    \"xp_faltante_siguiente_nivel\": 60,\n    \"xp_inicio_nivel\": 30,\n    \"xp_perdido_desde_ultima_visita\": 15,\n    \"xp_siguiente_nivel\": 80,\n    \"xp_total\": 20\n  },\n  \"success\": true\n}"
+            },
+            {
+              "name": "Segunda visita el mismo día (sin aviso)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/progreso?email={{email}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "progreso"
+                  ],
+                  "query": [
+                    {
+                      "key": "email",
+                      "value": "{{email}}"
+                    }
+                  ]
+                },
+                "description": "XP, nivel (máximo alcanzado: nunca baja), racha, meta del día, avatar DiceBear con la expresión del ánimo de hoy y las reglas vigentes. Aquí se descuenta (perezosamente) el XP de los días inactivos: xp_perdido_desde_ultima_visita y mensaje_regreso llegan UNA sola vez. Ver CONTRATO_GAMIFICACION.md."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"progreso\": {\n    \"avatar\": {\n      \"estado_animo_hoy\": \"bien\",\n      \"id\": \"sol\",\n      \"nombre\": \"Sol\",\n      \"url\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural\",\n      \"url_con_animo\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=smile&eyes=default&eyebrows=defaultNatural\",\n      \"urls_por_estado\": {\n        \"bien\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=smile&eyes=default&eyebrows=defaultNatural\",\n        \"mal\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=concerned&eyes=default&eyebrows=sadConcernedNatural\",\n        \"muy_bien\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=smile&eyes=happy&eyebrows=raisedExcitedNatural\",\n        \"muy_mal\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=sad&eyes=default&eyebrows=sadConcerned\",\n        \"neutral\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=serious&eyes=default&eyebrows=defaultNatural\"\n      }\n    },\n    \"mensaje_regreso\": null,\n    \"meta_diaria\": {\n      \"cumplida\": true,\n      \"meta\": 15,\n      \"xp_hoy\": 35\n    },\n    \"nivel\": 2,\n    \"racha_actual\": 0,\n    \"racha_maxima\": 1,\n    \"reglas\": {\n      \"acciones\": {\n        \"comida_registrada\": {\n          \"maximo_por_dia\": 5,\n          \"xp\": 10\n        },\n        \"estado_animo\": {\n          \"maximo_por_dia\": 1,\n          \"xp\": 5\n        }\n      },\n      \"meta_diaria_xp\": 15,\n      \"niveles\": [\n        0,\n        30,\n        80,\n        150,\n        250,\n        400,\n        600,\n        850,\n        1150,\n        1500\n      ],\n      \"tope_perdida_por_periodo\": 20,\n      \"xp_perdido_por_dia_inactivo\": 5\n    },\n    \"ultima_fecha_actividad\": \"2026-09-23\",\n    \"xp_faltante_siguiente_nivel\": 60,\n    \"xp_inicio_nivel\": 30,\n    \"xp_perdido_desde_ultima_visita\": 0,\n    \"xp_siguiente_nivel\": 80,\n    \"xp_total\": 20\n  },\n  \"success\": true\n}"
+            }
+          ]
         },
         {
-          "name": "Avatares",
+          "name": "Avatar por capas (ver)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/avatar?email={{email}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "avatar"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "{{email}}"
+                }
+              ]
+            },
+            "description": "Avatar por capas de Figma: base, lo que tiene puesto, capas en orden de apilado (la primera abajo) y cada prenda/accesorio con desbloqueado, nivel_requerido y niveles_faltantes. Sin imágenes responde igual (imagen_lista: false). Ver GUIA_FRONTEND_SARA.md, pantalla 8."
+          },
+          "response": [
+            {
+              "name": "Nivel 2, sin imágenes todavía",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/avatar?email={{email}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "avatar"
+                  ],
+                  "query": [
+                    {
+                      "key": "email",
+                      "value": "{{email}}"
+                    }
+                  ]
+                },
+                "description": "Avatar por capas de Figma: base, lo que tiene puesto, capas en orden de apilado (la primera abajo) y cada prenda/accesorio con desbloqueado, nivel_requerido y niveles_faltantes. Sin imágenes responde igual (imagen_lista: false). Ver GUIA_FRONTEND_SARA.md, pantalla 8."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"base\": {\n    \"archivo\": \"base_1.png\",\n    \"id\": \"base_1\",\n    \"imagen_lista\": false,\n    \"nombre\": \"Base 1\",\n    \"url\": \"http://127.0.0.1:5002/static/avatar/base_1.png\"\n  },\n  \"bases\": [\n    {\n      \"archivo\": \"base_1.png\",\n      \"id\": \"base_1\",\n      \"imagen_lista\": false,\n      \"nombre\": \"Base 1\",\n      \"seleccionada\": true,\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_1.png\"\n    },\n    {\n      \"archivo\": \"base_2.png\",\n      \"id\": \"base_2\",\n      \"imagen_lista\": false,\n      \"nombre\": \"Base 2\",\n      \"seleccionada\": false,\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_2.png\"\n    }\n  ],\n  \"capas\": [\n    {\n      \"archivo\": \"base_1.png\",\n      \"id\": \"base_1\",\n      \"imagen_lista\": false,\n      \"tipo\": \"base\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_1.png\"\n    }\n  ],\n  \"imagenes_listas\": false,\n  \"nivel_maximo\": 2,\n  \"objetos\": {\n    \"accesorio\": [\n      {\n        \"archivo\": \"accesorio_gafas.png\",\n        \"desbloqueado\": true,\n        \"id\": \"gafas\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 2,\n        \"niveles_faltantes\": 0,\n        \"nombre\": \"Gafas\",\n        \"puesto\": false,\n        \"tipo\": \"accesorio\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_gafas.png\"\n      },\n      {\n        \"archivo\": \"accesorio_audifonos.png\",\n        \"desbloqueado\": false,\n        \"id\": \"audifonos\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 4,\n        \"niveles_faltantes\": 2,\n        \"nombre\": \"Audífonos\",\n        \"puesto\": false,\n        \"tipo\": \"accesorio\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_audifonos.png\"\n      },\n      {\n        \"archivo\": \"accesorio_sombrero_vueltiao.png\",\n        \"desbloqueado\": false,\n        \"id\": \"sombrero_vueltiao\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 8,\n        \"niveles_faltantes\": 6,\n        \"nombre\": \"Sombrero vueltiao\",\n        \"puesto\": false,\n        \"tipo\": \"accesorio\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_sombrero_vueltiao.png\"\n      }\n    ],\n    \"ropa\": [\n      {\n        \"archivo\": \"ropa_buzo_verde.png\",\n        \"desbloqueado\": true,\n        \"id\": \"buzo_verde\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 1,\n        \"niveles_faltantes\": 0,\n        \"nombre\": \"Buzo verde\",\n        \"puesto\": false,\n        \"tipo\": \"ropa\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_buzo_verde.png\"\n      },\n      {\n        \"archivo\": \"ropa_camiseta_lumea.png\",\n        \"desbloqueado\": false,\n        \"id\": \"camiseta_lumea\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 3,\n        \"niveles_faltantes\": 1,\n        \"nombre\": \"Camiseta Lumea\",\n        \"puesto\": false,\n        \"tipo\": \"ropa\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_camiseta_lumea.png\"\n      },\n      {\n        \"archivo\": \"ropa_ruana.png\",\n        \"desbloqueado\": false,\n        \"id\": \"ruana\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 6,\n        \"niveles_faltantes\": 4,\n        \"nombre\": \"Ruana\",\n        \"puesto\": false,\n        \"tipo\": \"ropa\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_ruana.png\"\n      }\n    ]\n  },\n  \"puesto\": {\n    \"accesorio\": null,\n    \"ropa\": null\n  },\n  \"respaldo_dicebear\": {\n    \"id\": \"sol\",\n    \"nombre\": \"Sol\",\n    \"url\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural\"\n  },\n  \"success\": true\n}"
+            }
+          ]
+        },
+        {
+          "name": "Avatar por capas: elegir base",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/avatar/base",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "avatar",
+                "base"
+              ]
+            },
+            "description": "base_1 o base_2 (las dos disponibles desde el inicio). Responde lo mismo que GET /avatar. 400 si la base no existe.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"base_id\": \"base_2\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Base 2",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/avatar/base",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "avatar",
+                    "base"
+                  ]
+                },
+                "description": "base_1 o base_2 (las dos disponibles desde el inicio). Responde lo mismo que GET /avatar. 400 si la base no existe.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{email}}\",\n  \"base_id\": \"base_2\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"base\": {\n    \"archivo\": \"base_2.png\",\n    \"id\": \"base_2\",\n    \"imagen_lista\": false,\n    \"nombre\": \"Base 2\",\n    \"url\": \"http://127.0.0.1:5002/static/avatar/base_2.png\"\n  },\n  \"bases\": [\n    {\n      \"archivo\": \"base_1.png\",\n      \"id\": \"base_1\",\n      \"imagen_lista\": false,\n      \"nombre\": \"Base 1\",\n      \"seleccionada\": false,\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_1.png\"\n    },\n    {\n      \"archivo\": \"base_2.png\",\n      \"id\": \"base_2\",\n      \"imagen_lista\": false,\n      \"nombre\": \"Base 2\",\n      \"seleccionada\": true,\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_2.png\"\n    }\n  ],\n  \"capas\": [\n    {\n      \"archivo\": \"base_2.png\",\n      \"id\": \"base_2\",\n      \"imagen_lista\": false,\n      \"tipo\": \"base\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_2.png\"\n    }\n  ],\n  \"imagenes_listas\": false,\n  \"nivel_maximo\": 2,\n  \"objetos\": {\n    \"accesorio\": [\n      {\n        \"archivo\": \"accesorio_gafas.png\",\n        \"desbloqueado\": true,\n        \"id\": \"gafas\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 2,\n        \"niveles_faltantes\": 0,\n        \"nombre\": \"Gafas\",\n        \"puesto\": false,\n        \"tipo\": \"accesorio\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_gafas.png\"\n      },\n      {\n        \"archivo\": \"accesorio_audifonos.png\",\n        \"desbloqueado\": false,\n        \"id\": \"audifonos\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 4,\n        \"niveles_faltantes\": 2,\n        \"nombre\": \"Audífonos\",\n        \"puesto\": false,\n        \"tipo\": \"accesorio\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_audifonos.png\"\n      },\n      {\n        \"archivo\": \"accesorio_sombrero_vueltiao.png\",\n        \"desbloqueado\": false,\n        \"id\": \"sombrero_vueltiao\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 8,\n        \"niveles_faltantes\": 6,\n        \"nombre\": \"Sombrero vueltiao\",\n        \"puesto\": false,\n        \"tipo\": \"accesorio\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_sombrero_vueltiao.png\"\n      }\n    ],\n    \"ropa\": [\n      {\n        \"archivo\": \"ropa_buzo_verde.png\",\n        \"desbloqueado\": true,\n        \"id\": \"buzo_verde\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 1,\n        \"niveles_faltantes\": 0,\n        \"nombre\": \"Buzo verde\",\n        \"puesto\": false,\n        \"tipo\": \"ropa\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_buzo_verde.png\"\n      },\n      {\n        \"archivo\": \"ropa_camiseta_lumea.png\",\n        \"desbloqueado\": false,\n        \"id\": \"camiseta_lumea\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 3,\n        \"niveles_faltantes\": 1,\n        \"nombre\": \"Camiseta Lumea\",\n        \"puesto\": false,\n        \"tipo\": \"ropa\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_camiseta_lumea.png\"\n      },\n      {\n        \"archivo\": \"ropa_ruana.png\",\n        \"desbloqueado\": false,\n        \"id\": \"ruana\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 6,\n        \"niveles_faltantes\": 4,\n        \"nombre\": \"Ruana\",\n        \"puesto\": false,\n        \"tipo\": \"ropa\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_ruana.png\"\n      }\n    ]\n  },\n  \"puesto\": {\n    \"accesorio\": null,\n    \"ropa\": null\n  },\n  \"respaldo_dicebear\": {\n    \"id\": \"sol\",\n    \"nombre\": \"Sol\",\n    \"url\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural\"\n  },\n  \"success\": true\n}"
+            }
+          ]
+        },
+        {
+          "name": "Avatar por capas: ponerse un objeto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/avatar/equipar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "avatar",
+                "equipar"
+              ]
+            },
+            "description": "tipo: ropa o accesorio. Uno por tipo: ponerse otro reemplaza el anterior. Responde lo mismo que GET /avatar. 400 si falta algo o el objeto no existe o es de otro tipo; 403 si está bloqueado; 404 sin perfil.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"tipo\": \"ropa\",\n  \"item_id\": \"buzo_verde\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Buzo verde puesto",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/avatar/equipar",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "avatar",
+                    "equipar"
+                  ]
+                },
+                "description": "tipo: ropa o accesorio. Uno por tipo: ponerse otro reemplaza el anterior. Responde lo mismo que GET /avatar. 400 si falta algo o el objeto no existe o es de otro tipo; 403 si está bloqueado; 404 sin perfil.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{email}}\",\n  \"tipo\": \"ropa\",\n  \"item_id\": \"buzo_verde\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"base\": {\n    \"archivo\": \"base_2.png\",\n    \"id\": \"base_2\",\n    \"imagen_lista\": false,\n    \"nombre\": \"Base 2\",\n    \"url\": \"http://127.0.0.1:5002/static/avatar/base_2.png\"\n  },\n  \"bases\": [\n    {\n      \"archivo\": \"base_1.png\",\n      \"id\": \"base_1\",\n      \"imagen_lista\": false,\n      \"nombre\": \"Base 1\",\n      \"seleccionada\": false,\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_1.png\"\n    },\n    {\n      \"archivo\": \"base_2.png\",\n      \"id\": \"base_2\",\n      \"imagen_lista\": false,\n      \"nombre\": \"Base 2\",\n      \"seleccionada\": true,\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_2.png\"\n    }\n  ],\n  \"capas\": [\n    {\n      \"archivo\": \"base_2.png\",\n      \"id\": \"base_2\",\n      \"imagen_lista\": false,\n      \"tipo\": \"base\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_2.png\"\n    },\n    {\n      \"archivo\": \"ropa_buzo_verde.png\",\n      \"id\": \"buzo_verde\",\n      \"imagen_lista\": false,\n      \"tipo\": \"ropa\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_buzo_verde.png\"\n    }\n  ],\n  \"imagenes_listas\": false,\n  \"nivel_maximo\": 2,\n  \"objetos\": {\n    \"accesorio\": [\n      {\n        \"archivo\": \"accesorio_gafas.png\",\n        \"desbloqueado\": true,\n        \"id\": \"gafas\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 2,\n        \"niveles_faltantes\": 0,\n        \"nombre\": \"Gafas\",\n        \"puesto\": false,\n        \"tipo\": \"accesorio\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_gafas.png\"\n      },\n      {\n        \"archivo\": \"accesorio_audifonos.png\",\n        \"desbloqueado\": false,\n        \"id\": \"audifonos\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 4,\n        \"niveles_faltantes\": 2,\n        \"nombre\": \"Audífonos\",\n        \"puesto\": false,\n        \"tipo\": \"accesorio\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_audifonos.png\"\n      },\n      {\n        \"archivo\": \"accesorio_sombrero_vueltiao.png\",\n        \"desbloqueado\": false,\n        \"id\": \"sombrero_vueltiao\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 8,\n        \"niveles_faltantes\": 6,\n        \"nombre\": \"Sombrero vueltiao\",\n        \"puesto\": false,\n        \"tipo\": \"accesorio\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_sombrero_vueltiao.png\"\n      }\n    ],\n    \"ropa\": [\n      {\n        \"archivo\": \"ropa_buzo_verde.png\",\n        \"desbloqueado\": true,\n        \"id\": \"buzo_verde\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 1,\n        \"niveles_faltantes\": 0,\n        \"nombre\": \"Buzo verde\",\n        \"puesto\": true,\n        \"tipo\": \"ropa\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_buzo_verde.png\"\n      },\n      {\n        \"archivo\": \"ropa_camiseta_lumea.png\",\n        \"desbloqueado\": false,\n        \"id\": \"camiseta_lumea\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 3,\n        \"niveles_faltantes\": 1,\n        \"nombre\": \"Camiseta Lumea\",\n        \"puesto\": false,\n        \"tipo\": \"ropa\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_camiseta_lumea.png\"\n      },\n      {\n        \"archivo\": \"ropa_ruana.png\",\n        \"desbloqueado\": false,\n        \"id\": \"ruana\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 6,\n        \"niveles_faltantes\": 4,\n        \"nombre\": \"Ruana\",\n        \"puesto\": false,\n        \"tipo\": \"ropa\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_ruana.png\"\n      }\n    ]\n  },\n  \"puesto\": {\n    \"accesorio\": null,\n    \"ropa\": {\n      \"archivo\": \"ropa_buzo_verde.png\",\n      \"id\": \"buzo_verde\",\n      \"imagen_lista\": false,\n      \"nombre\": \"Buzo verde\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_buzo_verde.png\"\n    }\n  },\n  \"respaldo_dicebear\": {\n    \"id\": \"sol\",\n    \"nombre\": \"Sol\",\n    \"url\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural\"\n  },\n  \"success\": true\n}"
+            }
+          ]
+        },
+        {
+          "name": "Avatar por capas: objeto bloqueado (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 403\", function () { pm.response.to.have.status(403); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/avatar/equipar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "avatar",
+                "equipar"
+              ]
+            },
+            "description": "Los audífonos piden nivel 4: con un perfil nuevo (nivel 1) responde 403 con niveles_faltantes.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"tipo\": \"accesorio\",\n  \"item_id\": \"audifonos\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Bloqueado",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/avatar/equipar",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "avatar",
+                    "equipar"
+                  ]
+                },
+                "description": "El sombrero vueltiao pide nivel 8: con un perfil nuevo responde 403 con niveles_faltantes.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{email}}\",\n  \"tipo\": \"accesorio\",\n  \"item_id\": \"audifonos\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "FORBIDDEN",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"error\": \"El objeto \\\"audifonos\\\" todavía está bloqueado.\",\n  \"nivel_maximo\": 1,\n  \"nivel_requerido\": 4,\n  \"niveles_faltantes\": 3\n}"
+            }
+          ]
+        },
+        {
+          "name": "Avatar por capas: quitarse un objeto",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/avatar/quitar",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "avatar",
+                "quitar"
+              ]
+            },
+            "description": "Quita lo que tenga puesto de ese tipo (si no tiene nada, no es error). Responde lo mismo que GET /avatar.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"tipo\": \"ropa\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Ropa quitada (queda el accesorio)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/avatar/quitar",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "avatar",
+                    "quitar"
+                  ]
+                },
+                "description": "Quita lo que tenga puesto de ese tipo (si no tiene nada, no es error). Responde lo mismo que GET /avatar.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{email}}\",\n  \"tipo\": \"ropa\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"base\": {\n    \"archivo\": \"base_2.png\",\n    \"id\": \"base_2\",\n    \"imagen_lista\": false,\n    \"nombre\": \"Base 2\",\n    \"url\": \"http://127.0.0.1:5002/static/avatar/base_2.png\"\n  },\n  \"bases\": [\n    {\n      \"archivo\": \"base_1.png\",\n      \"id\": \"base_1\",\n      \"imagen_lista\": false,\n      \"nombre\": \"Base 1\",\n      \"seleccionada\": false,\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_1.png\"\n    },\n    {\n      \"archivo\": \"base_2.png\",\n      \"id\": \"base_2\",\n      \"imagen_lista\": false,\n      \"nombre\": \"Base 2\",\n      \"seleccionada\": true,\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_2.png\"\n    }\n  ],\n  \"capas\": [\n    {\n      \"archivo\": \"base_2.png\",\n      \"id\": \"base_2\",\n      \"imagen_lista\": false,\n      \"tipo\": \"base\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_2.png\"\n    },\n    {\n      \"archivo\": \"accesorio_gafas.png\",\n      \"id\": \"gafas\",\n      \"imagen_lista\": false,\n      \"tipo\": \"accesorio\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_gafas.png\"\n    }\n  ],\n  \"imagenes_listas\": false,\n  \"nivel_maximo\": 2,\n  \"objetos\": {\n    \"accesorio\": [\n      {\n        \"archivo\": \"accesorio_gafas.png\",\n        \"desbloqueado\": true,\n        \"id\": \"gafas\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 2,\n        \"niveles_faltantes\": 0,\n        \"nombre\": \"Gafas\",\n        \"puesto\": true,\n        \"tipo\": \"accesorio\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_gafas.png\"\n      },\n      {\n        \"archivo\": \"accesorio_audifonos.png\",\n        \"desbloqueado\": false,\n        \"id\": \"audifonos\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 4,\n        \"niveles_faltantes\": 2,\n        \"nombre\": \"Audífonos\",\n        \"puesto\": false,\n        \"tipo\": \"accesorio\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_audifonos.png\"\n      },\n      {\n        \"archivo\": \"accesorio_sombrero_vueltiao.png\",\n        \"desbloqueado\": false,\n        \"id\": \"sombrero_vueltiao\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 8,\n        \"niveles_faltantes\": 6,\n        \"nombre\": \"Sombrero vueltiao\",\n        \"puesto\": false,\n        \"tipo\": \"accesorio\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_sombrero_vueltiao.png\"\n      }\n    ],\n    \"ropa\": [\n      {\n        \"archivo\": \"ropa_buzo_verde.png\",\n        \"desbloqueado\": true,\n        \"id\": \"buzo_verde\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 1,\n        \"niveles_faltantes\": 0,\n        \"nombre\": \"Buzo verde\",\n        \"puesto\": false,\n        \"tipo\": \"ropa\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_buzo_verde.png\"\n      },\n      {\n        \"archivo\": \"ropa_camiseta_lumea.png\",\n        \"desbloqueado\": false,\n        \"id\": \"camiseta_lumea\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 3,\n        \"niveles_faltantes\": 1,\n        \"nombre\": \"Camiseta Lumea\",\n        \"puesto\": false,\n        \"tipo\": \"ropa\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_camiseta_lumea.png\"\n      },\n      {\n        \"archivo\": \"ropa_ruana.png\",\n        \"desbloqueado\": false,\n        \"id\": \"ruana\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 6,\n        \"niveles_faltantes\": 4,\n        \"nombre\": \"Ruana\",\n        \"puesto\": false,\n        \"tipo\": \"ropa\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_ruana.png\"\n      }\n    ]\n  },\n  \"puesto\": {\n    \"accesorio\": {\n      \"archivo\": \"accesorio_gafas.png\",\n      \"id\": \"gafas\",\n      \"imagen_lista\": false,\n      \"nombre\": \"Gafas\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_gafas.png\"\n    },\n    \"ropa\": null\n  },\n  \"respaldo_dicebear\": {\n    \"id\": \"sol\",\n    \"nombre\": \"Sol\",\n    \"url\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural\"\n  },\n  \"success\": true\n}"
+            }
+          ]
+        },
+        {
+          "name": "Avatares DiceBear",
           "event": [
             {
               "listen": "test",
@@ -451,12 +1508,46 @@
                 }
               ]
             },
-            "description": "Catálogo con desbloqueado/seleccionado según el XP."
+            "description": "Catálogo de avatares DiceBear (la cara del check-in de ánimo y el respaldo si no llegan las imágenes de Figma). Se desbloquean por nivel máximo (nivel_requerido, niveles_faltantes): nunca se vuelven a bloquear."
           },
-          "response": []
+          "response": [
+            {
+              "name": "Nivel 2",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/avatares?email={{email}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "avatares"
+                  ],
+                  "query": [
+                    {
+                      "key": "email",
+                      "value": "{{email}}"
+                    }
+                  ]
+                },
+                "description": "Catálogo de avatares DiceBear (la cara del check-in de ánimo y el respaldo si no llegan las imágenes de Figma). Se desbloquean por nivel máximo (nivel_requerido, niveles_faltantes): nunca se vuelven a bloquear."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"avatar_actual\": \"sol\",\n  \"avatares\": [\n    {\n      \"desbloqueado\": true,\n      \"id\": \"sol\",\n      \"nivel_requerido\": 1,\n      \"niveles_faltantes\": 0,\n      \"nombre\": \"Sol\",\n      \"seleccionado\": true,\n      \"url\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural\"\n    },\n    {\n      \"desbloqueado\": true,\n      \"id\": \"luna\",\n      \"nivel_requerido\": 1,\n      \"niveles_faltantes\": 0,\n      \"nombre\": \"Luna\",\n      \"seleccionado\": false,\n      \"url\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-luna&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural\"\n    },\n    {\n      \"desbloqueado\": false,\n      \"id\": \"rio\",\n      \"nivel_requerido\": 3,\n      \"niveles_faltantes\": 1,\n      \"nombre\": \"Río\",\n      \"seleccionado\": false,\n      \"url\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-rio&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural\"\n    },\n    {\n      \"desbloqueado\": false,\n      \"id\": \"montana\",\n      \"nivel_requerido\": 5,\n      \"niveles_faltantes\": 3,\n      \"nombre\": \"Montaña\",\n      \"seleccionado\": false,\n      \"url\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-montana&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural\"\n    },\n    {\n      \"desbloqueado\": false,\n      \"id\": \"orquidea\",\n      \"nivel_requerido\": 7,\n      \"niveles_faltantes\": 5,\n      \"nombre\": \"Orquídea\",\n      \"seleccionado\": false,\n      \"url\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-orquidea&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural\"\n    },\n    {\n      \"desbloqueado\": false,\n      \"id\": \"colibri\",\n      \"nivel_requerido\": 9,\n      \"niveles_faltantes\": 7,\n      \"nombre\": \"Colibrí\",\n      \"seleccionado\": false,\n      \"url\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-colibri&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural\"\n    }\n  ],\n  \"nivel_maximo\": 2,\n  \"success\": true,\n  \"xp_total\": 35\n}"
+            }
+          ]
         },
         {
-          "name": "Elegir avatar",
+          "name": "Elegir avatar DiceBear",
           "event": [
             {
               "listen": "test",
@@ -485,7 +1576,7 @@
                 "avatar"
               ]
             },
-            "description": "400 si el avatar no existe, 403 si está bloqueado (trae xp_requerido y xp_faltante), 404 sin perfil.",
+            "description": "Elige el avatar DiceBear. 400 si el avatar no existe, 403 si está bloqueado (trae nivel_requerido, nivel_maximo y niveles_faltantes), 404 sin perfil. Ojo: GET /avatar (singular) es el avatar por capas.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{email}}\",\n  \"avatar_id\": \"luna\"\n}",
@@ -504,14 +1595,57 @@
       "name": "6. Autenticación (pendiente)",
       "item": [
         {
-          "name": "Login (PLACEHOLDER)",
+          "name": "Registrarse con contraseña (pendiente)",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test(\"Responde 404\", function () { pm.response.to.have.status(404); });"
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/perfil",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "perfil"
+              ]
+            },
+            "description": "POST /perfil con el campo contraseña. Hoy la contraseña se ignora; cuando Isabella termine, se guarda como hash de bcrypt y nunca vuelve en ninguna respuesta (test_login.py, pruebas 1 y 8).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Ana\",\n  \"email\": \"{{email}}\",\n  \"edad\": 15,\n  \"genero\": \"femenino\",\n  \"peso\": 52.0,\n  \"altura\": 158,\n  \"objetivo\": \"comer_balanceado\",\n  \"contraseña\": \"{{contrasena}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login (pendiente: lo programa Isabella)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200 o 401 o 404\", function () { pm.expect([200, 401, 404]).to.include(pm.response.code); });"
                 ]
               }
             }
@@ -533,10 +1667,10 @@
                 "login"
               ]
             },
-            "description": "⚠️ PLACEHOLDER: este endpoint todavía NO existe (hoy responde 404). Lo implementa Isabella con Bcrypt. El body de abajo es provisional: ajustarlo, y ajustar la prueba de estado, cuando el endpoint exista.",
+            "description": "⚠️ Todavía NO existe en el código commiteado (responde 404). Lo programa Isabella con Bcrypt; sus pruebas están en Backend/test_login.py. Cuando exista: 200 con el perfil (sin password_hash), 401 con el MISMO mensaje si la contraseña está mal o el correo no existe, 400 si falta un dato.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"(definir cuando exista el endpoint)\"\n}",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"contraseña\": \"{{contrasena}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"

@@ -2,7 +2,7 @@
 
 Para quien construya el frontend de la gamificación. Todos los ejemplos son **respuestas reales** del backend (26 y 27 sep 2026), no inventadas.
 
-- Base: `http://127.0.0.1:5002` (igual que el resto de la API; ver `conexion-api.js`).
+- Base: `http://127.0.0.1:5002` (igual que el resto de la API; ver `api.js` del frontend).
 - Identificación del usuario: por `email`, como el resto de la API. **Cuando esté listo el login, esto puede cambiar** (se ajusta en un solo lugar del backend: `_usuario_id_desde_email` en `gamificacion.py`).
 - Los números (XP por acción, topes, meta, niveles, pérdida por inactividad, avatares, ropa y accesorios) viven en `gamificacion_config.py` y son **provisionales**. No los copies en el frontend: `GET /progreso` los devuelve en `reglas`.
 
