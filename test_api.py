@@ -62,11 +62,18 @@ def post(ruta, json=None, **kwargs):
 
 
 def probar_perfil():
-    verificar("POST /perfil", post("/perfil", {
+    # Desde el login con Bcrypt, crear una cuenta exige contraseña (mínimo 6).
+    datos = {
         "nombre": "Prueba test_api", "email": EMAIL_PRUEBA, "edad": 15, "genero": "otro",
         "peso": 55.0, "altura": 160, "objetivo": "comer_balanceado",
-    }))
-    verificar("GET /perfil", get("/perfil", email=EMAIL_PRUEBA))
+    }
+    verificar("POST /perfil sin contraseña (cuenta nueva) -> 400", post("/perfil", datos), esperado=400)
+    verificar("POST /perfil con contraseña corta -> 400", post("/perfil", {**datos, "contraseña": "123"}), esperado=400)
+    verificar("POST /perfil", post("/perfil", {**datos, "contraseña": "prueba-123"}))
+    verificar("POST /perfil otra vez con contraseña -> 409", post("/perfil", {**datos, "contraseña": "otra-123"}), esperado=409)
+    verificar("POST /perfil sin contraseña (editar) -> 200", post("/perfil", {**datos, "edad": 16}))
+    cuerpo = verificar("GET /perfil", get("/perfil", email=EMAIL_PRUEBA))
+    comprobar("GET /perfil no trae password_hash", "password_hash" not in (cuerpo.get("perfil") or {}))
 
 
 def probar_estado_animo():

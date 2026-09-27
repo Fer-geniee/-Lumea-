@@ -295,17 +295,51 @@ def confirmar_alimento():
 
 
 # ====== Perfil de usuario ======
+# ==== Reglas de la contraseña ====
+# Mínimo 6 caracteres (lo que promete el formulario de crear cuenta) y máximo
+# 72 BYTES: bcrypt no acepta contraseñas más largas (lanza ValueError). Son
+# bytes, no letras: la ñ y las tildes ocupan 2 bytes en UTF-8.
+CONTRASENA_MIN_CARACTERES = 6
+CONTRASENA_MAX_BYTES = 72
+
+
+def error_de_contraseña(contraseña):
+    """El mensaje de error si la contraseña no sirve, o None si está bien."""
+    if not isinstance(contraseña, str) or len(contraseña) < CONTRASENA_MIN_CARACTERES:
+        return f'La contraseña debe tener al menos {CONTRASENA_MIN_CARACTERES} caracteres.'
+    if len(contraseña.encode('utf-8')) > CONTRASENA_MAX_BYTES:
+        return 'La contraseña es demasiado larga (máximo 72 bytes; las tildes y la ñ cuentan doble).'
+    return None
+
+
 @app.route('/perfil', methods=['POST'])
 def guardar_perfil():
+    """Crea la cuenta (con contraseña obligatoria) o actualiza los datos de un
+    perfil que ya existe. POST /perfil NO cambia contraseñas: identifica a la
+    persona solo por el correo (ver REVISION_CODIGO_ISABELLA.md, problema 5)."""
     datos = request.get_json(silent=True) or {}
     requeridos = ['nombre', 'email', 'edad', 'genero', 'peso', 'altura']
     faltantes = [campo for campo in requeridos if campo not in datos]
     if faltantes:
         return jsonify({'error': f'Faltan campos: {", ".join(faltantes)}'}), 400
 
+    contraseña = datos.get('contraseña')
+    tiene_contraseña = db.estado_contraseña(datos['email'])  # None = el correo no tiene perfil
+    if contraseña is not None:
+        error = error_de_contraseña(contraseña)
+        if error:
+            return jsonify({'error': error}), 400
+        if tiene_contraseña:
+            # Ya hay una cuenta con contraseña: registrarse otra vez no puede
+            # reemplazarla (ni cambiarle los datos a esa persona).
+            return jsonify({'error': 'Ya existe una cuenta con ese correo. Inicia sesión con tu contraseña.'}), 409
+    elif tiene_contraseña is None:
+        # Cuenta nueva sin contraseña: desde el login con Bcrypt es obligatoria.
+        return jsonify({'error': f'La contraseña es obligatoria para crear una cuenta (mínimo {CONTRASENA_MIN_CARACTERES} caracteres).'}), 400
+
     exito = db.guardar_perfil(
         datos['nombre'], datos['email'], datos['edad'], datos['genero'],
-        datos['peso'], datos['altura'], datos.get('objetivo'),
+        datos['peso'], datos['altura'], datos.get('objetivo'), contraseña,
     )
     if exito:
         return jsonify({'success': True, 'mensaje': 'Perfil guardado.'}), 200
@@ -323,26 +357,41 @@ def obtener_perfil():
     return jsonify({'success': False, 'mensaje': 'No hay perfil guardado con ese correo.'}), 404
 
 # ==== Login de usuario (verificación de contraseña) ====
+# El MISMO mensaje para contraseña incorrecta, correo inexistente y perfil viejo
+# sin contraseña: así nadie puede usar el login para averiguar qué correos
+# están registrados. La "ayuda" explica qué hacer a quien tiene un perfil viejo.
+RESPUESTA_CREDENCIALES_INVALIDAS = {
+    "error": "Correo o contraseña incorrectos.",
+    "ayuda": "Si creaste tu cuenta antes de que Lumea pidiera contraseña, vuelve a "
+             "registrarte con el mismo correo para crear una.",
+}
+
+
 @app.route('/login', methods=['POST'])
 def login():
-    data = request.get_json()
+    # silent=True: si no llega JSON (o llega algo raro), data queda en {} y se
+    # responde 400 con la misma forma que las demás rutas, en vez de un 415/500.
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        data = {}
     email = data.get('email')
     contraseña = data.get('contraseña')
 
-    if not email or not contraseña:
+    if not email or not contraseña or not isinstance(contraseña, str):
         return jsonify({"error": "Correo y contraseña son requeridos"}), 400
 
     try:
         # 1. Usar el método de verificación segura (maneja usuarios inexistentes y cuentas viejas)
         if not db.verificar_contraseña(email, contraseña):
             # 💡 SEGURIDAD: Respondemos 401 tanto para contraseña incorrecta, cuenta vieja o email inexistente
-            return jsonify({"error": "Credenciales inválidas"}), 401
+            return jsonify(RESPUESTA_CREDENCIALES_INVALIDAS), 401
 
         # 2. Si es válida, obtenemos los datos limpios (sin el password_hash)
         perfil = db.obtener_datos_login(email)
         
         return jsonify({
-            "message": "Inicio de sesión exitoso", 
+            "success": True,
+            "message": "Inicio de sesión exitoso",
             "perfil": perfil
         }), 200
         

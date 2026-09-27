@@ -1,4 +1,3 @@
-import email
 import os
 import io
 import csv
@@ -6,7 +5,6 @@ from datetime import date, timedelta
 import mysql.connector
 from mysql.connector import Error
 from dotenv import load_dotenv
-from flask import Flask, jsonify, request
 import bcrypt  # Para hashing de contraseñas
 
 
@@ -16,6 +14,9 @@ load_dotenv()
 
 def conectar_mysql():
     """Establece la conexión inicial con el servidor MySQL.
+
+    La contraseña NUNCA debe quedar escrita en el código fuente. Se lee desde
+    una variable de entorno (archivo .env) que no se sube al repositorio.
     """
     password = os.getenv("MYSQL_PASSWORD", "")
     host = os.getenv("MYSQL_HOST", "127.0.0.1")  # Cambiar en .env el día de la sustentación
@@ -81,7 +82,7 @@ class BaseDatos:
                     genero VARCHAR(20),
                     peso FLOAT,
                     altura INT, 
-                    password_hash CHAR(60),  -- hash de contraseña (bcrypt)
+                    password_hash CHAR(60) NULL,  -- hash de contraseña (bcrypt); NULL = perfil de antes de las contraseñas
                     objetivo VARCHAR(50)  -- metas de HÁBITO 
                 )
             ''')
@@ -96,6 +97,9 @@ class BaseDatos:
             ''')
 
             # 4. TABLA DE SUEÑO
+            # Nota: renombrada de 'sueño' a 'sueno' (sin eñe) para evitar problemas
+            # de identificador según el charset/collation del cliente MySQL que use
+            # cada máquina el día de la presentación.
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS sueno (
                     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -126,7 +130,8 @@ class BaseDatos:
                 )
             ''')
 
-            # 7. TABLA DE ESTADO DE ÁNIMO (check-in diario, separado del perfil)
+            # 7. TABLA DE ESTADO DE ÁNIMO (check-in diario, separado del perfil
+            # porque cambia todo el tiempo -- el perfil se llena una sola vez)
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS estado_animo (
                     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -163,7 +168,11 @@ class BaseDatos:
             self._asegurar_columna(cursor, "historial_comida", "usuario_id", "usuario_id INT AFTER id")
             self._asegurar_columna(cursor, "estado_animo", "usuario_id", "usuario_id INT AFTER id")
             self._asegurar_indice_unico(cursor, "perfil", "email", "uq_perfil_email")
-            self._asegurar_columna(cursor, "perfil", "password_hash", "password_hash CHAR(60) NOT NULL AFTER objetivo") # No after objetivo porque es obligatorio y no puede ser NULL
+            # password_hash permite NULL: los perfiles creados antes de las
+            # contraseñas no tienen hash (y no pueden iniciar sesión hasta crear
+            # una). Con NOT NULL, MySQL no dejaba crear ni editar perfiles.
+            self._asegurar_columna(cursor, "perfil", "password_hash", "password_hash CHAR(60) NULL AFTER objetivo")
+            self._permitir_null_en_password_hash(cursor)
             self.conexion.commit()
 
         except Error as e:
@@ -189,6 +198,22 @@ class BaseDatos:
         if not existe:
             cursor.execute(f"ALTER TABLE {tabla} ADD COLUMN {definicion_sql}")
             print(f"Columna agregada: {tabla}.{columna}")
+
+    def _permitir_null_en_password_hash(self, cursor):
+        """Repara las bases donde password_hash quedó como NOT NULL (la primera
+        versión del login la creaba así). MySQL les puso '' a los perfiles que
+        ya existían; '' no es un hash, así que se cambia por NULL."""
+        cursor.execute(
+            """
+            SELECT IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_SCHEMA = 'lumea_db' AND TABLE_NAME = 'perfil' AND COLUMN_NAME = 'password_hash'
+            """
+        )
+        fila = cursor.fetchone()
+        if fila and fila[0] == "NO":
+            cursor.execute("ALTER TABLE perfil MODIFY COLUMN password_hash CHAR(60) NULL")
+            print("Columna reparada: perfil.password_hash ahora permite NULL")
+        cursor.execute("UPDATE perfil SET password_hash = NULL WHERE password_hash = ''")
 
     def _asegurar_indice_unico(self, cursor, tabla, columna, nombre_indice):
         """Agrega un índice UNIQUE a una tabla existente si todavía no lo tiene.
@@ -279,7 +304,12 @@ class BaseDatos:
         """Crea el perfil si el correo es nuevo, o actualiza el existente si ya
         existe -- 'email' es el identificador único de cada usuario (ver
         DEFENSA_TECNICA_LUMEA.md sección 5: perfiles múltiples con contraseña.
-        Ya no hay un único perfil fijo en id=1."""
+        Ya no hay un único perfil fijo en id=1.
+
+        La contraseña llega ya validada desde app.py (largo mínimo y máximo).
+        El hash solo se guarda si el perfil todavía no tenía uno: POST /perfil
+        no puede CAMBIAR una contraseña, porque identifica a la persona solo
+        por el correo y cualquiera podría reemplazar la de otro."""
         if not self.conexion or not self.conexion.is_connected():
             return False
         if objetivo is not None and objetivo not in self.OBJETIVOS_VALIDOS:
@@ -297,7 +327,7 @@ class BaseDatos:
                 ON DUPLICATE KEY UPDATE
                     nombre = VALUES(nombre), edad = VALUES(edad), genero = VALUES(genero),
                     peso = VALUES(peso), altura = VALUES(altura), objetivo = VALUES(objetivo), 
-                    password_hash = IFNULL(VALUES(password_hash), password_hash)  -- no se cambia el hash de contraseña aquí
+                    password_hash = IFNULL(password_hash, VALUES(password_hash))  -- si ya tenía hash, se conserva; solo se pone si no tenía
             '''
             cursor.execute(sql, (nombre, email, edad, genero, peso, altura, objetivo, hash_contraseña))
             self.conexion.commit()
@@ -308,17 +338,17 @@ class BaseDatos:
         finally:
             cursor.close()
 
-    def obtener_perfil_por_email(self, email): # - Aquí hay un error 
+    def obtener_perfil_por_email(self, email):
         if not self.conexion or not self.conexion.is_connected():
             return None
-        cursor = self.conexion.cursor(dictionary=True)      
+        cursor = self.conexion.cursor(dictionary=True)
         try:
             cursor.execute('SELECT * FROM perfil WHERE email = %s', (email,))
-            return cursor.fetchone()
+            perfil = cursor.fetchone()
             if perfil and "password_hash" in perfil:
                 del perfil["password_hash"]  # No enviar el hash de contraseña al cliente
-            return perfil 
-    
+            return perfil
+
         except Error as e:
             print(f"Error al obtener perfil: {e}")
             return None
@@ -333,11 +363,15 @@ class BaseDatos:
         try:
             cursor.execute('SELECT password_hash FROM perfil WHERE email = %s', (email,))
             fila = cursor.fetchone()
-            if fila is None or fila['password_hash'] is None:
-                return False  # Usuario no encontrado
+            if fila is None or not fila['password_hash']:
+                return False  # Usuario no encontrado, o perfil viejo sin contraseña (NULL o '')
             password_hash = fila['password_hash']
-    
+
             return bcrypt.checkpw(contraseña.encode('utf-8'), password_hash.encode('utf-8'))
+        except ValueError:
+            # bcrypt lanza ValueError (no un Error de MySQL) si lo guardado no
+            # es un hash válido. Para el login eso es "no coincide".
+            return False
         except Error as e:
             print(f"Error al verificar contraseña: {e}")
             return False
@@ -345,13 +379,31 @@ class BaseDatos:
             cursor.close()
 
 
+    def estado_contraseña(self, email):
+        """Para POST /perfil: None si el correo no tiene perfil, True si el
+        perfil ya tiene contraseña, False si es un perfil viejo sin ella."""
+        if not self.conexion or not self.conexion.is_connected():
+            return None
+        cursor = self.conexion.cursor(dictionary=True)
+        try:
+            cursor.execute('SELECT password_hash FROM perfil WHERE email = %s', (email,))
+            fila = cursor.fetchone()
+            if fila is None:
+                return None
+            return bool(fila['password_hash'])
+        except Error as e:
+            print(f"Error al consultar la contraseña del perfil: {e}")
+            return None
+        finally:
+            cursor.close()
+
     def obtener_datos_login(self, email):
         """Método para obtener los datos de inicio de sesión del usuario de manera segura, sin exponer el hash de la contraseña."""
         if not self.conexion or not self.conexion.is_connected():
             return None
         cursor = self.conexion.cursor(dictionary=True)
         try:
-            cursor.execute('SELECT id, email, objetivo FROM perfil WHERE email = %s', (email,))
+            cursor.execute('SELECT id, nombre, email, objetivo FROM perfil WHERE email = %s', (email,))
             return cursor.fetchone()
         except Error as e:
             print(f"Error al obtener datos de login: {e}")
