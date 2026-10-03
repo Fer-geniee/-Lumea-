@@ -217,6 +217,9 @@ def limpiar():
     """Borra de MySQL solo lo de los correos de prueba de este script."""
     from database import conectar_mysql  # solo la conexión: NO se crea BaseDatos()
     conexion = conectar_mysql()
+    if conexion is None:
+        print("(No se limpiaron los datos de prueba: MySQL no está disponible.)")
+        return
     cursor = conexion.cursor()
     cursor.execute("USE lumea_db")
     cursor.execute("SELECT id FROM perfil WHERE email LIKE %s", (PATRON_EMAIL,))

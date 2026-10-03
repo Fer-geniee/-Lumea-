@@ -20,7 +20,10 @@ db = BaseDatos()
 # Tablas y endpoints de gamificación (/progreso, /avatares, /avatar): viven
 # en gamificacion.py; los números, en gamificacion_config.py.
 registrar_gamificacion(app, db)
-print("Conexión a la base de datos establecida, Flask inicializado y CORS habilitado.")
+if db.conexion and db.conexion.is_connected():
+    print("Conexión a la base de datos establecida, Flask inicializado y CORS habilitado.")
+else:
+    print("ATENCIÓN: Flask arrancó SIN base de datos. Enciende MySQL (Ajustes del Sistema → MySQL → Start) y reinicia app.py.")
 
 # Los grupos de alimentos que siempre piden confirmación manual (sopas,
 # dulces...) están en grupos_confusion.py.
@@ -334,6 +337,9 @@ def guardar_perfil():
     """Crea la cuenta (con contraseña obligatoria) o actualiza los datos de un
     perfil que ya existe. POST /perfil NO cambia contraseñas: identifica a la
     persona solo por el correo (ver REVISION_CODIGO_ISABELLA.md, problema 5)."""
+    if not db.conexion or not db.conexion.is_connected():
+        # 503 = el servicio no está disponible: no es culpa de lo que envió el usuario.
+        return jsonify({'error': 'Sin conexión con la base de datos. ¿MySQL está encendido?'}), 503
     datos = request.get_json(silent=True) or {}
     requeridos = ['nombre', 'email', 'edad', 'genero', 'peso', 'altura']
     faltantes = [campo for campo in requeridos if campo not in datos]
