@@ -37,7 +37,7 @@ import numpy as np
 import tensorflow as tf
 from PIL import Image
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 IMAGENES_POR_DEFECTO = [
     os.path.join(BASE_DIR, "prueba.jpeg"),
     os.path.join(BASE_DIR, "dataset", "sopas", "02934.jpg"),

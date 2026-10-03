@@ -10,6 +10,8 @@ disparador con 99% de certeza): así se prueba la lógica de confirmación
 de cada grupo sin depender de tener una foto de cada alimento. Las
 confirmaciones se hacen con un correo de prueba y se borran al final.
 """
+import os as _os, sys as _sys  # (reorganización) para importar los módulos de Backend/
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 
 import io
 import unittest

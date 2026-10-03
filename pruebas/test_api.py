@@ -8,6 +8,8 @@ Cada corrida usa un correo nuevo (__test_api_<hora>__@lumea.test): así
 empieza siempre sin XP ni historial y las expectativas de gamificación son
 exactas. La limpieza final borra SOLO filas de correos con ese patrón.
 """
+import os as _os, sys as _sys  # (reorganización) para importar los módulos de Backend/
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 
 import os
 import sys
@@ -20,7 +22,7 @@ from grupos_confusion import GRUPOS_CONFUSION
 
 # Cualquier foto de comida sirve. Por defecto, Backend/prueba.jpeg, que ya
 # viene en el repo.
-RUTA_IMAGEN = os.path.join(os.path.dirname(os.path.abspath(__file__)), "prueba.jpeg")
+RUTA_IMAGEN = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "prueba.jpeg")
 
 BASE_URL = "http://127.0.0.1:5002"
 PATRON_EMAIL_PRUEBA = "__test_api_%__@lumea.test"

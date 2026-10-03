@@ -36,6 +36,8 @@ Qué hace:
 Dependencias nuevas (agregadas a requirements.txt, SOLO para evaluación,
 la app en producción no las necesita): scikit-learn, matplotlib, seaborn.
 """
+import os as _os, sys as _sys  # (reorganización) para importar los módulos de Backend/
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 
 import argparse
 import os
@@ -56,7 +58,7 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import classification_report, confusion_matrix
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EXTENSIONES_IMAGEN = (".jpg", ".jpeg", ".png")
 
 # Los dos grupos de confusión conocidos (ver app.py: GRUPOS_CONFUSION).

@@ -17,6 +17,8 @@ Cada corrida usa un correo nuevo (__flujo_<hora>__@lumea.test), así que
 empieza sin XP ni historial. La limpieza borra SOLO filas de correos con
 ese patrón.
 """
+import os as _os, sys as _sys  # (reorganización) para importar los módulos de Backend/
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 
 import os
 import sys
@@ -28,7 +30,7 @@ import gamificacion_config as config
 
 BASE_URL = "http://127.0.0.1:5002"
 HEADERS = {"User-Agent": "curl/8.7.1"}  # igual que test_api.py
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FOTO_COMIDA = os.path.join(BASE_DIR, "prueba.jpeg")
 # Una foto que dispara el grupo de las sopas. dataset/ no está en git: si no
 # existe, el paso 4 confirma directamente una opción del grupo.

@@ -17,6 +17,8 @@ USO (desde la carpeta Backend, con el mismo entorno de app.py):
 
 No toca la base de datos ni el servidor: solo carga los modelos (tarda ~20 s).
 """
+import os as _os, sys as _sys  # (reorganización) para importar los módulos de Backend/
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 import io
 import os
 import sys

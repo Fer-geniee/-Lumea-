@@ -15,6 +15,8 @@ saltan solas.
 
 Las pruebas de los endpoints (con servidor) están en test_api.py.
 """
+import os as _os, sys as _sys  # (reorganización) para importar los módulos de Backend/
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 
 import unittest
 from datetime import date, timedelta
@@ -263,7 +265,7 @@ class TestPuntosV2(unittest.TestCase):
                          {m["id"]: m["id"] == "fruta" for m in config.MISIONES_DIARIAS})
 
     def test_config_de_puntos_v2_coherente(self):
-        with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "clases.json"), encoding="utf-8") as f:
+        with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "clases.json"), encoding="utf-8") as f:
             clases = json.load(f)
         clases = set(clases.values()) if isinstance(clases, dict) else set(clases)
         for fruta in config.FRUTAS:

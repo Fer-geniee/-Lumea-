@@ -73,7 +73,7 @@ from datetime import datetime
 
 import requests
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EXTENSIONES_IMAGEN = (".jpg", ".jpeg", ".png")
 
 # Mismos grupos que GRUPOS_CONFUSION en app.py -- duplicados aquí a

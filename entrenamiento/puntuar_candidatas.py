@@ -25,6 +25,8 @@ decide es la persona que revisa.
 Las fotos ya puntuadas no se vuelven a calcular (se reconoce el archivo por
 nombre y tamaño).
 """
+import os as _os, sys as _sys  # (reorganización) para importar los módulos de Backend/
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 
 import argparse
 import csv
@@ -36,7 +38,7 @@ from PIL import Image
 
 import predict  # carga los modelos (tarda unos segundos)
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CANDIDATOS = os.path.join(BASE_DIR, "dataset_candidatos")
 LOTE = 32
 

@@ -108,7 +108,7 @@ try:  # fotos de iPhone (.heic)
 except ImportError:
     pass
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATASET = os.path.join(BASE_DIR, "dataset")
 CANDIDATOS = os.path.join(BASE_DIR, "dataset_candidatos")
 REGISTRO = os.path.join(CANDIDATOS, "_registro.csv")

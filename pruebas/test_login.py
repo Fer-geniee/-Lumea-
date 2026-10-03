@@ -21,6 +21,8 @@ de abajo, no las pruebas):
 Las pruebas crean perfiles con correos __test_login_<hora>_...__@lumea.test
 y al final los borran (solo esos).
 """
+import os as _os, sys as _sys  # (reorganización) para importar los módulos de Backend/
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 
 import os
 import re

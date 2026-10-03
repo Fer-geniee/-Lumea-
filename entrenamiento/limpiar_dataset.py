@@ -73,7 +73,7 @@ import imagehash
 import numpy as np
 from PIL import Image
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 EXTENSIONES_IMAGEN = (".jpg", ".jpeg", ".png")
 UMBRALES_SENSIBILIDAD = [0, 2, 4, 6, 8, 10]
 PATRON_COPIA = re.compile(r"\bcopy\b|\bcopia\b|\(\d+\)", re.IGNORECASE)

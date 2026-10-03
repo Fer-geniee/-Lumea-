@@ -38,7 +38,7 @@ import tempfile
 
 import requests
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CACHE = os.path.join(BASE_DIR, "dataset_candidatos", "_openimages")
 AGENTE = "Lumea/1.0 (proyecto escolar Fedesoft, Colombia; https://github.com/Fer-geniee/-Lumea-)"
 

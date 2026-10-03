@@ -20,7 +20,7 @@ DATASET_PATH = "dataset/"
 # corriendo este script). Este script entrena el modelo REGIONAL; si
 # MODEL_OUT apunta al nombre del otro modelo, la próxima corrida
 # sobreescribe y destruye el modelo de Food-101 sin aviso.
-Base_dir = os.path.dirname(os.path.abspath(__file__))
+Base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODEL_OUT = os.path.join(Base_dir, "modelo_lumea_comida.keras")
 CLASSES_OUT = os.path.join(Base_dir, "clases.json")
 
