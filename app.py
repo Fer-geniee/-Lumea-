@@ -4,7 +4,7 @@ import os
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 os.environ["TF_USE_LEGACY_KERAS"] = "1"
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from PIL import UnidentifiedImageError
 from flask_cors import CORS
 from database import BaseDatos
@@ -178,7 +178,7 @@ def predecir():
             dato_curioso = info_alimento.get("dato_curioso")
         else:
             nombre_amigable = formatear_nombre(nombre_tecnico)
-            calorias = 250  # Placeholder: revisar cuando tabla_alimentos esté poblada con datos reales
+            calorias = None 
             es_balanceado = 1
             dato_curioso = None
 
@@ -530,6 +530,16 @@ def cargar_alimentos_csv():
             return jsonify({'error': mensaje}), 400
     except Exception as e:
         return jsonify({'error': f'Error al leer el archivo: {str(e)}'}), 500
+
+
+# ==== Demo de la cámara (feria) ====
+# Sirve SOLO el archivo camara.html desde esta misma carpeta. Al estar en la
+# misma dirección que la API (http://127.0.0.1:5002/camara), el navegador no
+# necesita CORS y permite la cámara (127.0.0.1 es un "contexto seguro").
+# send_from_directory con un nombre fijo no expone ningún otro archivo (.env).
+@app.route('/camara')
+def pagina_camara():
+    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), 'camara.html')
 
 
 if __name__ == '__main__':

@@ -43,3 +43,5 @@ build/
 # Arduino / otros proyectos que NO son de Lumea (por si el .git anterior los arrastró)
 .arduino-create/
 .arduinoIDE/
+# Fotos de la prueba de campo (salen personas): nunca a GitHub
+fotos_prueba/

@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lumea · Laboratorio de la cámara</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
+<!--
+  LUMEA · camara.html  (demo de la feria)
+  ------------------------------------------------------------------
+  CÓMO ABRIRLA (elige UNA):
+    A) Recomendada: con la ruta /camara de app.py
+         cd Backend && python3 app.py
+         → abrir  http://127.0.0.1:5002/camara
+       (misma dirección que el backend: sin CORS y la cámara funciona)
+    B) Sin tocar app.py, en la carpeta donde esté este archivo:
+         python3 -m http.server 8000 --bind 127.0.0.1
+         → abrir  http://127.0.0.1:8000/camara.html
+    NO con doble clic (file://): Safari bloquea la cámara ahí.
+
+  Si no hay internet, la letra cae a la fuente del sistema: no pasa nada.
+-->
+<style>
+  :root {
+    --verde: #1e5e3a; --verde-osc: #123a24; --verde-2: #2d6a4f;
+    --menta: #d8f3dc; --menta-borde: #b7e4c7; --menta-suave: #eef8f0;
+    --ambar: #f4a261; --ambar-suave: #fff3e2; --ambar-tinta: #7a4a12;
+    --tinta: #1b281f; --tinta-2: #4f6458; --fondo: #f6faf6; --blanco: #ffffff;
+    --borde: #e2e8e4; --error-fondo: #fdecea; --error-tinta: #8a1f1f;
+    --sombra: 0 10px 30px rgba(18, 58, 36, .10);
+    --radio: 20px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--fondo); color: var(--tinta);
+    font: 17px/1.5 "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+
+  /* ---------- Cabecera ---------- */
+  .cabecera {
+    background: radial-gradient(120% 140% at 0% 0%, var(--verde-2) 0%, var(--verde) 45%, var(--verde-osc) 100%);
+    color: #fff; padding: 22px 16px 70px;
+  }
+  .cabecera .fila { max-width: 1200px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .marca { display: flex; align-items: center; gap: 12px; }
+  .logo { width: 48px; height: 48px; border-radius: 14px; background: rgba(255,255,255,.14); display: grid; place-items: center; font-size: 26px; }
+  .marca h1 { margin: 0; font-size: 1.6rem; font-weight: 800; letter-spacing: .04em; }
+  .marca p { margin: 0; opacity: .85; font-size: .95rem; }
+  .chips { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .chip { display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.2);
+          padding: 6px 12px; border-radius: 999px; font-size: .85rem; }
+  .punto { width: 10px; height: 10px; border-radius: 50%; background: #bbb; }
+  .punto.ok { background: #74e0a6; box-shadow: 0 0 0 4px rgba(116,224,166,.25); }
+  .punto.mal { background: #ff8a80; box-shadow: 0 0 0 4px rgba(255,138,128,.25); }
+  .btn-claro { background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.3); }
+
+  .pregunta { max-width: 1200px; margin: 18px auto 0; font-size: clamp(1.4rem, 3vw, 2.2rem); font-weight: 800; line-height: 1.2; }
+  .pregunta span { color: var(--menta); }
+
+  /* ---------- Rejilla principal ---------- */
+  main { max-width: 1200px; margin: -48px auto 40px; padding: 0 16px; display: grid; grid-template-columns: 1.15fr 1fr; gap: 20px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } }
+  .tarjeta { background: var(--blanco); border-radius: var(--radio); box-shadow: var(--sombra); padding: 20px; border: 1px solid var(--borde); }
+  .tarjeta h2 { margin: 0 0 12px; font-size: 1rem; text-transform: uppercase; letter-spacing: .08em; color: var(--tinta-2); }
+
+  /* ---------- Visor de cámara ---------- */
+  .visor { position: relative; aspect-ratio: 4 / 3; border-radius: 16px; overflow: hidden; background: #0d1a12; }
+  .visor video, .visor canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .visor video { display: none; }
+  .visor canvas { display: none; }
+  .esquina { position: absolute; width: 38px; height: 38px; border: 4px solid var(--menta); z-index: 3; opacity: .9; }
+  .esquina.a { top: 14px; left: 14px; border-right: 0; border-bottom: 0; border-radius: 10px 0 0 0; }
+  .esquina.b { top: 14px; right: 14px; border-left: 0; border-bottom: 0; border-radius: 0 10px 0 0; }
+  .esquina.c { bottom: 14px; left: 14px; border-right: 0; border-top: 0; border-radius: 0 0 0 10px; }
+  .esquina.d { bottom: 14px; right: 14px; border-left: 0; border-top: 0; border-radius: 0 0 10px 0; }
+  .vacio { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; color: #cfe9d6; padding: 24px; z-index: 2; }
+  .vacio .icono { font-size: 56px; margin-bottom: 6px; }
+  .laser { position: absolute; left: 0; right: 0; height: 4px; z-index: 4; display: none;
+           background: linear-gradient(90deg, transparent, #74e0a6, transparent); box-shadow: 0 0 18px 6px rgba(116,224,166,.55); }
+  .escaneando .laser { display: block; animation: barrido 1.2s ease-in-out infinite alternate; }
+  .escaneando canvas { filter: saturate(1.1) brightness(1.05); }
+  @keyframes barrido { from { top: 4%; } to { top: 94%; } }
+  .flash { position: absolute; inset: 0; background: #fff; opacity: 0; z-index: 5; pointer-events: none; }
+  .flash.on { animation: flash .35s ease-out; }
+  @keyframes flash { from { opacity: .85; } to { opacity: 0; } }
+
+  .botones { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  button, .boton { font: inherit; font-weight: 700; border-radius: 999px; padding: 12px 20px; cursor: pointer; border: 2px solid var(--verde);
+                   background: #fff; color: var(--verde); transition: transform .15s ease, box-shadow .15s ease, background .15s; }
+  button:hover:not(:disabled), .boton:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(30,94,58,.18); }
+  button.principal { background: var(--verde); color: #fff; font-size: 1.1rem; padding: 14px 26px; }
+  button.principal:hover:not(:disabled) { background: var(--verde-osc); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button:focus-visible, .boton:focus-within { outline: 3px solid var(--ambar); outline-offset: 3px; }
+  .boton input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+  .boton { position: relative; display: inline-flex; align-items: center; }
+  .tecla { font-size: .8rem; color: var(--tinta-2); margin-left: 4px; }
+  button.principal .tecla { color: rgba(255,255,255,.75); }
+  .oculto { display: none !important; }
+  .aviso { margin-top: 12px; padding: 12px 14px; border-radius: 12px; font-size: .95rem; }
+  .aviso.warn { background: var(--ambar-suave); color: var(--ambar-tinta); }
+  .aviso.err { background: var(--error-fondo); color: var(--error-tinta); }
+
+  /* ---------- "¿Cómo lo hace?" ---------- */
+  .pasos { list-style: none; margin: 18px 0 0; padding: 0; display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  @media (max-width: 600px) { .pasos { grid-template-columns: repeat(2, 1fr); } }
+  .paso { background: var(--menta-suave); border: 2px solid transparent; border-radius: 14px; padding: 10px 8px; text-align: center; font-size: .82rem; color: var(--tinta-2); transition: all .25s ease; }
+  .paso b { display: block; font-size: 1.5rem; line-height: 1.2; }
+  .paso strong { display: block; color: var(--tinta); font-size: .9rem; }
+  .paso.activo { border-color: var(--verde); background: var(--menta); transform: translateY(-3px); color: var(--tinta); }
+  .paso.hecho { border-color: var(--menta-borde); background: var(--menta); }
+
+  /* ---------- Resultado ---------- */
+  .espera { text-align: center; color: var(--tinta-2); padding: 30px 10px; }
+  .espera .icono { font-size: 64px; }
+  .cabeza-res { display: flex; align-items: center; gap: 18px; }
+  .anillo { position: relative; width: 108px; height: 108px; flex: none; }
+  .anillo svg { transform: rotate(-90deg); }
+  .anillo .fondo { stroke: var(--menta-suave); }
+  .anillo .valor { stroke: var(--verde); stroke-linecap: round; transition: stroke-dashoffset .8s ease; }
+  .anillo .valor.baja { stroke: var(--ambar); }
+  .anillo .num { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; font-weight: 800; font-size: 1.4rem; line-height: 1; }
+  .anillo .num small { display: block; font-size: .65rem; font-weight: 600; color: var(--tinta-2); margin-top: 4px; }
+  .nombre { font-size: clamp(1.6rem, 3vw, 2.3rem); font-weight: 800; margin: 0; line-height: 1.1; }
+  .experto { display: inline-block; margin-top: 8px; background: var(--menta-suave); color: var(--verde); border-radius: 999px; padding: 4px 12px; font-size: .85rem; font-weight: 600; }
+  .datos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
+  @media (max-width: 500px) { .datos { grid-template-columns: 1fr; } }
+  .dato-caja { background: var(--fondo); border: 1px solid var(--borde); border-radius: 14px; padding: 12px 14px; }
+  .dato-caja .etq { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--tinta-2); }
+  .dato-caja .val { font-size: 1.5rem; font-weight: 800; }
+  .dato-caja .nota { font-size: .8rem; color: var(--tinta-2); }
+  .sellos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  .sello { width: 78px; height: 78px; display: flex; align-items: center; justify-content: center; text-align: center; padding: 8px;
+           background: #000; color: #fff; font-size: .58rem; font-weight: 800; line-height: 1.15;
+           clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%); }
+  .sin-sellos { font-weight: 700; color: var(--verde); }
+  .burbuja { margin-top: 16px; background: var(--ambar-suave); border-radius: 16px; padding: 14px 16px; color: var(--ambar-tinta); }
+  .burbuja b { display: block; margin-bottom: 2px; }
+  .educativo { margin-top: 12px; background: var(--menta-suave); border-radius: 16px; padding: 12px 16px; }
+  .confirmar { margin-top: 16px; padding: 14px; border: 2px dashed var(--ambar); border-radius: 16px; background: #fffaf3; }
+  .confirmar p { margin: 0 0 10px; font-weight: 700; color: var(--ambar-tinta); }
+  .confirmar .grupo { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--tinta-2); margin: 8px 0 6px; }
+  .opciones { display: flex; flex-wrap: wrap; gap: 8px; }
+  .opciones button { padding: 8px 14px; font-size: .95rem; }
+  .guardado { margin-top: 14px; font-size: .9rem; color: var(--tinta-2); }
+  details { margin-top: 14px; font-size: .85rem; } summary { cursor: pointer; color: var(--tinta-2); }
+  pre { overflow: auto; background: var(--fondo); border: 1px solid var(--borde); border-radius: 10px; padding: 10px; font-size: .75rem; max-height: 220px; }
+  .aparece { animation: aparece .45s ease both; }
+  @keyframes aparece { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+  .pie { max-width: 1200px; margin: 0 auto 30px; padding: 0 16px; color: var(--tinta-2); font-size: .85rem; text-align: center; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="cabecera">
+  <div class="fila">
+    <div class="marca">
+      <div class="logo" aria-hidden="true">🌿</div>
+      <div><h1>LUMEA</h1><p>Inteligencia artificial que reconoce lo que comes</p></div>
+    </div>
+    <div class="chips">
+      <span class="chip" role="status" aria-live="polite"><span class="punto" id="punto"></span><span id="textoEstado">Conectando…</span></span>
+      <span class="chip">📸 <span id="contador">0</span> fotos analizadas</span>
+      <button class="chip btn-claro" id="btnPantalla" type="button">⛶ Pantalla completa</button>
+    </div>
+  </div>
+  <p class="pregunta">¿Puede una computadora <span>reconocer tu comida</span> con una sola foto?</p>
+</header>
+
+<main>
+  <!-- ============ Cámara ============ -->
+  <section class="tarjeta" aria-labelledby="tCam">
+    <h2 id="tCam">1 · Muéstrale tu plato</h2>
+    <div class="visor" id="visor">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="canvas"></canvas>
+      <span class="esquina a"></span><span class="esquina b"></span><span class="esquina c"></span><span class="esquina d"></span>
+      <div class="laser" aria-hidden="true"></div>
+      <div class="flash" id="flash" aria-hidden="true"></div>
+      <div class="vacio" id="vacio"><div><div class="icono">📷</div>Pulsa <b>«Encender cámara»</b><br>y pon el plato dentro del cuadro</div></div>
+    </div>
+    <div class="botones">
+      <button id="btnEncender" type="button">Encender cámara</button>
+      <button id="btnCapturar" class="principal" type="button" disabled>📸 Tomar foto <span class="tecla">(espacio)</span></button>
+      <button id="btnOtra" class="oculto" type="button">↺ Otra foto</button>
+      <button id="btnApagar" type="button" disabled>Apagar</button>
+      <label class="boton">⬆ Subir foto<input type="file" id="archivo" accept="image/*"></label>
+    </div>
+    <div class="aviso oculto" id="aviso" role="alert"></div>
+
+    <ol class="pasos" id="pasos" aria-label="Cómo lo hace la inteligencia artificial">
+      <li class="paso"><b>📷</b><strong>Foto</strong>se reduce a 224×224 píxeles</li>
+      <li class="paso"><b>🔢</b><strong>Números</strong>150 528 valores de color</li>
+      <li class="paso"><b>🧠</b><strong>Red neuronal</strong>2 «expertos» MobileNetV2</li>
+      <li class="paso"><b>🗄️</b><strong>Base de datos</strong>calorías y sellos</li>
+      <li class="paso"><b>✅</b><strong>Respuesta</strong>en segundos</li>
+    </ol>
+  </section>
+
+  <!-- ============ Resultado ============ -->
+  <section class="tarjeta" aria-labelledby="tRes" aria-live="polite">
+    <h2 id="tRes">2 · Lo que ve la IA</h2>
+    <div class="espera" id="espera"><div class="icono">🍽️</div><p id="textoEspera">Aquí aparecerá lo que la inteligencia artificial cree que estás comiendo.</p></div>
+
+    <div id="res" class="oculto">
+      <div class="cabeza-res">
+        <div class="anillo" aria-hidden="true">
+          <svg width="108" height="108" viewBox="0 0 108 108">
+            <circle class="fondo" cx="54" cy="54" r="46" fill="none" stroke-width="12"></circle>
+            <circle class="valor" id="anilloValor" cx="54" cy="54" r="46" fill="none" stroke-width="12" stroke-dasharray="289.03" stroke-dashoffset="289.03"></circle>
+          </svg>
+          <div class="num"><div><span id="rPct">0</span>%<small>seguridad</small></div></div>
+        </div>
+        <div>
+          <p class="nombre" id="rNombre">—</p>
+          <span class="experto oculto" id="rModelo"></span>
+        </div>
+      </div>
+
+      <div class="confirmar oculto" id="rConfirmar"></div>
+
+      <div class="datos" id="rDatos">
+        <div class="dato-caja">
+          <div class="etq">Energía</div>
+          <div class="val" id="rKcal">—</div>
+          <div class="nota">por cada 100 g · valor de referencia, no es tu porción</div>
+        </div>
+        <div class="dato-caja">
+          <div class="etq">Sellos de advertencia</div>
+          <div id="rSellos">—</div>
+        </div>
+      </div>
+
+      <div class="educativo oculto" id="rEducativo"></div>
+      <div class="burbuja oculto" id="rDato"><b>¿Sabías que…?</b><span id="rDatoTxt"></span></div>
+      <p class="guardado" id="rGuardado"></p>
+
+      <details>
+        <summary>Para el jurado: respuesta JSON completa del backend</summary>
+        <pre id="rJson"></pre>
+      </details>
+    </div>
+  </section>
+</main>
+
+<p class="pie">Lumea · proyecto en desarrollo · Las calorías son por 100 g y los sellos siguen la Resolución 810 de 2021. «Sin sellos» no significa «saludable».</p>
+
+<script>
+"use strict";
+/* ================== CONFIGURACIÓN ==================
+   Si la página la sirve el propio Flask (puerto 5002), usamos esa misma
+   dirección (sin CORS). Si no, apuntamos al backend en 127.0.0.1:5002. */
+const API_BASE = location.port === "5002" ? location.origin : "http://127.0.0.1:5002";
+const TIMEOUT_PREDICCION_MS = 60000;   // la primera predicción es lenta (TensorFlow arma el grafo)
+const TIMEOUT_PING_MS = 4000;
+const LADO_MAX_PX = 1024;
+
+// Códigos de sellos que devuelve el backend (sellos.py) -> texto del octágono
+const TEXTO_SELLO = {
+  sodio: "EXCESO EN SODIO",
+  azucares: "EXCESO EN AZÚCARES",
+  grasas_saturadas: "EXCESO EN GRASAS SATURADAS",
+  grasas_trans: "EXCESO EN GRASAS TRANS",
+  edulcorantes: "CONTIENE EDULCORANTES",
+};
+
+const $ = (id) => document.getElementById(id);
+const video = $("video"), canvas = $("canvas"), visor = $("visor");
+let stream = null, ocupado = false, fotoCongelada = false, contador = 0, catalogo = null;
+
+/* ================== Estado de los botones (un solo lugar) ================== */
+function actualizarBotones() {
+  const camaraOn = stream !== null;
+  $("btnEncender").disabled = camaraOn || ocupado;
+  $("btnCapturar").disabled = !camaraOn || ocupado;
+  $("btnApagar").disabled = !camaraOn || ocupado;
+  $("btnOtra").classList.toggle("oculto", !fotoCongelada || !camaraOn);
+  $("btnOtra").disabled = ocupado;
+  $("archivo").disabled = ocupado;
+  canvas.style.display = fotoCongelada ? "block" : "none";
+  video.style.display = camaraOn ? "block" : "none";     // evita el ícono ▶ de Safari con el video vacío
+  $("vacio").classList.toggle("oculto", camaraOn || fotoCongelada);
+}
+
+/* ================== Red ================== */
+async function fetchConTimeout(url, opciones = {}, ms = 10000) {
+  const control = new AbortController();
+  const reloj = setTimeout(() => control.abort(), ms);
+  try { return await fetch(url, { ...opciones, signal: control.signal }); }
+  finally { clearTimeout(reloj); }
+}
+async function leerJson(res) {
+  let cuerpo = null;
+  try { cuerpo = await res.json(); } catch { /* no era JSON */ }
+  if (!res.ok) throw new Error((cuerpo && cuerpo.error) || `El servidor respondió HTTP ${res.status}`);
+  return cuerpo;
+}
+
+async function comprobarBackend() {
+  try {
+    const datos = await leerJson(await fetchConTimeout(`${API_BASE}/alimentos`, {}, TIMEOUT_PING_MS));
+    catalogo = datos.alimentos || [];
+    marcarEstado(true, `IA lista · ${catalogo.length} alimentos`);
+  } catch {
+    marcarEstado(false, "Sin conexión con el backend");
+  }
+}
+function marcarEstado(ok, texto) {
+  $("punto").className = "punto " + (ok ? "ok" : "mal");
+  $("textoEstado").textContent = texto;
+}
+
+/* ================== Avisos ================== */
+function mostrarAviso(texto, tipo = "err") { const a = $("aviso"); a.textContent = texto; a.className = "aviso " + tipo; }
+function limpiarAviso() { $("aviso").className = "aviso oculto"; $("aviso").textContent = ""; }
+
+/* ================== Cámara ================== */
+async function encenderCamara() {
+  limpiarAviso();
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    mostrarAviso(location.protocol === "file:"
+      ? "Safari no permite la cámara en archivos abiertos con doble clic. Abre la página desde http://127.0.0.1:5002/camara (o con python3 -m http.server)."
+      : "Este navegador no permite usar la cámara en esta dirección. Usa http://127.0.0.1 o http://localhost.");
+    return;
+  }
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 960 } }, audio: false });
+    video.srcObject = stream;
+    await video.play();
+    fotoCongelada = false;
+    actualizarBotones();
+  } catch (e) {
+    stream = null;
+    const causas = {
+      NotAllowedError: "Permiso de cámara denegado. Safari → Ajustes para este sitio web → Cámara: Permitir. Y en macOS: Ajustes del Sistema → Privacidad y seguridad → Cámara → activa Safari.",
+      NotFoundError: "No se encontró ninguna cámara.",
+      NotReadableError: "Otra aplicación está usando la cámara (FaceTime, Zoom, Photo Booth…). Ciérrala e inténtalo otra vez.",
+      SecurityError: "El navegador bloqueó la cámara en esta dirección. Ábrela desde http://127.0.0.1:5002/camara.",
+    };
+    mostrarAviso(causas[e.name] || `No se pudo abrir la cámara (${e.name}). Puedes usar «Subir foto».`);
+    actualizarBotones();
+  }
+}
+function apagarCamara() {
+  if (stream) stream.getTracks().forEach((t) => t.stop());
+  stream = null; video.srcObject = null; fotoCongelada = false;
+  actualizarBotones();
+}
+
+function capturarBlob() {
+  const ancho = video.videoWidth, alto = video.videoHeight;
+  if (!ancho || !alto) return Promise.reject(new Error("la cámara aún no está lista"));
+  const escala = Math.min(1, LADO_MAX_PX / Math.max(ancho, alto));
+  canvas.width = Math.round(ancho * escala);
+  canvas.height = Math.round(alto * escala);
+  canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+  return new Promise((resolve, reject) =>
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("no se pudo crear la imagen"))), "image/jpeg", 0.9));
+}
+
+/* ================== Animación "¿Cómo lo hace?" ==================
+   Ilustrativa: los pasos ocurren de verdad en el servidor, pero el navegador
+   no ve cada uno por separado; la animación los muestra en orden mientras esperamos. */
+let relojPasos = null;
+function animarPasos() {
+  const pasos = [...document.querySelectorAll(".paso")];
+  pasos.forEach((p) => p.classList.remove("activo", "hecho"));
+  let i = 0;
+  pasos[0].classList.add("activo");
+  relojPasos = setInterval(() => {
+    if (i < 3) { pasos[i].classList.replace("activo", "hecho"); i++; pasos[i].classList.add("activo"); }
+  }, 550);
+}
+function terminarPasos(ok) {
+  clearInterval(relojPasos);
+  const pasos = [...document.querySelectorAll(".paso")];
+  pasos.forEach((p, i) => { p.classList.remove("activo"); p.classList.toggle("hecho", ok || i < 1); });
+  if (ok) pasos[4].classList.add("activo");
+}
+
+/* ================== Envío ================== */
+async function enviarImagen(archivo) {
+  const datos = new FormData();
+  datos.append("file", archivo);              // DEBE llamarse "file" (request.files['file'])
+  return leerJson(await fetchConTimeout(`${API_BASE}/predecir`, { method: "POST", body: datos }, TIMEOUT_PREDICCION_MS));
+}
+async function confirmar(codigo) {
+  return leerJson(await fetchConTimeout(`${API_BASE}/confirmar-alimento`, {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ alimento_codigo: codigo }),
+  }, 15000));
+}
+
+/* ================== Mostrar resultado (siempre textContent: nada de HTML del servidor) ================== */
+function nodo(tag, clase, texto) { const n = document.createElement(tag); if (clase) n.className = clase; if (texto != null) n.textContent = texto; return n; }
+
+function kcalDe(r) {
+  if (r.calorias != null) return r.calorias;
+  if (!catalogo) return null;
+  const a = catalogo.find((x) => x.alimento_codigo === r.alimento_codigo)
+         || catalogo.find((x) => x.nombre_pantalla === (r.alimento_app || r.alimento));
+  return a ? a.calorias : null;
+}
+
+function pintarSellos(sellos) {
+  const cont = $("rSellos"); cont.replaceChildren();
+  if (sellos === null || sellos === undefined) { cont.appendChild(nodo("span", "nota", "Sin dato de sellos")); return; }
+  if (sellos.length === 0) { cont.appendChild(nodo("span", "sin-sellos", "Sin sellos de advertencia")); return; }
+  const fila = nodo("div", "sellos");
+  sellos.forEach((s) => fila.appendChild(nodo("span", "sello", TEXTO_SELLO[s] || String(s).toUpperCase())));
+  cont.appendChild(fila);
+}
+
+function pintarAnillo(certeza) {
+  const c = Number.isFinite(certeza) ? Math.max(0, Math.min(100, certeza)) : 0;
+  const circ = 2 * Math.PI * 46;
+  const v = $("anilloValor");
+  v.classList.toggle("baja", c < 70);
+  v.style.strokeDashoffset = String(circ * (1 - c / 100));
+  $("rPct").textContent = Number.isFinite(certeza) ? Math.round(certeza) : "—";
+}
+
+function nombreExperto(m) {
+  if (!m) return "";
+  if (m.startsWith("regional")) return "🇨🇴 Respondió el experto en comida colombiana";
+  if (m.startsWith("food")) return "🌎 Respondió el experto en comida internacional";
+  return `Modelo: ${m}`;
+}
+
+function pintarConfirmacion(r) {
+  const caja = $("rConfirmar"); caja.replaceChildren();
+  const opciones = r.opciones_detalle
+    || (r.opciones_sugeridas || []).map((codigo) => ({ codigo, nombre: codigo.replace(/_/g, " "), grupo: "" }));
+  if (r.seleccion_manual && opciones.length) {
+    caja.appendChild(nodo("p", null, "🤔 " + (r.mensaje || "Estos alimentos se parecen mucho. ¿Cuál es?")));
+    const grupos = {};
+    opciones.forEach((o) => { (grupos[o.grupo || ""] ||= []).push(o); });
+    const varios = Object.keys(grupos).length > 1;
+    Object.entries(grupos).forEach(([g, lista]) => {
+      if (varios && g) caja.appendChild(nodo("div", "grupo", g));
+      const fila = nodo("div", "opciones");
+      lista.forEach((o) => {
+        const b = nodo("button", null, o.nombre); b.type = "button";
+        b.addEventListener("click", () => elegirOpcion(o.codigo));
+        fila.appendChild(b);
+      });
+      caja.appendChild(fila);
+    });
+    caja.classList.remove("oculto");
+  } else if (r.seleccion_manual) {
+    caja.appendChild(nodo("p", null, "🤔 La IA no está muy segura. Intenta otra foto con más luz, o más cerca del plato."));
+    caja.classList.remove("oculto");
+  } else {
+    caja.classList.add("oculto");
+  }
+}
+
+function mostrarResultado(r) {
+  $("espera").classList.add("oculto");
+  const res = $("res");
+  res.classList.remove("oculto", "aparece"); void res.offsetWidth; res.classList.add("aparece");
+
+  $("rNombre").textContent = r.alimento_app || r.alimento || "No identificado";
+  pintarAnillo(Number(r.certeza));
+  const exp = nombreExperto(r.modelo_usado);
+  $("rModelo").textContent = exp; $("rModelo").classList.toggle("oculto", !exp);
+
+  pintarConfirmacion(r);
+  // Si hay que elegir entre opciones, los datos nutricionales aún no aplican
+  const hayOpciones = Boolean(r.seleccion_manual) && (r.opciones_detalle || r.opciones_sugeridas || []).length > 0;  // Boolean(): toggle(x, undefined) alternaría en vez de fijar
+  $("rDatos").classList.toggle("oculto", hayOpciones);
+
+  const kcal = kcalDe(r);
+  $("rKcal").textContent = kcal != null ? `${kcal} kcal` : "No disponible";
+  pintarSellos(r.sellos_advertencia ?? r.sellos);
+
+  const edu = $("rEducativo");
+  if (r.mensaje_educativo) { edu.textContent = "💡 " + r.mensaje_educativo; edu.classList.remove("oculto"); }
+  else edu.classList.add("oculto");
+
+  if (r.dato_curioso && !hayOpciones) { $("rDatoTxt").textContent = r.dato_curioso; $("rDato").classList.remove("oculto"); }
+  else $("rDato").classList.add("oculto");
+
+  $("rGuardado").textContent = r.guardado_baseDatos ? "✔ Guardado en el historial" :
+    (r.seleccion_manual ? "No se guardó automáticamente: la IA pide ayuda humana." : "");
+  $("rJson").textContent = JSON.stringify(r, null, 2);
+}
+
+/* ================== Acciones ================== */
+async function analizar(archivo) {
+  limpiarAviso();
+  ocupado = true; actualizarBotones();
+  visor.classList.add("escaneando");
+  $("res").classList.add("oculto"); $("espera").classList.remove("oculto");
+  $("textoEspera").textContent = "Analizando… (la primera foto del día tarda un poco más)";
+  animarPasos();
+  try {
+    const r = await enviarImagen(archivo);
+    terminarPasos(true);
+    contador++; $("contador").textContent = contador;
+    mostrarResultado(r);
+  } catch (e) {
+    terminarPasos(false);
+    $("textoEspera").textContent = "No se pudo obtener la predicción.";
+    mostrarAviso(e.name === "AbortError"
+      ? "El backend tardó demasiado. Mira la terminal donde corre app.py."
+      : `Error: ${e.message}. Si dice «Failed to fetch» o «Load failed», el backend no está corriendo o el puerto no es 5002.`);
+  } finally {
+    visor.classList.remove("escaneando");
+    ocupado = false; actualizarBotones();
+  }
+}
+
+async function elegirOpcion(codigo) {
+  ocupado = true; actualizarBotones();
+  try { mostrarResultado(await confirmar(codigo)); }
+  catch (e) { mostrarAviso(`No se pudo confirmar: ${e.message}`); }
+  finally { ocupado = false; actualizarBotones(); }
+}
+
+async function tomarFoto() {
+  if ($("btnCapturar").disabled) return;
+  try {
+    const blob = await capturarBlob();
+    const f = $("flash"); f.classList.remove("on"); void f.offsetWidth; f.classList.add("on");
+    fotoCongelada = true; actualizarBotones();
+    await analizar(new File([blob], "foto.jpg", { type: "image/jpeg" }));
+  } catch (e) { mostrarAviso(`No se pudo tomar la foto: ${e.message}`); }
+}
+
+function mostrarArchivoEnVisor(archivo) {
+  const img = new Image();
+  img.onload = () => {
+    canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+    canvas.getContext("2d").drawImage(img, 0, 0);
+    URL.revokeObjectURL(img.src);
+  };
+  img.src = URL.createObjectURL(archivo);
+}
+
+async function subirArchivo(ev) {
+  const archivo = ev.target.files[0];
+  if (!archivo) return;
+  mostrarArchivoEnVisor(archivo);
+  fotoCongelada = true; actualizarBotones();
+  await analizar(archivo);
+  ev.target.value = "";
+}
+
+$("btnEncender").addEventListener("click", encenderCamara);
+$("btnApagar").addEventListener("click", apagarCamara);
+$("btnCapturar").addEventListener("click", tomarFoto);
+$("btnOtra").addEventListener("click", () => { fotoCongelada = false; actualizarBotones(); });
+$("archivo").addEventListener("change", subirArchivo);
+$("btnPantalla").addEventListener("click", () => {
+  const el = document.documentElement;
+  if (document.fullscreenElement || document.webkitFullscreenElement) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  else (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
+});
+// Barra espaciadora = tomar foto (cómodo en la feria)
+document.addEventListener("keydown", (e) => {
+  if (e.code === "Space" && !["BUTTON", "INPUT", "SUMMARY"].includes(document.activeElement.tagName)) {
+    e.preventDefault(); tomarFoto();   // siempre captura del video en vivo
+  }
+});
+window.addEventListener("beforeunload", apagarCamara);
+
+actualizarBotones();
+comprobarBackend();
+setInterval(comprobarBackend, 15000);
+</script>
+</body>
+</html>

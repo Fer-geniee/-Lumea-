@@ -94,7 +94,8 @@ model.compile(
     loss='sparse_categorical_crossentropy',
     metrics=['accuracy'],
 )
-fine_tune_epochs = 10
+
+fine_tune_epochs = 15
 total_epochs = 10 + fine_tune_epochs
 
 fine_tuning_history = model.fit(

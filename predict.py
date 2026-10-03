@@ -36,9 +36,21 @@ modelo_101 = keras.models.load_model(Model_path_101, compile=False)
 with open(class_path_101, "r", encoding="utf-8") as f:
     classes_101 = json.load(f)
 
+# === Regla de decisión entre los dos modelos ("cascada") ===
+# Antes: ganaba SIEMPRE el modelo con mayor confianza. Problema: Food-101 no
+# tiene frutas ni platos colombianos, pero su softmax igual reparte el 100 %
+# entre sus 101 clases (mundo cerrado) y puede estar muy "seguro" de algo
+# imposible (banano -> macarons). Las confianzas de dos redes entrenadas por
+# separado no son comparables (Guo et al., 2017).
+# Ahora: el modelo REGIONAL (nuestro dominio) decide primero; Food-101 solo
+# entra si el regional duda (confianza < UMBRAL_REGIONAL).
+# UMBRAL_REGIONAL = 0.0 -> siempre regional (Food-101 nunca gana)
+# UMBRAL_REGIONAL = 1.01 -> comportamiento anterior (gana el mayor)
+UMBRAL_REGIONAL = float(os.getenv("LUMEA_UMBRAL_REGIONAL", "0.4"))
+
 print(f"Modelo regional cargado: {len(classes_26)} clases.")
 print(f"Modelo Food-101 cargado: {len(classes_101)} clases.")
-print("Ensamble listo: cada predicción compara ambos modelos y usa el de mayor confianza.")
+print(f"Ensamble en cascada: decide el regional si su confianza >= {UMBRAL_REGIONAL:.2f}; si no, compara con Food-101.")
 
 
 def _predecir_con_modelo(modelo, classes, image_array):
@@ -70,10 +82,15 @@ def predecir_alimento(image_bytes: bytes):
 
     # Modelo 101 (Food-101): preprocess_input NO está dentro del grafo
     # -- este sí lo necesita aplicado manualmente antes de predict().
-    image_array_101 = tf.keras.applications.mobilenet_v2.preprocess_input(image_array)
+    # .copy(): preprocess_input modifica arreglos numpy EN EL MISMO LUGAR; sin
+    # la copia, si alguien moviera esta línea antes del modelo regional, este
+    # recibiría la imagen preprocesada dos veces (el bug de "todo es Dulces").
+    image_array_101 = tf.keras.applications.mobilenet_v2.preprocess_input(image_array.copy())
     alimento_101, confianza_101 = _predecir_con_modelo(modelo_101, classes_101, image_array_101)
 
-    if confianza_26 >= confianza_101:
+    # Cascada: si el regional está razonablemente seguro, decide él.
+    # Si duda, se compara con Food-101 como antes.
+    if confianza_26 >= UMBRAL_REGIONAL or confianza_26 >= confianza_101:
         alimento_codigo, confianza = alimento_26, confianza_26
         modelo_ganador = "regional_26"
     else:
