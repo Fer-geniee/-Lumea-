@@ -64,6 +64,10 @@ def listar(entrada):
     fotos = []
     for raiz, _, archivos in os.walk(entrada):
         real = os.path.basename(raiz) if os.path.abspath(raiz) != os.path.abspath(entrada) else None
+        # Acepta carpetas como "fotos_prueba_banano": la clase es lo que va después del prefijo
+        for prefijo in ("fotos_prueba_", "fotos_", "prueba_"):
+            if real and real.startswith(prefijo):
+                real = real[len(prefijo):]
         fotos += [(os.path.join(raiz, a), real) for a in sorted(archivos) if a.lower().endswith(EXT)]
     return fotos
 
@@ -82,7 +86,7 @@ def main():
         print("   Regional :", " | ".join(f"{c} {p*100:4.1f}%" for c, p in reg))
         print("   Food-101 :", " | ".join(f"{c} {p*100:4.1f}%" for c, p in f101))
         print(f"   → regla vieja (mayor): {decidir(reg, f101, 'mayor')}"
-              f"   · cascada 0.5: {decidir(reg, f101, 'cascada', 0.5)}"
+              f"   · cascada {predict.UMBRAL_REGIONAL:.1f} (la de app.py): {decidir(reg, f101, 'cascada', predict.UMBRAL_REGIONAL)}"
               f"   · solo regional: {decidir(reg, f101, 'regional')}")
 
     con_real = [r for r in resultados if r[1]]
