@@ -500,7 +500,7 @@
                 "predecir"
               ]
             },
-            "description": "multipart/form-data. En `file` elige una foto de comida de tu computador. `email` es opcional: si corresponde a un perfil, la comida queda en su historial y suma XP.\n\n- Certeza ≥ 70%: se guarda (`success: true`) y trae `gamificacion`.\n- Certeza baja: `seleccion_manual: true`, no se guarda.\n- Grupo de confusión (sopas, dulces...): `seleccion_manual: true` con `opciones_sugeridas` (lista de códigos) y `opciones_detalle` (lista de {codigo, nombre, marca, grupo}), sin importar la certeza.",
+            "description": "multipart/form-data. En `file` elige una foto de comida de tu computador. `email` es opcional: si corresponde a un perfil, la comida queda en su historial y suma XP.\n\n- Certeza ≥ 70%: se guarda (`success: true`) y trae `gamificacion`.\n- Certeza baja: `seleccion_manual: true`, no se guarda.\n- Grupo de confusión (sopas, dulces...): `seleccion_manual: true` con `opciones_sugeridas` (lista de códigos) y `opciones_detalle` (lista de {codigo, nombre, marca, grupo}), sin importar la certeza. Desde el 5 oct, con certeza baja y un plato que no es de un grupo, trae opciones_sugeridas y opciones_detalle (las 3 clases más probables) para confirmar con /confirmar-alimento.",
             "body": {
               "mode": "formdata",
               "formdata": [
@@ -718,7 +718,7 @@
                 "confirmar-alimento"
               ]
             },
-            "description": "Guarda lo que el usuario eligió a mano después de un `seleccion_manual: true`. Acepta cualquier `alimento_codigo` que exista en tabla_alimentos. Rechaza (400) los códigos de agrupación visual como `sopas` o `dulces`. Trae `gamificacion`.",
+            "description": "Guarda lo que el usuario eligió a mano después de un `seleccion_manual: true`. Acepta cualquier `alimento_codigo` que exista en tabla_alimentos. Rechaza (400) los códigos de agrupación visual como `sopas` o `dulces`. Trae `gamificacion`. Desde el 5 oct la clave gamificacion trae también nivel_anterior, desbloqueos y calcomanias_nuevas.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"alimento_codigo\": \"ajiaco\",\n  \"email\": \"{{email}}\"\n}",
@@ -1087,6 +1087,120 @@
               "body": "{\n  \"cantidad\": 0,\n  \"historial\": [],\n  \"success\": true\n}"
             }
           ]
+        },
+        {
+          "name": "Ver estados de ánimo de los últimos 7 días",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/estado-animo?email={{email}}&dias=7",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "estado-animo"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "{{email}}"
+                },
+                {
+                  "key": "dias",
+                  "value": "7"
+                }
+              ]
+            },
+            "description": "Solo los registros de los últimos 7 días (hoy cuenta), para la pantalla de Progreso. dias menor que 1 responde 400."
+          },
+          "response": [
+            {
+              "name": "Con un registro hoy",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/estado-animo?email={{email}}&dias=7",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "estado-animo"
+                  ],
+                  "query": [
+                    {
+                      "key": "email",
+                      "value": "{{email}}"
+                    },
+                    {
+                      "key": "dias",
+                      "value": "7"
+                    }
+                  ]
+                },
+                "description": "Solo los registros de los últimos 7 días (hoy cuenta), para la pantalla de Progreso. dias menor que 1 responde 400."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"cantidad\": 1,\n  \"historial\": [\n    {\n      \"estado\": \"bien\",\n      \"fecha\": \"Mon, 05 Oct 2026 00:00:00 GMT\",\n      \"id\": 50\n    }\n  ],\n  \"success\": true\n}"
+            },
+            {
+              "name": "dias = 0",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/estado-animo?email={{email}}&dias=7",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "estado-animo"
+                  ],
+                  "query": [
+                    {
+                      "key": "email",
+                      "value": "{{email}}"
+                    },
+                    {
+                      "key": "dias",
+                      "value": "7"
+                    }
+                  ]
+                },
+                "description": "Solo los registros de los últimos 7 días (hoy cuenta), para la pantalla de Progreso. dias menor que 1 responde 400."
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"error\": \"El parámetro \\\"dias\\\" debe ser un número entero mayor que 0.\"\n}"
+            }
+          ]
         }
       ]
     },
@@ -1124,7 +1238,7 @@
                 }
               ]
             },
-            "description": "404 sin perfil."
+            "description": "404 sin perfil. Desde el 5 oct cada registro trae es_fruta (booleano)."
           },
           "response": [
             {
@@ -1299,7 +1413,7 @@
                 }
               ]
             },
-            "description": "XP, nivel (máximo alcanzado: nunca baja), racha, meta del día, avatar DiceBear con la expresión del ánimo de hoy y las reglas vigentes. Aquí se descuenta (perezosamente) el XP de los días inactivos: xp_perdido_desde_ultima_visita y mensaje_regreso llegan UNA sola vez. Ver CONTRATO_GAMIFICACION.md. Puntos v2: trae \"misiones\" (las 3 del día con su estado) y reglas.misiones_diarias."
+            "description": "XP, nivel (máximo alcanzado: nunca baja), racha, meta del día, avatar DiceBear con la expresión del ánimo de hoy y las reglas vigentes. Aquí se descuenta (perezosamente) el XP de los días inactivos: xp_perdido_desde_ultima_visita y mensaje_regreso llegan UNA sola vez. Ver CONTRATO_GAMIFICACION.md. Puntos v2: trae \"misiones\" (las 3 del día con su estado) y reglas.misiones_diarias. Desde el 5 oct trae \"calcomanias\": {\"ganadas\", \"total\"}."
           },
           "response": [
             {
@@ -1433,6 +1547,108 @@
                 }
               ],
               "body": "{\n  \"progreso\": {\n    \"avatar\": {\n      \"estado_animo_hoy\": \"bien\",\n      \"id\": \"sol\",\n      \"nombre\": \"Sol\",\n      \"url\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural\",\n      \"url_con_animo\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=smile&eyes=default&eyebrows=defaultNatural\",\n      \"urls_por_estado\": {\n        \"bien\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=smile&eyes=default&eyebrows=defaultNatural\",\n        \"mal\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=concerned&eyes=default&eyebrows=sadConcernedNatural\",\n        \"muy_bien\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=smile&eyes=happy&eyebrows=raisedExcitedNatural\",\n        \"muy_mal\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=sad&eyes=default&eyebrows=sadConcerned\",\n        \"neutral\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=serious&eyes=default&eyebrows=defaultNatural\"\n      }\n    },\n    \"mensaje_regreso\": null,\n    \"meta_diaria\": {\n      \"cumplida\": true,\n      \"meta\": 15,\n      \"xp_hoy\": 75\n    },\n    \"misiones\": [\n      {\n        \"cumplida\": true,\n        \"id\": \"fruta\",\n        \"nombre\": \"Registra una fruta\",\n        \"xp\": 10\n      },\n      {\n        \"cumplida\": true,\n        \"id\": \"tres_comidas\",\n        \"nombre\": \"Registra 3 comidas\",\n        \"xp\": 10\n      },\n      {\n        \"cumplida\": true,\n        \"id\": \"check_in_animo\",\n        \"nombre\": \"Haz tu check-in de ánimo\",\n        \"xp\": 10\n      }\n    ],\n    \"nivel\": 2,\n    \"racha_actual\": 1,\n    \"racha_maxima\": 1,\n    \"reglas\": {\n      \"acciones\": {\n        \"comida_registrada\": {\n          \"maximo_por_dia\": 5,\n          \"xp\": 10\n        },\n        \"eleccion_nutritiva\": {\n          \"maximo_por_dia\": 3,\n          \"xp\": 5\n        },\n        \"estado_animo\": {\n          \"maximo_por_dia\": 1,\n          \"xp\": 5\n        }\n      },\n      \"meta_diaria_xp\": 15,\n      \"misiones_diarias\": [\n        {\n          \"id\": \"fruta\",\n          \"nombre\": \"Registra una fruta\",\n          \"xp\": 10\n        },\n        {\n          \"id\": \"tres_comidas\",\n          \"nombre\": \"Registra 3 comidas\",\n          \"xp\": 10\n        },\n        {\n          \"id\": \"check_in_animo\",\n          \"nombre\": \"Haz tu check-in de ánimo\",\n          \"xp\": 10\n        }\n      ],\n      \"niveles\": [\n        0,\n        30,\n        80,\n        150,\n        250,\n        400,\n        600,\n        850,\n        1150,\n        1500\n      ],\n      \"tope_perdida_por_periodo\": 20,\n      \"xp_penalizacion_ultraprocesado\": 0,\n      \"xp_perdido_por_dia_inactivo\": 5\n    },\n    \"ultima_fecha_actividad\": \"2026-09-27\",\n    \"xp_faltante_siguiente_nivel\": 5,\n    \"xp_inicio_nivel\": 30,\n    \"xp_perdido_desde_ultima_visita\": 0,\n    \"xp_siguiente_nivel\": 80,\n    \"xp_total\": 75\n  },\n  \"success\": true\n}"
+            }
+          ]
+        },
+        {
+          "name": "Calcomanías",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/calcomanias?email={{email}}",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "calcomanias"
+              ],
+              "query": [
+                {
+                  "key": "email",
+                  "value": "{{email}}"
+                }
+              ]
+            },
+            "description": "Las 10 calcomanías con cuáles están ganadas (ganada, fecha) y cómo conseguir las demás (como_se_gana). A quien ya cumplía una regla antes de que existieran se la otorga aquí, sin anunciarla. 404 si el correo no tiene perfil. Ver CONTRATO_GAMIFICACION.md."
+          },
+          "response": [
+            {
+              "name": "Con 2 calcomanías ganadas (recortada)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/calcomanias?email={{email}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "calcomanias"
+                  ],
+                  "query": [
+                    {
+                      "key": "email",
+                      "value": "{{email}}"
+                    }
+                  ]
+                },
+                "description": "Las 10 calcomanías con cuáles están ganadas (ganada, fecha) y cómo conseguir las demás (como_se_gana). A quien ya cumplía una regla antes de que existieran se la otorga aquí, sin anunciarla. 404 si el correo no tiene perfil. Ver CONTRATO_GAMIFICACION.md."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"calcomanias\": [\n    {\n      \"como_se_gana\": \"Registra tu primera comida.\",\n      \"descripcion\": \"Registraste tu primera comida.\",\n      \"fecha\": \"2026-10-05\",\n      \"ganada\": true,\n      \"id\": \"primera_foto\",\n      \"nombre\": \"Primera foto\",\n      \"rol\": \"comida\"\n    },\n    {\n      \"como_se_gana\": \"Registra 10 comidas.\",\n      \"descripcion\": \"Llevas 10 comidas registradas.\",\n      \"fecha\": null,\n      \"ganada\": false,\n      \"id\": \"diez_registros\",\n      \"nombre\": \"Diez registros\",\n      \"rol\": \"comida\"\n    },\n    {\n      \"como_se_gana\": \"Cumple la misión de registrar 3 comidas en un día.\",\n      \"descripcion\": \"Registraste 3 comidas en un mismo día.\",\n      \"fecha\": null,\n      \"ganada\": false,\n      \"id\": \"tres_al_dia\",\n      \"nombre\": \"Tres al día\",\n      \"rol\": \"mision\"\n    },\n    {\n      \"como_se_gana\": \"Cumple la misión de registrar una fruta.\",\n      \"descripcion\": \"Registraste una fruta.\",\n      \"fecha\": \"2026-10-05\",\n      \"ganada\": true,\n      \"id\": \"fruta\",\n      \"nombre\": \"Fruta del día\",\n      \"rol\": \"mision\"\n    },\n    {\n      \"como_se_gana\": \"Haz tu primer check-in de ánimo.\",\n      \"descripcion\": \"Hiciste tu primer check-in de ánimo.\",\n      \"fecha\": null,\n      \"ganada\": false,\n      \"id\": \"como_llegas\",\n      \"nombre\": \"Cómo llegas\",\n      \"rol\": \"emocion\"\n    }\n  ],\n  \"ganadas\": 2,\n  \"success\": true,\n  \"total\": 10\n}"
+            },
+            {
+              "name": "Correo sin perfil",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/calcomanias?email={{email}}",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "calcomanias"
+                  ],
+                  "query": [
+                    {
+                      "key": "email",
+                      "value": "{{email}}"
+                    }
+                  ]
+                },
+                "description": "Las 10 calcomanías con cuáles están ganadas (ganada, fecha) y cómo conseguir las demás (como_se_gana). A quien ya cumplía una regla antes de que existieran se la otorga aquí, sin anunciarla. 404 si el correo no tiene perfil. Ver CONTRATO_GAMIFICACION.md."
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"error\": \"No existe un perfil con ese correo.\"\n}"
             }
           ]
         },
