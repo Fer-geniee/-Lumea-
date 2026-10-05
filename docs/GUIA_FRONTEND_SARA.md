@@ -391,9 +391,17 @@ Si `gamificacion` no es `null`:
   "comiste bien" o "saludable".
 - **`misiones_cumplidas`**: las misiones que se cumplieron con esta acción.
   Celebración: "¡Misión cumplida: Registra una fruta!".
-- Si `subio_de_nivel` es `true`: celebración ("¡Subiste al nivel 2!"). Puede
-  haber ropa o accesorios nuevos para el avatar: un botón a "Personalizar
-  avatar".
+- Si `subio_de_nivel` es `true`: celebración ("¡Subiste al nivel 2!"), con
+  `nivel_anterior` y `nivel` si quieres mostrar el cambio. **`desbloqueos`**
+  lista exactamente lo que se abrió (`{tipo, id, nombre, nivel_requerido}`,
+  con `tipo` = `avatar`, `ropa` o `accesorio`): "¡Desbloqueaste: Gafas!" y un
+  botón a "Personalizar avatar". Es `[]` si no subió.
+- **`calcomanias_nuevas`** (desde el 5 oct): las calcomanías ganadas con esta
+  acción, `{id, nombre, descripcion, rol}`. Celebración: "¡Nueva calcomanía:
+  Primera foto!". Vacía si ninguna. Las calcomanías no dan XP ni se comparan
+  con otras personas. La colección completa está en `GET /calcomanias`
+  (`obtenerCalcomanias(email)` en `api.js`: hay que agregarla) y el resumen
+  ("4 de 10") en `progreso.calcomanias` de `GET /progreso`.
 - Si `meta_diaria.recien_cumplida` es `true`: "¡Cumpliste la meta de hoy!".
 
 Estos avisos vienen **una sola vez**, en la acción que los provocó.
@@ -500,9 +508,28 @@ Respuesta real (confirmando un Chocoramo):
 Tiene la misma forma que la pantalla 4: muéstralo con el mismo código (sellos,
 XP, celebración). Aquí `subio_de_nivel` es `true`: ¡celebración!
 
-### Caso B: la certeza fue baja (sin `opciones_detalle`)
+### Caso B: la certeza fue baja (desde el 5 oct trae las 3 opciones más probables)
 
-Respuesta real (se le pasó el logo de Lumea, que obviamente no es comida):
+Antes esta respuesta no traía opciones. Ahora **sí trae `opciones_detalle`** con las 3 clases más probables (mismo formato que el caso A: se dibuja con el mismo componente y se confirma con `POST /confirmar-alimento`). Respuesta real (foto de una arepa, 65,11 % de certeza):
+
+```json
+{
+  "success": false,
+  "seleccion_manual": true,
+  "certeza": 65.11,
+  "alimento_codigo": "arepa",
+  "opciones_sugeridas": ["arepa", "huevo", "llapingachos"],
+  "opciones_detalle": [
+    { "codigo": "arepa", "nombre": "Arepa paisa (de maíz precocido, con sal)", "nombre_pantalla": "Arepa paisa (de maíz precocido, con sal)", "marca": null, "grupo": null },
+    { "codigo": "huevo", "nombre": "Huevo de gallina, entero, cocido", "nombre_pantalla": "Huevo de gallina, entero, cocido", "marca": null, "grupo": null },
+    { "codigo": "llapingachos", "nombre": "Llapingachos (sin relleno)", "nombre_pantalla": "Llapingachos (sin relleno)", "marca": null, "grupo": null }
+  ]
+}
+```
+
+Muestra "No estamos seguros. ¿Cuál de estos es?" con las opciones, y debajo "Ninguno: tomar otra foto". Si `opciones_detalle` viene vacía (pasa si ningún candidato está en la tabla de alimentos), muestra solo el botón de otra foto.
+
+La respuesta de abajo es el comportamiento anterior (por si el backend no está actualizado):
 
 ```json
 {
@@ -655,6 +682,7 @@ Respuesta real (recortada a 2 de 3 registros):
   las fechas") y los **sellos** (`sellos_advertencia`), con las mismas reglas de
   la pantalla 4: lista vacía = "Sin sellos de advertencia", `null` = nada.
   Aquí pueden ir más pequeños que en el resultado.
+- Desde el 5 oct cada registro trae `es_fruta` (booleano): sirve para marcar las frutas con un dibujo en la pantalla de Progreso. No lo uses para juzgar la comida.
 - **No muestres `balanceado`** como etiqueta ("Balanceado", "Ocasional", colores
   verde y gris...): es un juicio sobre la comida.
 
