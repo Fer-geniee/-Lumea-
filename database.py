@@ -498,14 +498,20 @@ class BaseDatos:
         finally:
             cursor.close()
 
-    def obtener_estado_animo_reciente(self, usuario_id, limite=30):
+    def obtener_estado_animo_reciente(self, usuario_id, limite=30, dias=None):
+        """Últimos `limite` registros de ánimo. Con `dias` (p. ej. 7) solo los
+        de los últimos `dias` días, contando hoy: así la pantalla de Progreso
+        recibe la semana completa aunque haya más de `limite` registros."""
         if not self.conexion or not self.conexion.is_connected():
             return []
         cursor = self.conexion.cursor(dictionary=True)
         try:
+            filtro_dias = " AND fecha >= CURDATE() - INTERVAL %s DAY" if dias else ""
+            parametros = (usuario_id, dias - 1, limite) if dias else (usuario_id, limite)
             cursor.execute(
-                "SELECT id, fecha, estado FROM estado_animo WHERE usuario_id = %s ORDER BY id DESC LIMIT %s",
-                (usuario_id, limite),
+                "SELECT id, fecha, estado FROM estado_animo WHERE usuario_id = %s" + filtro_dias
+                + " ORDER BY id DESC LIMIT %s",
+                parametros,
             )
             return cursor.fetchall()
         except Error as e:

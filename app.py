@@ -9,6 +9,7 @@ from PIL import UnidentifiedImageError
 from flask_cors import CORS
 from database import BaseDatos
 from gamificacion import registrar_gamificacion, registrar_actividad, mensaje_educativo
+from gamificacion_config import FRUTAS
 from grupos_confusion import grupo_para, codigos_de_opciones, detalle_de_opciones
 from sellos import obtener_sellos
 from predict import predecir_alimento  # única fuente de inferencia (fusión con predict.py)
@@ -456,7 +457,11 @@ def obtener_estado_animo():
     perfil = db.obtener_perfil_por_email(email)
     if not perfil:
         return jsonify({'error': 'No existe un perfil con ese correo.'}), 404
-    registros = db.obtener_estado_animo_reciente(perfil['id'])
+    # ?dias=7 (opcional): solo los registros de los últimos 7 días, para la pantalla de Progreso.
+    dias = request.args.get('dias', type=int)
+    if dias is not None and dias < 1:
+        return jsonify({'error': 'El parámetro "dias" debe ser un número entero mayor que 0.'}), 400
+    registros = db.obtener_estado_animo_reciente(perfil['id'], dias=dias)
     return jsonify({'success': True, 'cantidad': len(registros), 'historial': registros}), 200
 
 
@@ -479,6 +484,8 @@ def ruta_historial():
             if codigo not in sellos_por_codigo:
                 sellos_por_codigo[codigo] = obtener_sellos(db, codigo) if codigo else None
             registro['sellos_advertencia'] = sellos_por_codigo[codigo]
+            # La pantalla de Progreso marca las frutas (FRUTAS está en gamificacion_config.py).
+            registro['es_fruta'] = codigo in FRUTAS
         return jsonify({
             'success': True,
             'cantidad_registros': len(historial),

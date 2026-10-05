@@ -828,6 +828,7 @@ def obtener_progreso(db, usuario_id):
         xp_hoy = _leer_xp_de_hoy(cursor, usuario_id, hoy)
         estado_hoy = _estado_animo_de_hoy(cursor, usuario_id, hoy)
         misiones_hoy = _misiones_cumplidas_hoy(cursor, usuario_id, hoy)
+        calcomanias = resumen_calcomanias(cursor, usuario_id)
         db.conexion.commit()
     except Exception:
         db.conexion.rollback()
@@ -856,6 +857,7 @@ def obtener_progreso(db, usuario_id):
             "cumplida": xp_hoy >= config.META_DIARIA_XP,
         },
         "misiones": estado_misiones(misiones_hoy),
+        "calcomanias": calcomanias,
         "avatar": {
             "id": avatar["id"],
             "nombre": avatar["nombre"],
