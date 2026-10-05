@@ -415,6 +415,66 @@ class TestAvatarPorCapas(unittest.TestCase):
         self.assertIsNone(g.columna_de_tipo("zapatos; DROP TABLE perfil"))
 
 
+class TestCalcomaniasReglas(unittest.TestCase):
+    """Las reglas de calcomanías son funciones puras: se prueban con
+    "hechos" inventados, sin MySQL."""
+
+    HECHOS_VACIOS = {
+        "comidas_total": 0, "misiones_hechas": set(), "tiene_animo": False,
+        "ayudo_ia": False, "racha_maxima": 0, "nivel_maximo": 1, "dias_ausente_max": 0,
+    }
+
+    def hechos(self, **cambios):
+        return {**self.HECHOS_VACIOS, **cambios}
+
+    def test_el_catalogo_tiene_10_con_regla_y_campos(self):
+        ids = [c["id"] for c in config.CALCOMANIAS]
+        self.assertEqual(len(ids), 10)
+        self.assertEqual(len(set(ids)), 10)
+        self.assertEqual(set(ids), set(g.REGLAS_CALCOMANIAS))
+        for c in config.CALCOMANIAS:
+            self.assertEqual(set(c), {"id", "nombre", "descripcion", "como_se_gana", "rol", "umbral"})
+            self.assertIn(c["rol"], {"comida", "mision", "emocion", "duda", "logro"})
+
+    def test_sin_hechos_no_se_gana_ninguna(self):
+        self.assertEqual(g.calcomanias_cumplidas(self.hechos()), [])
+
+    def test_cada_regla_con_su_umbral(self):
+        casos = [
+            ("primera_foto", self.hechos(comidas_total=1), self.hechos(comidas_total=0)),
+            ("diez_registros", self.hechos(comidas_total=10), self.hechos(comidas_total=9)),
+            ("tres_al_dia", self.hechos(misiones_hechas={"tres_comidas"}), self.hechos(misiones_hechas={"fruta"})),
+            ("fruta", self.hechos(misiones_hechas={"fruta"}), self.hechos(misiones_hechas={"tres_comidas"})),
+            ("como_llegas", self.hechos(tiene_animo=True), self.hechos()),
+            ("ayudaste_ia", self.hechos(ayudo_ia=True), self.hechos()),
+            ("racha_3", self.hechos(racha_maxima=3), self.hechos(racha_maxima=2)),
+            ("racha_7", self.hechos(racha_maxima=7), self.hechos(racha_maxima=6)),
+            ("volviste", self.hechos(dias_ausente_max=3), self.hechos(dias_ausente_max=2)),
+            ("nivel_5", self.hechos(nivel_maximo=5), self.hechos(nivel_maximo=4)),
+        ]
+        for calcomania_id, cumple, no_cumple in casos:
+            with self.subTest(calcomania=calcomania_id):
+                self.assertIn(calcomania_id, g.calcomanias_cumplidas(cumple))
+                self.assertNotIn(calcomania_id, g.calcomanias_cumplidas(no_cumple))
+
+    def test_nunca_se_otorga_dos_veces(self):
+        hechos = self.hechos(comidas_total=12)
+        self.assertEqual(g.calcomanias_por_otorgar(hechos, {}), ["primera_foto", "diez_registros"])
+        self.assertEqual(g.calcomanias_por_otorgar(hechos, {"primera_foto": date.today()}), ["diez_registros"])
+        self.assertEqual(g.calcomanias_por_otorgar(hechos, {"primera_foto": 1, "diez_registros": 1}), [])
+
+    def test_ausencia_mas_larga(self):
+        d = date(2026, 10, 1)
+        self.assertEqual(g.dias_ausente_maximo([]), 0)
+        self.assertEqual(g.dias_ausente_maximo([d]), 0)
+        self.assertEqual(g.dias_ausente_maximo([d, d + timedelta(days=1)]), 0)  # días seguidos
+        # 1 y 5 de octubre: 2, 3 y 4 sin actividad = 3 días de ausencia.
+        self.assertEqual(g.dias_ausente_maximo([d + timedelta(days=4), d]), 3)
+
+    def test_la_forma_publica_no_lleva_el_umbral(self):
+        self.assertEqual(set(g.calcomania_publica(config.CALCOMANIAS[0])), {"id", "nombre", "descripcion", "rol"})
+
+
 # ---------------------------------------------------------------------
 # Con MySQL: lo mismo, pero pasando por las consultas SQL de verdad.
 # ---------------------------------------------------------------------
@@ -447,7 +507,7 @@ class TestConMySQL(unittest.TestCase):
     @classmethod
     def _borrar(cls):
         cursor = cls.db.conexion.cursor()
-        for tabla in ("progreso_usuario", "eventos_xp", "actividad_diaria"):
+        for tabla in ("progreso_usuario", "eventos_xp", "actividad_diaria", "calcomanias_usuario", "historial_comida", "estado_animo"):
             cursor.execute(f"DELETE FROM {tabla} WHERE usuario_id = %s", (USUARIO_PRUEBA,))
         cls.db.conexion.commit()
         cursor.close()
@@ -571,6 +631,84 @@ class TestConMySQL(unittest.TestCase):
         # Gana 10 (41), el castigo de 50 lo deja en 0, nunca negativo, y el nivel queda en 2.
         self.assertEqual(r["xp_total"], 0)
         self.assertEqual(r["nivel"], 2)
+
+
+    # ----- Calcomanías con MySQL -----
+
+    def _insertar_comidas(self, cantidad, certeza=90.0):
+        cursor = self.db.conexion.cursor()
+        for _ in range(cantidad):
+            cursor.execute(
+                "INSERT INTO historial_comida (usuario_id, alimento_codigo, certeza_ia) VALUES (%s, 'banano', %s)",
+                (USUARIO_PRUEBA, certeza),
+            )
+        self.db.conexion.commit()
+        cursor.close()
+
+    def _ids(self, lista):
+        return [c["id"] for c in lista]
+
+    def test_primera_foto_se_anuncia_una_sola_vez(self):
+        self._insertar_comidas(1)
+        r = g.registrar_actividad(self.db, USUARIO_PRUEBA, "comida_registrada", alimento_codigo="banano", sellos=[])
+        self.assertIn("primera_foto", self._ids(r["calcomanias_nuevas"]))
+        self.assertEqual(set(r["calcomanias_nuevas"][0]), {"id", "nombre", "descripcion", "rol"})
+        self._insertar_comidas(1)
+        r = g.registrar_actividad(self.db, USUARIO_PRUEBA, "comida_registrada", alimento_codigo="uva", sellos=[])
+        self.assertNotIn("primera_foto", self._ids(r["calcomanias_nuevas"]))
+
+    def test_misiones_y_animo_dan_sus_calcomanias(self):
+        self._insertar_comidas(3)
+        for codigo in ("banano", "uva", "pera"):
+            r = g.registrar_actividad(self.db, USUARIO_PRUEBA, "comida_registrada", alimento_codigo=codigo, sellos=[])
+        ganadas = {c["id"] for c in g.obtener_calcomanias(self.db, USUARIO_PRUEBA)["calcomanias"] if c["ganada"]}
+        self.assertTrue({"fruta", "tres_al_dia", "primera_foto"} <= ganadas)
+        # El check-in de ánimo: la calcomanía aparece cuando ya hay un registro de ánimo.
+        cursor = self.db.conexion.cursor()
+        cursor.execute("INSERT INTO estado_animo (usuario_id, estado) VALUES (%s, 'mal')", (USUARIO_PRUEBA,))
+        self.db.conexion.commit()
+        cursor.close()
+        r = g.registrar_actividad(self.db, USUARIO_PRUEBA, "estado_animo", estado_animo="mal")
+        self.assertEqual(self._ids(r["calcomanias_nuevas"]), ["como_llegas"])
+
+    def test_ayudaste_ia_solo_con_confirmacion_manual(self):
+        self._insertar_comidas(1)  # certeza 90: la IA decidió sola
+        r = g.registrar_actividad(self.db, USUARIO_PRUEBA, "comida_registrada", alimento_codigo="banano", sellos=[])
+        self.assertNotIn("ayudaste_ia", self._ids(r["calcomanias_nuevas"]))
+        r = g.registrar_actividad(self.db, USUARIO_PRUEBA, "comida_registrada", alimento_codigo="banano",
+                                  sellos=[], confirmacion_manual=True)
+        self.assertEqual(self._ids(r["calcomanias_nuevas"]), ["ayudaste_ia"])
+
+    def test_racha_nivel_y_volviste_en_vivo(self):
+        hoy = date.today()
+        # Racha máxima de 2 y último día hace 5 días; 100 XP; la ausencia resta 20 y el ánimo suma 5: con los niveles de abajo, 85 XP es el nivel 5.
+        self._poner(xp_total=100, nivel_maximo=3, racha_actual=2, racha_maxima=2,
+                    ultima_fecha_actividad=hoy - timedelta(days=5))
+        cursor = self.db.conexion.cursor()
+        cursor.execute("INSERT INTO actividad_diaria (usuario_id, fecha, xp_ganado) VALUES (%s, %s, 10)",
+                       (USUARIO_PRUEBA, hoy - timedelta(days=5)))
+        self.db.conexion.commit()
+        cursor.close()
+        with mock.patch.object(config, "NIVELES", [0, 10, 20, 30, 85, 400]):
+            r = g.registrar_actividad(self.db, USUARIO_PRUEBA, "estado_animo", estado_animo="bien")
+        ids = self._ids(r["calcomanias_nuevas"])
+        self.assertIn("volviste", ids)  # 4 días completos sin actividad (>= 3)
+        self.assertIn("nivel_5", ids)
+        self.assertNotIn("racha_3", ids)  # la racha se reinició en 1
+
+    def test_calcomanias_retroactivas_en_silencio_y_sin_repetir(self):
+        self._insertar_comidas(10, certeza=100.0)  # 10 comidas y confirmadas a mano
+        self._poner(racha_maxima=7, nivel_maximo=5)
+        res = g.obtener_calcomanias(self.db, USUARIO_PRUEBA)
+        ganadas = {c["id"] for c in res["calcomanias"] if c["ganada"]}
+        self.assertEqual(ganadas, {"primera_foto", "diez_registros", "ayudaste_ia", "racha_3", "racha_7", "nivel_5"})
+        self.assertEqual((res["ganadas"], res["total"]), (6, 10))
+        para_ganar = [c for c in res["calcomanias"] if not c["ganada"]]
+        self.assertTrue(all(c["fecha"] is None and c["como_se_gana"] for c in para_ganar))
+        # Una segunda consulta no cambia nada, y registrar algo no las vuelve a anunciar.
+        self.assertEqual(g.obtener_calcomanias(self.db, USUARIO_PRUEBA)["ganadas"], 6)
+        r = g.registrar_actividad(self.db, USUARIO_PRUEBA, "comida_registrada", alimento_codigo="ajiaco", sellos=[])
+        self.assertEqual(r["calcomanias_nuevas"], [])
 
 
 if __name__ == "__main__":
