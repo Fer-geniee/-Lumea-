@@ -24,7 +24,7 @@ from grupos_confusion import GRUPOS_CONFUSION
 # viene en el repo.
 RUTA_IMAGEN = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "prueba.jpeg")
 
-BASE_URL = "http://127.0.0.1:5002"
+BASE_URL = os.environ.get("LUMEA_URL", "http://127.0.0.1:5002")  # LUMEA_URL: probar contra otro puerto
 PATRON_EMAIL_PRUEBA = "__test_api_%__@lumea.test"
 EMAIL_PRUEBA = PATRON_EMAIL_PRUEBA.replace("%", str(int(time.time())))
 

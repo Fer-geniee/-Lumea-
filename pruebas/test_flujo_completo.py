@@ -28,7 +28,7 @@ import requests
 
 import gamificacion_config as config
 
-BASE_URL = "http://127.0.0.1:5002"
+BASE_URL = os.environ.get("LUMEA_URL", "http://127.0.0.1:5002")  # LUMEA_URL: probar contra otro puerto
 HEADERS = {"User-Agent": "curl/8.7.1"}  # igual que test_api.py
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FOTO_COMIDA = os.path.join(BASE_DIR, "prueba.jpeg")

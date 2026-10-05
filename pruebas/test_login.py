@@ -33,7 +33,7 @@ import requests
 
 from database import conectar_mysql  # solo la conexión: NO se crea BaseDatos()
 
-BASE_URL = "http://127.0.0.1:5002"
+BASE_URL = os.environ.get("LUMEA_URL", "http://127.0.0.1:5002")  # LUMEA_URL: probar contra otro puerto
 CAMPO_CONTRASENA = "contraseña"  # como lo llama tu /login en app.py
 CONTRASENA = "Lumea-prueba-2026"
 MARCA = str(int(time.time()))
