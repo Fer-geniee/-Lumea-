@@ -103,6 +103,11 @@ def probar_estado_animo():
     comprobar("el tope diario se respeta en estado de ánimo (y la misión no se repite)", gami.get("xp_ganado") == esperado,
               f"xp_ganado={gami.get('xp_ganado')}, esperado={esperado}")
     verificar("GET /estado-animo", get("/estado-animo", email=EMAIL_PRUEBA), mostrar=False)
+    cuerpo = verificar("GET /estado-animo?dias=7", get("/estado-animo", email=EMAIL_PRUEBA, dias=7), mostrar=False)
+    registros = cuerpo.get("historial", [])
+    comprobar("los últimos 7 días traen fecha y estado de lo registrado hoy",
+              len(registros) >= 2 and all(r.get("fecha") and r.get("estado") for r in registros), f"{len(registros)} registros")
+    verificar("GET /estado-animo?dias=0 -> 400", get("/estado-animo", email=EMAIL_PRUEBA, dias=0), esperado=400)
     return xp_total + gami.get("xp_ganado", 0)
 
 
@@ -133,6 +138,14 @@ def probar_confirmar_alimento():
     comprobar("banano no activa sellos de advertencia (lista vacía)", cuerpo.get("sellos_advertencia") == [],
               f"sellos_advertencia={cuerpo.get('sellos_advertencia')!r}")
     comprobar("banano no trae mensaje educativo", cuerpo.get("mensaje_educativo") is None)
+    comprobar("la gamificación trae nivel_anterior y desbloqueos (lista)",
+              isinstance(gami.get("nivel_anterior"), int) and isinstance(gami.get("desbloqueos"), list),
+              f"nivel_anterior={gami.get('nivel_anterior')!r}, desbloqueos={gami.get('desbloqueos')!r}")
+    nuevas = {c["id"] for c in gami.get("calcomanias_nuevas", [])}
+    comprobar("confirmar a mano da las calcomanías 'ayudaste_ia' y 'fruta' (misión fruta)",
+              {"ayudaste_ia", "fruta"} <= nuevas, f"calcomanias_nuevas={sorted(nuevas)}")
+    comprobar("cada calcomanía nueva trae id, nombre, descripcion y rol",
+              all(set(c) == {"id", "nombre", "descripcion", "rol"} for c in gami.get("calcomanias_nuevas", [])))
     xp = gami.get("xp_ganado", 0)
 
     gaseosa = next(gr for gr in GRUPOS_CONFUSION if gr["id"] == "gaseosas_bebidas_azucaradas")["opciones"][0]["codigo"]
@@ -154,6 +167,9 @@ def probar_historial():
     comprobar("cada registro de /historial trae sellos_advertencia", bool(registros) and all("sellos_advertencia" in r for r in registros))
     banano = next((r for r in registros if r.get("alimento_codigo") == "banano"), {})
     comprobar("el banano del historial no tiene sellos", banano.get("sellos_advertencia") == [], f"{banano.get('sellos_advertencia')!r}")
+    comprobar("cada registro de /historial trae es_fruta (booleano)", all(isinstance(r.get("es_fruta"), bool) for r in registros))
+    comprobar("el banano es fruta y la gaseosa no", banano.get("es_fruta") is True
+              and all(r["es_fruta"] is False for r in registros if r.get("alimento_codigo") not in config.FRUTAS))
 
 
 def probar_alimentos():
@@ -177,6 +193,19 @@ def probar_gamificacion(xp_esperado):
     # Usuario que registró hoy: no hay días inactivos, así que no pierde nada.
     comprobar("sin inactividad no hay XP perdido ni mensaje", p.get("xp_perdido_desde_ultima_visita") == 0
               and p.get("mensaje_regreso") is None, f"perdido={p.get('xp_perdido_desde_ultima_visita')}")
+    resumen = p.get("calcomanias") or {}
+    comprobar("GET /progreso trae el resumen de calcomanías", resumen.get("total") == len(config.CALCOMANIAS)
+              and resumen.get("ganadas", 0) >= 2, f"calcomanias={resumen}")
+    cuerpo = verificar("GET /calcomanias", get("/calcomanias", email=EMAIL_PRUEBA), mostrar=False)
+    lista = cuerpo.get("calcomanias", [])
+    comprobar("GET /calcomanias lista todo el catálogo con sus campos",
+              len(lista) == len(config.CALCOMANIAS) == cuerpo.get("total")
+              and all({"id", "nombre", "descripcion", "como_se_gana", "rol", "ganada", "fecha"} <= set(c) for c in lista))
+    comprobar("las ganadas de /calcomanias coinciden con /progreso",
+              cuerpo.get("ganadas") == sum(c["ganada"] for c in lista) == resumen.get("ganadas"),
+              f"{cuerpo.get('ganadas')} vs {resumen.get('ganadas')}")
+    verificar("GET /calcomanias sin email -> 400", get("/calcomanias"), esperado=400)
+    verificar("GET /calcomanias sin perfil -> 404", get("/calcomanias", email="nadie@lumea.test"), esperado=404)
     nivel = p.get("nivel", 1)
 
     cuerpo = verificar("GET /avatares", get("/avatares", email=EMAIL_PRUEBA), mostrar=False)
@@ -239,7 +268,7 @@ def limpiar_datos_de_prueba():
     cursor.execute("SELECT id FROM perfil WHERE email LIKE %s", (PATRON_EMAIL_PRUEBA,))
     ids = [fila[0] for fila in cursor.fetchall()]
     for usuario_id in ids:
-        for tabla in ("eventos_xp", "actividad_diaria", "progreso_usuario", "historial_comida", "estado_animo"):
+        for tabla in ("eventos_xp", "actividad_diaria", "progreso_usuario", "calcomanias_usuario", "historial_comida", "estado_animo"):
             cursor.execute(f"DELETE FROM {tabla} WHERE usuario_id = %s", (usuario_id,))
         cursor.execute("DELETE FROM perfil WHERE id = %s", (usuario_id,))
     db.conexion.commit()

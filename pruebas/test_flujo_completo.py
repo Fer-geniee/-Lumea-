@@ -67,8 +67,17 @@ def cuerpo(respuesta):
         return {}
 
 
+# Lo que la gamificación anunció durante el recorrido (lo llena xp_de, que se
+# llama con cada respuesta que trae "gamificacion").
+calcomanias_anunciadas = []
+desbloqueos_anunciados = []
+
+
 def xp_de(respuesta_json):
-    return (respuesta_json.get("gamificacion") or {}).get("xp_ganado", 0)
+    gami = respuesta_json.get("gamificacion") or {}
+    calcomanias_anunciadas.extend(c["id"] for c in gami.get("calcomanias_nuevas", []))
+    desbloqueos_anunciados.extend((d["tipo"], d["id"]) for d in gami.get("desbloqueos", []))
+    return gami.get("xp_ganado", 0)
 
 
 def main():
@@ -176,6 +185,23 @@ def main():
               and misiones.get("tres_comidas") == (comidas_guardadas >= config.COMIDAS_PARA_MISION), f"{misiones}")
     comprobar("sin inactividad, sin XP perdido", p.get("xp_perdido_desde_ultima_visita") == 0)
 
+    paso("7b. Sus calcomanías")
+    comprobar("las primeras calcomanías se anunciaron en el momento",
+              {"primera_foto", "ayudaste_ia", "fruta", "como_llegas"} <= set(calcomanias_anunciadas), f"{calcomanias_anunciadas}")
+    comprobar("ninguna calcomanía se anunció dos veces", len(calcomanias_anunciadas) == len(set(calcomanias_anunciadas)))
+    resumen = p.get("calcomanias") or {}
+    r = get("/calcomanias", email=EMAIL)
+    c = cuerpo(r)
+    ganadas = {x["id"] for x in c.get("calcomanias", []) if x["ganada"]}
+    comprobar("GET /calcomanias -> 200 con las 10 del catálogo", r.status_code == 200 and len(c.get("calcomanias", [])) == len(config.CALCOMANIAS))
+    comprobar("las ganadas son exactamente las que se anunciaron", ganadas == set(calcomanias_anunciadas), f"{sorted(ganadas)}")
+    comprobar("/progreso y /calcomanias cuentan lo mismo", resumen.get("ganadas") == c.get("ganadas") == len(ganadas))
+    nivel_final = p.get("nivel", 1)
+    esperados = {(o["tipo"], o["id"]) for o in config.OBJETOS_AVATAR if 1 < o["nivel_requerido"] <= nivel_final}
+    esperados |= {("avatar", a["id"]) for a in config.AVATARES if 1 < a["nivel_requerido"] <= nivel_final}
+    comprobar(f"los desbloqueos anunciados son todo lo que abre el nivel {nivel_final}, sin repetir",
+              sorted(desbloqueos_anunciados) == sorted(esperados), f"{sorted(desbloqueos_anunciados)}")
+
     paso("8. Ana revisa su historial")
     r = get("/historial", email=EMAIL)
     c = cuerpo(r)
@@ -183,6 +209,9 @@ def main():
     comprobar("el historial tiene todas sus comidas", c.get("cantidad_registros") == comidas_guardadas,
               f"{c.get('cantidad_registros')} vs {comidas_guardadas}")
     comprobar("cada registro trae sus sellos", bool(registros) and all("sellos_advertencia" in x for x in registros))
+    comprobar("cada registro trae es_fruta y solo el mango lo es",
+              all(isinstance(x.get("es_fruta"), bool) for x in registros)
+              and {x["alimento_codigo"] for x in registros if x["es_fruta"]} == {"mango"})
 
     paso("9. Ana personaliza su avatar")
     r = get("/avatar", email=EMAIL)
@@ -225,7 +254,7 @@ def limpiar():
     cursor.execute("SELECT id FROM perfil WHERE email LIKE %s", (PATRON_EMAIL,))
     ids = [fila[0] for fila in cursor.fetchall()]
     for usuario_id in ids:
-        for tabla in ("eventos_xp", "actividad_diaria", "progreso_usuario", "historial_comida", "estado_animo"):
+        for tabla in ("eventos_xp", "actividad_diaria", "progreso_usuario", "calcomanias_usuario", "historial_comida", "estado_animo"):
             cursor.execute(f"DELETE FROM {tabla} WHERE usuario_id = %s", (usuario_id,))
         cursor.execute("DELETE FROM perfil WHERE id = %s", (usuario_id,))
     conexion.commit()
