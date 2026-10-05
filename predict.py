@@ -53,13 +53,49 @@ print(f"Modelo Food-101 cargado: {len(classes_101)} clases.")
 print(f"Ensamble en cascada: decide el regional si su confianza >= {UMBRAL_REGIONAL:.2f}; si no, compara con Food-101.")
 
 
+# ===== Candidatos cuando la IA duda (opciones para que la persona confirme) =====
+# Códigos de agrupación visual: NO son alimentos con nutrición propia (no
+# tienen fila en tabla_alimentos, ver grupos_confusion.py), así que nunca se
+# ofrecen como opción.
+CODIGOS_DE_AGRUPACION = {"sopas", "dulces"}
+# Cuántas opciones se le muestran a la persona, y cuántos candidatos por
+# modelo se guardan para tener de dónde sacarlas (app.py descarta los que no
+# tengan fila en tabla_alimentos y se queda con las primeras OPCIONES_CUANDO_DUDA).
+OPCIONES_CUANDO_DUDA = 3
+CANDIDATOS_POR_MODELO = 6
+
+
+def _mejores_del_modelo(predicciones, classes, cuantos=CANDIDATOS_POR_MODELO):
+    """Las `cuantos` clases más probables de UN modelo: [(codigo, prob 0-1)]."""
+    orden = np.argsort(predicciones)[::-1][:cuantos]
+    return [(classes[int(i)], float(predicciones[int(i)])) for i in orden]
+
+
+def candidatos_del_ensamble(mejores_ganador, mejores_otro, excluir=CODIGOS_DE_AGRUPACION):
+    """Une los candidatos de los dos modelos en una sola lista ordenada.
+
+    Primero van los del modelo que decidió la cascada (en su orden), y
+    después los del otro modelo: las probabilidades de dos redes entrenadas
+    por separado no se comparan entre sí (ver la nota de la cascada más
+    abajo). Sin repetidos y sin los códigos de `excluir`. Devuelve
+    [{"codigo", "probabilidad"}] con la probabilidad en porcentaje.
+    """
+    vistos, lista = set(), []
+    for codigo, prob in list(mejores_ganador) + list(mejores_otro):
+        if codigo in excluir or codigo in vistos:
+            continue
+        vistos.add(codigo)
+        lista.append({"codigo": codigo, "probabilidad": round(prob * 100, 2)})
+    return lista
+
+
 def _predecir_con_modelo(modelo, classes, image_array):
     """Corre un modelo sobre la imagen ya preprocesada y devuelve su mejor
-    clase junto con la confianza (0-1) de esa clase."""
+    clase, la confianza (0-1) de esa clase y sus clases más probables."""
     predicciones = modelo.predict(image_array, verbose=0)
     clase_idx = int(np.argmax(predicciones[0]))
     confianza = float(predicciones[0][clase_idx])
-    return classes[clase_idx], confianza
+    return classes[clase_idx], confianza, _mejores_del_modelo(predicciones[0], classes)
 
 
 def predecir_alimento(image_bytes: bytes):
@@ -78,7 +114,7 @@ def predecir_alimento(image_bytes: bytes):
 
     # Modelo 26/35 clases: preprocess_input YA está dentro del grafo guardado
     # -- mandarle la imagen cruda (0-255), NO preprocesarla aquí también.
-    alimento_26, confianza_26 = _predecir_con_modelo(modelo_26, classes_26, image_array)
+    alimento_26, confianza_26, mejores_26 = _predecir_con_modelo(modelo_26, classes_26, image_array)
 
     # Modelo 101 (Food-101): preprocess_input NO está dentro del grafo
     # -- este sí lo necesita aplicado manualmente antes de predict().
@@ -86,19 +122,24 @@ def predecir_alimento(image_bytes: bytes):
     # la copia, si alguien moviera esta línea antes del modelo regional, este
     # recibiría la imagen preprocesada dos veces (el bug de "todo es Dulces").
     image_array_101 = tf.keras.applications.mobilenet_v2.preprocess_input(image_array.copy())
-    alimento_101, confianza_101 = _predecir_con_modelo(modelo_101, classes_101, image_array_101)
+    alimento_101, confianza_101, mejores_101 = _predecir_con_modelo(modelo_101, classes_101, image_array_101)
 
     # Cascada: si el regional está razonablemente seguro, decide él.
     # Si duda, se compara con Food-101 como antes.
     if confianza_26 >= UMBRAL_REGIONAL or confianza_26 >= confianza_101:
         alimento_codigo, confianza = alimento_26, confianza_26
         modelo_ganador = "regional_26"
+        candidatos = candidatos_del_ensamble(mejores_26, mejores_101)
     else:
         alimento_codigo, confianza = alimento_101, confianza_101
         modelo_ganador = "food101"
+        candidatos = candidatos_del_ensamble(mejores_101, mejores_26)
 
     return {
         "alimento_codigo": alimento_codigo,
         "confianza_porcentaje": round(confianza * 100, 2),
         "modelo_usado": modelo_ganador,  # útil para depurar / mostrar en el frontend si quieren
+        # Clases más probables del ensamble, sin los códigos de agrupación:
+        # app.py las usa para las opciones cuando la IA duda.
+        "candidatos": candidatos,
     }

@@ -12,7 +12,7 @@ from gamificacion import registrar_gamificacion, registrar_actividad, mensaje_ed
 from gamificacion_config import FRUTAS
 from grupos_confusion import grupo_para, codigos_de_opciones, detalle_de_opciones
 from sellos import obtener_sellos
-from predict import predecir_alimento  # única fuente de inferencia (fusión con predict.py)
+from predict import predecir_alimento, OPCIONES_CUANDO_DUDA  # única fuente de inferencia (fusión con predict.py)
 
 app = Flask(__name__)
 CORS(app)
@@ -139,6 +139,26 @@ def formatear_nombre(nombre_tecnico):
 
 
 # ====== Predicción de alimentos ======
+def opciones_cuando_la_ia_duda(resultado):
+    """Las clases más probables del ensamble como opciones para confirmar
+    (`opciones_detalle`), cuando la IA duda y el plato no es de un grupo de
+    confusión. Solo entran alimentos con fila en tabla_alimentos (si no,
+    /confirmar-alimento los rechazaría) y nunca los códigos de agrupación
+    ("sopas", "dulces"; predict.py ya los quitó). Mismo formato que las
+    opciones de un grupo; `nombre_pantalla` repite `nombre`."""
+    opciones = []
+    for candidato in resultado.get('candidatos') or [{'codigo': resultado['alimento_codigo']}]:
+        info = db.obtener_informacion_alimento(candidato['codigo'])
+        if not info:
+            continue
+        nombre = info.get('nombre_pantalla') or formatear_nombre(candidato['codigo'])
+        opciones.append({'codigo': candidato['codigo'], 'nombre': nombre, 'nombre_pantalla': nombre,
+                         'marca': None, 'grupo': None})
+        if len(opciones) == OPCIONES_CUANDO_DUDA:
+            break
+    return opciones
+
+
 @app.route('/predecir', methods=['POST'])
 def predecir():
     if 'file' not in request.files:
@@ -237,6 +257,7 @@ def predecir():
                 'gamificacion': gamificacion,
             }
         else:
+            opciones_por_duda = opciones_cuando_la_ia_duda(resultado)
             respuesta = {
                 'success': False,
                 'guardado_baseDatos': False,
@@ -246,6 +267,10 @@ def predecir():
                 'alimento': nombre_amigable,
                 'alimento_codigo': nombre_tecnico,
                 'dato_curioso': dato_curioso,
+                # Las clases más probables, para que la persona elija a mano
+                # (mismo formato que las opciones de un grupo de confusión).
+                'opciones_sugeridas': [o['codigo'] for o in opciones_por_duda],
+                'opciones_detalle': opciones_por_duda,
                 'modelo_usado': resultado.get('modelo_usado'),
             }
 
