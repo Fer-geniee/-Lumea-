@@ -475,6 +475,34 @@ class TestCalcomaniasReglas(unittest.TestCase):
         self.assertEqual(set(g.calcomania_publica(config.CALCOMANIAS[0])), {"id", "nombre", "descripcion", "rol"})
 
 
+class TestDesbloqueosAlSubir(unittest.TestCase):
+    def test_sin_subir_no_hay_desbloqueos(self):
+        self.assertEqual(g.desbloqueos_al_subir(3, 3), [])
+
+    def test_un_nivel_abre_lo_que_pide_ese_nivel(self):
+        # Nivel 3 -> 4: en el config actual, los audífonos piden nivel 4.
+        d = g.desbloqueos_al_subir(3, 4)
+        self.assertEqual(d, [{"tipo": "accesorio", "id": "audifonos", "nombre": "Audífonos", "nivel_requerido": 4}])
+
+    def test_el_nivel_anterior_no_cuenta_y_el_nuevo_si(self):
+        for d in g.desbloqueos_al_subir(1, 5):
+            self.assertTrue(1 < d["nivel_requerido"] <= 5)
+        ids = [(d["tipo"], d["id"]) for d in g.desbloqueos_al_subir(1, 5)]
+        self.assertIn(("avatar", "montana"), ids)       # nivel 5
+        self.assertNotIn(("ropa", "buzo_verde"), ids)   # nivel 1: ya estaba abierto
+
+    def test_un_salto_de_varios_niveles_los_abre_todos_sin_repetir(self):
+        todos = [d for d in g.desbloqueos_al_subir(1, len(config.NIVELES))]
+        esperados = [e for e in config.AVATARES + config.OBJETOS_AVATAR if e["nivel_requerido"] > 1]
+        self.assertEqual(len(todos), len(esperados))
+        self.assertEqual(len({(d["tipo"], d["id"]) for d in todos}), len(todos))
+
+    def test_cada_objeto_se_abre_en_un_solo_tramo(self):
+        # Subiendo nivel por nivel, cada objeto aparece exactamente una vez.
+        vistos = [(d["tipo"], d["id"]) for n in range(1, len(config.NIVELES)) for d in g.desbloqueos_al_subir(n, n + 1)]
+        self.assertEqual(len(vistos), len(set(vistos)))
+
+
 # ---------------------------------------------------------------------
 # Con MySQL: lo mismo, pero pasando por las consultas SQL de verdad.
 # ---------------------------------------------------------------------
@@ -709,6 +737,19 @@ class TestConMySQL(unittest.TestCase):
         self.assertEqual(g.obtener_calcomanias(self.db, USUARIO_PRUEBA)["ganadas"], 6)
         r = g.registrar_actividad(self.db, USUARIO_PRUEBA, "comida_registrada", alimento_codigo="ajiaco", sellos=[])
         self.assertEqual(r["calcomanias_nuevas"], [])
+
+
+    def test_resumen_trae_nivel_anterior_y_desbloqueos(self):
+        # 28 XP (nivel 1) + una comida (10) pasa a 38: nivel 2 (gafas piden nivel 2).
+        self._poner(xp_total=28, nivel_maximo=1, ultima_fecha_actividad=date.today())
+        r = g.registrar_actividad(self.db, USUARIO_PRUEBA, "comida_registrada", alimento_codigo="ajiaco", sellos=["sodio"])
+        self.assertTrue(r["subio_de_nivel"])
+        self.assertEqual((r["nivel_anterior"], r["nivel"]), (1, 2))
+        self.assertEqual([d["id"] for d in r["desbloqueos"]], ["gafas"])
+        # Otra comida sin subir: nivel_anterior = nivel y nada nuevo.
+        r = g.registrar_actividad(self.db, USUARIO_PRUEBA, "comida_registrada", alimento_codigo="ajiaco", sellos=["sodio"])
+        self.assertFalse(r["subio_de_nivel"])
+        self.assertEqual((r["nivel_anterior"], r["nivel"], r["desbloqueos"]), (2, 2, []))
 
 
 if __name__ == "__main__":

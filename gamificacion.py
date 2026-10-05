@@ -289,6 +289,24 @@ def desbloqueado(elemento, nivel_maximo):
     return nivel_maximo >= elemento["nivel_requerido"]
 
 
+def desbloqueos_al_subir(nivel_anterior, nivel):
+    """Todo lo que se abrió al pasar de `nivel_anterior` a `nivel`: avatares
+    DiceBear y objetos de ropa/accesorio con
+    nivel_anterior < nivel_requerido <= nivel. Lista vacía si no subió.
+    Nunca incluye lo que ya estaba abierto."""
+    abiertos = [
+        {"tipo": "avatar", "id": a["id"], "nombre": a["nombre"], "nivel_requerido": a["nivel_requerido"]}
+        for a in config.AVATARES
+    ] + [
+        {"tipo": o["tipo"], "id": o["id"], "nombre": o["nombre"], "nivel_requerido": o["nivel_requerido"]}
+        for o in config.OBJETOS_AVATAR
+    ]
+    return sorted(
+        (d for d in abiertos if nivel_anterior < d["nivel_requerido"] <= nivel),
+        key=lambda d: (d["nivel_requerido"], d["tipo"], d["id"]),
+    )
+
+
 def avatar_por_id(avatar_id):
     """Busca un avatar DiceBear del catálogo; None si no existe."""
     return next((a for a in config.AVATARES if a["id"] == avatar_id), None)
@@ -637,6 +655,7 @@ def registrar_actividad(db, usuario_id, accion, estado_animo=None, alimento_codi
 
         progreso = _leer_progreso(cursor, usuario_id, bloquear=True)
         _descontar_inactividad(cursor, progreso, hoy)
+        nivel_anterior = progreso["nivel_maximo"]
         subio = sumar_actividad(progreso, ganado, hoy)
 
         # 4. Penalización por ultraprocesados: con el config en 0 no pasa nada.
@@ -680,6 +699,8 @@ def registrar_actividad(db, usuario_id, accion, estado_animo=None, alimento_codi
             "xp_total": progreso["xp_total"],
             "nivel": progreso["nivel_maximo"],
             "subio_de_nivel": subio,
+            "nivel_anterior": nivel_anterior,
+            "desbloqueos": desbloqueos_al_subir(nivel_anterior, progreso["nivel_maximo"]),
             "racha_actual": progreso["racha_actual"],
             "calcomanias_nuevas": calcomanias_nuevas,
             "meta_diaria": {
