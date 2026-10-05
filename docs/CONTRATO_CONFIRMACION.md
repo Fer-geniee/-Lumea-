@@ -64,6 +64,31 @@ Respuesta real (grupo `tamal`, predicción simulada):
   - `grupo`: subcategoría para ordenar o separar en pantalla (`papas`, `maíz`, `plátano`, `gaseosa`, `té frío`, `energizante`, `jugo`, `tamal`, `envuelto`...). Siempre hay una opción con `grupo: "otro"` al final de los grupos nuevos: úsala para "No está en la lista".
 - `alimento` / `alimento_codigo`: lo que vio la IA (la clase visual, p. ej. "Tamal (otro tipo)"), **no** la respuesta final. Mejor no mostrarlo como si lo fuera.
 
+## Respuesta de `/predecir` cuando la certeza es baja (cualquier plato)
+
+Desde el 5 oct 2026, si la certeza es menor que 70 % y el plato **no** es de un grupo, `/predecir` también trae `opciones_sugeridas` y `opciones_detalle`: las **3 clases más probables del ensamble** (primero las del modelo que decidió la cascada, luego las del otro). Nunca incluye `sopas` ni `dulces`, ni alimentos sin fila en `tabla_alimentos` (`/confirmar-alimento` los rechazaría). La lógica está en `predict.py` (`candidatos_del_ensamble`). Respuesta real (foto de una arepa con 65,11 % de certeza):
+
+```json
+{
+  "success": false,
+  "seleccion_manual": true,
+  "guardado_baseDatos": false,
+  "mensaje": "La certeza de la IA es muy baja para guardarse automáticamente.",
+  "certeza": 65.11,
+  "alimento": "Arepa paisa (de maíz precocido, con sal)",
+  "alimento_codigo": "arepa",
+  "opciones_sugeridas": ["arepa", "huevo", "llapingachos"],
+  "opciones_detalle": [
+    { "codigo": "arepa", "nombre": "Arepa paisa (de maíz precocido, con sal)", "nombre_pantalla": "Arepa paisa (de maíz precocido, con sal)", "marca": null, "grupo": null },
+    { "codigo": "huevo", "nombre": "Huevo de gallina, entero, cocido", "nombre_pantalla": "Huevo de gallina, entero, cocido", "marca": null, "grupo": null },
+    { "codigo": "llapingachos", "nombre": "Llapingachos (sin relleno)", "nombre_pantalla": "Llapingachos (sin relleno)", "marca": null, "grupo": null }
+  ],
+  "modelo_usado": "regional_26"
+}
+```
+
+Mismo formato que las opciones de un grupo (`nombre` y `nombre_pantalla` valen lo mismo; `marca` y `grupo` son `null`), así que **se dibuja con el mismo componente** y se confirma con `POST /confirmar-alimento`. Puede venir con menos de 3 opciones (o con una sola) si los candidatos no tienen fila en `tabla_alimentos`. Aun así, la persona siempre puede tomar otra foto.
+
 ## `POST /confirmar-alimento`
 
 Body (JSON): `{"alimento_codigo": "<codigo de una opción>", "email": "<correo>"}`

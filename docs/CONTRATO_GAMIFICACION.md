@@ -1,6 +1,6 @@
 # Contrato de la API de gamificación
 
-Para quien construya el frontend de la gamificación. Todos los ejemplos son **respuestas reales** del backend (26 y 27 sep 2026), no inventadas.
+Para quien construya el frontend de la gamificación. Todos los ejemplos son **respuestas reales** del backend (26 y 27 sep y 5 oct 2026), no inventadas.
 
 - Base: `http://127.0.0.1:5002` (igual que el resto de la API; ver `api.js` del frontend).
 - Identificación del usuario: por `email`, como el resto de la API. **Cuando esté listo el login, esto puede cambiar** (se ajusta en un solo lugar del backend: `_usuario_id_desde_email` en `gamificacion.py`).
@@ -16,7 +16,7 @@ Para quien construya el frontend de la gamificación. Todos los ejemplos son **r
 - **Meta diaria:** llegar a `meta` XP en el día.
 - **Pérdida por inactividad (nuevo, 27 sep):** cada día completo sin ninguna actividad resta `xp_perdido_por_dia_inactivo` XP (hoy 5), con un tope de `tope_perdida_por_periodo` (hoy 20) por cada ausencia. El XP nunca baja de 0. **El nivel nunca baja** y **nada de lo desbloqueado se vuelve a bloquear**: ambos dependen del nivel máximo alcanzado. Con `xp_perdido_por_dia_inactivo = 0` la pérdida está apagada.
 - **Sin rankings** ni comparaciones con otros usuarios (lo promete `guialumea.html`).
-- **Sin insignias ni logros** por ahora (decisión del equipo, 27 sep).
+- **Calcomanías (5 oct 2026, decisión de Isabella):** sí hay, y cambian la decisión del 27 sep de "sin insignias ni logros". No dan XP ni se quitan. Ver la sección "Calcomanías".
 
 ### Puntos v2: cuánto da cada cosa
 
@@ -54,12 +54,62 @@ Ejemplo con los valores de hoy: registra el lunes y vuelve el jueves. Martes y m
 
 | Ruta | Para |
 |---|---|
-| `GET /progreso` | Dashboard: XP, nivel, racha, meta del día, aviso de regreso, cara DiceBear con el ánimo de hoy. |
+| `GET /progreso` | Dashboard: XP, nivel, racha, meta del día, aviso de regreso, cara DiceBear con el ánimo de hoy, resumen de calcomanías. |
+| `GET /calcomanias` | Pantalla de calcomanías: las 10, con cuáles están ganadas y cómo conseguir las demás. |
 | `GET /avatar` (singular) | Pantalla "personalizar avatar" (capas de Figma): base, ropa y accesorio. |
 | `POST /avatar/base`, `POST /avatar/equipar`, `POST /avatar/quitar` | Cambiar el avatar por capas. |
 | `GET /avatares` (plural) y `POST /avatar` | Avatares DiceBear: la cara del check-in de ánimo, y el avatar de **respaldo** si el diseño de Figma no llega a tiempo. |
 
 Ojo: `GET /avatar` (capas) y `POST /avatar` (DiceBear) comparten la dirección pero son cosas distintas.
+
+## Calcomanías (insignias) · nuevo, 5 oct 2026
+
+**Cambia una decisión.** El 27 sep el equipo decidió "sin insignias ni logros". El **5 oct 2026, Isabella** decidió agregar **calcomanías**, porque dan una razón visible para volver sin competir con nadie. Siguen valiendo las reglas de contenido: se ganan por lo que la persona **hace** (registrar, volver, ayudar a la IA), nunca por qué comió, calorías, peso, cuerpo ni qué ánimo reportó. **No dan XP**, **no se quitan** y **no hay ranking**. Los nombres son provisionales: se renombran en `CALCOMANIAS` de `gamificacion_config.py`.
+
+| id | nombre | se gana cuando | rol |
+|---|---|---|---|
+| `primera_foto` | Primera foto | registra su primera comida | `comida` |
+| `diez_registros` | Diez registros | lleva 10 comidas registradas | `comida` |
+| `tres_al_dia` | Tres al día | cumple por primera vez la misión de 3 comidas | `mision` |
+| `fruta` | Fruta del día | cumple por primera vez la misión de fruta | `mision` |
+| `como_llegas` | Cómo llegas | hace su primer check-in de ánimo | `emocion` |
+| `ayudaste_ia` | Le ayudaste a la IA | confirma un plato cuando la IA dudó | `duda` |
+| `racha_3` | Tres días seguidos | llega a una racha de 3 días | `logro` |
+| `racha_7` | Una semana | llega a una racha de 7 días | `logro` |
+| `volviste` | Volviste | regresa después de 3 o más días sin actividad | `logro` |
+| `nivel_5` | Nivel 5 | llega al nivel 5 | `logro` |
+
+`rol` le dice al frontend qué dibujo o color usar. Cada calcomanía se otorga **una sola vez** por usuario (la base lo impide).
+
+### Dónde llegan
+
+1. **En el momento**: la clave `gamificacion` de `/predecir`, `/confirmar-alimento` y `POST /estado-animo` trae `calcomanias_nuevas` (lista vacía si ninguna): las ganadas **con esta acción**, para celebrarlas una sola vez. Cada una trae `{id, nombre, descripcion, rol}`.
+2. **Resumen**: `GET /progreso` trae `"calcomanias": {"ganadas": 4, "total": 10}`.
+3. **Colección**: `GET /calcomanias?email=<correo>`.
+
+### `GET /calcomanias?email=<correo>`
+
+Respuesta real (recortada: son 10 en total) de alguien que registró un banano y un mango, y su check-in de ánimo:
+
+```json
+{
+  "success": true,
+  "ganadas": 4,
+  "total": 10,
+  "calcomanias": [
+    { "id": "primera_foto", "nombre": "Primera foto", "descripcion": "Registraste tu primera comida.",
+      "como_se_gana": "Registra tu primera comida.", "rol": "comida", "ganada": true, "fecha": "2026-10-05" },
+    { "id": "diez_registros", "nombre": "Diez registros", "descripcion": "Llevas 10 comidas registradas.",
+      "como_se_gana": "Registra 10 comidas.", "rol": "comida", "ganada": false, "fecha": null },
+    { "id": "tres_al_dia", "nombre": "Tres al día", "descripcion": "Registraste 3 comidas en un mismo día.",
+      "como_se_gana": "Cumple la misión de registrar 3 comidas en un día.", "rol": "mision", "ganada": false, "fecha": null }
+  ]
+}
+```
+
+- Siempre vienen las 10, en el orden del catálogo. Las que faltan traen `ganada: false` y `fecha: null`; usa `como_se_gana` para decirle a la persona cómo conseguirlas (sin presión).
+- Errores: `400` sin `email`, `404` si el correo no tiene perfil (igual que las otras rutas).
+- **Quien ya cumplía una regla antes de que existieran las calcomanías** la recibe al consultar esta ruta, **sin anunciarla** como nueva (`calcomanias_nuevas` no la trae). Su `fecha` es la del día de la consulta, porque no se sabe cuándo la cumplió. Para esos usuarios, `ayudaste_ia` se deduce de comidas guardadas con certeza 100 (así se guarda una confirmación humana).
 
 ## `GET /progreso?email=<correo>`
 
@@ -122,6 +172,12 @@ La segunda llamada del mismo día responde lo mismo pero con `"xp_perdido_desde_
   { "id": "tres_comidas", "nombre": "Registra 3 comidas", "xp": 10, "cumplida": true },
   { "id": "check_in_animo", "nombre": "Haz tu check-in de ánimo", "xp": 10, "cumplida": true }
 ]
+```
+
+**Calcomanías** (campo `calcomanias` de `GET /progreso`, respuesta real después de registrar dos frutas y el ánimo):
+
+```json
+"calcomanias": { "ganadas": 4, "total": 10 }
 ```
 
 Y `reglas` trae además `misiones_diarias` y `xp_penalizacion_ultraprocesado` (hoy 0), y `acciones` incluye `eleccion_nutritiva`.
@@ -318,7 +374,14 @@ Respuesta `200`:
   "misiones_cumplidas": [ { "id": "fruta", "nombre": "Registra una fruta", "xp": 10 } ],
   "xp_total": 25,
   "nivel": 1,
+  "nivel_anterior": 1,
   "subio_de_nivel": false,
+  "desbloqueos": [],
+  "calcomanias_nuevas": [
+    { "id": "primera_foto", "nombre": "Primera foto", "descripcion": "Registraste tu primera comida.", "rol": "comida" },
+    { "id": "fruta", "nombre": "Fruta del día", "descripcion": "Registraste una fruta.", "rol": "mision" },
+    { "id": "ayudaste_ia", "nombre": "Le ayudaste a la IA", "descripcion": "Confirmaste un plato cuando la IA dudó.", "rol": "duda" }
+  ],
   "racha_actual": 1,
   "meta_diaria": { "xp_hoy": 25, "meta": 15, "cumplida": true, "recien_cumplida": true }
 }
@@ -347,7 +410,16 @@ Y la misma respuesta, con una bebida de paquete (la tercera comida del día), tr
 
 (Recortada.) Sin bonus, **sin resta**, y `mensaje_educativo` para mostrar con tono amable. Es `null` para lo que no es de paquete.
 
-- `subio_de_nivel` y `meta_diaria.recien_cumplida` son `true` solo en la acción que lo provocó: úsalos para mostrar una celebración una sola vez. Al subir de nivel puede haber ropa o accesorios nuevos: `GET /avatar` los muestra desbloqueados.
+- `subio_de_nivel` y `meta_diaria.recien_cumplida` son `true` solo en la acción que lo provocó: úsalos para mostrar una celebración una sola vez.
+- **Subida de nivel completa (5 oct):** `nivel_anterior` es el nivel máximo **antes** de esta acción (igual a `nivel` si no subió). `desbloqueos` lista todo lo que se abrió al subir: cada avatar u objeto con `nivel_anterior < nivel_requerido <= nivel`, y `[]` si no subió. Cada elemento es `{tipo, id, nombre, nivel_requerido}`, con `tipo` = `"avatar"` (DiceBear), `"ropa"` o `"accesorio"`. Respuesta real (un mango que llevó a alguien del nivel 1 al 2):
+
+  ```json
+  "nivel_anterior": 1, "nivel": 2, "subio_de_nivel": true,
+  "desbloqueos": [ { "tipo": "accesorio", "id": "gafas", "nombre": "Gafas", "nivel_requerido": 2 } ]
+  ```
+
+  Si un solo salto cruza varios niveles, vienen todos, sin repetir. Para ponerse lo nuevo, `GET /avatar`.
+- `calcomanias_nuevas`: las calcomanías ganadas con esta acción (ver "Calcomanías"); `[]` si ninguna. Es `[]` también si algo falló al otorgarlas: el XP se guarda igual.
 - `nivel` es el nivel máximo (nunca baja).
 - Si el usuario vuelve después de días inactivos y registra algo **antes** de abrir `/progreso`, `xp_total` ya viene con la pérdida descontada; el aviso llega en la siguiente llamada a `GET /progreso`.
 - En `POST /estado-animo` viene además `avatar_url`: la cara DiceBear con la expresión del ánimo que se acaba de registrar.
@@ -355,6 +427,11 @@ Y la misma respuesta, con una bebida de paquete (la tercera comida del día), tr
 ## Eliminado
 
 `GET /puntos-racha` (la versión mínima anterior) ya no existe: responde `404`. El frontend nunca lo usó.
+
+## Otros cambios del 5 oct 2026 (para la pantalla de Progreso)
+
+- `GET /historial`: cada registro suma `es_fruta` (booleano; `true` si el alimento está en `FRUTAS` de `gamificacion_config.py`). Respuesta real de un registro: `{"alimento_codigo": "mango", "alimento_detectado": "Mango", "es_fruta": true, "sellos_advertencia": [], ...}`. No lo uses para juzgar la comida: sirve, por ejemplo, para marcar con un dibujo las frutas de la semana.
+- `GET /estado-animo`: sin cambios por defecto (los últimos 30 registros, con `id`, `fecha` y `estado`). Nuevo parámetro opcional `?dias=7`: solo los registros de los últimos 7 días (hoy cuenta), aunque haya más de 30. Respuesta real: `{"success": true, "cantidad": 1, "historial": [{"id": 50, "fecha": "Mon, 05 Oct 2026 00:00:00 GMT", "estado": "bien"}]}`. `dias` menor que 1 o que no es un número entero responde `400`.
 
 ## Imágenes
 
