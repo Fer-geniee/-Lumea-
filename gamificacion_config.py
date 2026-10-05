@@ -9,7 +9,8 @@ escrito en ellos.
 Los valores actuales son PROVISIONALES (acordados el 26 sep 2026 para
 tener algo funcionando), no el diseño final. La pérdida por inactividad y
 el avatar por capas se agregaron el 27 sep 2026 (reunión del equipo).
-Por decisión del equipo NO hay insignias ni logros por ahora.
+El 27 sep el equipo decidió NO tener insignias; el 5 oct 2026 Isabella
+cambió esa decisión y se agregaron las calcomanías (ver CALCOMANIAS).
 "Puntos v2" (27 sep 2026, diseño decidido por el equipo): bonus por
 elección nutritiva, misiones diarias fijas y penalización por
 ultraprocesados que existe pero vale 0.
@@ -88,6 +89,39 @@ MENSAJES_ULTRAPROCESADO = {
         "Si otro día quieres algo dulce distinto, una fruta como el mango o el banano también lo es."
     ),
 }
+
+# ===== Calcomanías (insignias) =====
+# Se ganan por lo que la persona HACE, nunca por qué comió, ni por calorías,
+# peso, cuerpo o ánimo reportado. No dan XP, no se quitan y no hay ranking.
+# Decisión de Isabella, 5 oct 2026 (cambia la del 27 sep "sin insignias").
+# Los nombres son provisionales: se pueden renombrar aquí sin tocar nada más.
+#
+# "umbral" es el número que pide la regla (comidas, días de racha, nivel,
+# días de ausencia); las reglas están en gamificacion.py (REGLAS_CALCOMANIAS)
+# y los ids no se cambian sin cambiar también ese diccionario.
+# "rol" le dice al frontend qué dibujo/color usar.
+CALCOMANIAS = [
+    {"id": "primera_foto", "nombre": "Primera foto", "descripcion": "Registraste tu primera comida.",
+     "como_se_gana": "Registra tu primera comida.", "rol": "comida", "umbral": 1},
+    {"id": "diez_registros", "nombre": "Diez registros", "descripcion": "Llevas 10 comidas registradas.",
+     "como_se_gana": "Registra 10 comidas.", "rol": "comida", "umbral": 10},
+    {"id": "tres_al_dia", "nombre": "Tres al día", "descripcion": "Registraste 3 comidas en un mismo día.",
+     "como_se_gana": "Cumple la misión de registrar 3 comidas en un día.", "rol": "mision", "umbral": 1},
+    {"id": "fruta", "nombre": "Fruta del día", "descripcion": "Registraste una fruta.",
+     "como_se_gana": "Cumple la misión de registrar una fruta.", "rol": "mision", "umbral": 1},
+    {"id": "como_llegas", "nombre": "Cómo llegas", "descripcion": "Hiciste tu primer check-in de ánimo.",
+     "como_se_gana": "Haz tu primer check-in de ánimo.", "rol": "emocion", "umbral": 1},
+    {"id": "ayudaste_ia", "nombre": "Le ayudaste a la IA", "descripcion": "Confirmaste un plato cuando la IA dudó.",
+     "como_se_gana": "Confirma un plato cuando la IA no esté segura.", "rol": "duda", "umbral": 1},
+    {"id": "racha_3", "nombre": "Tres días seguidos", "descripcion": "Registraste actividad 3 días seguidos.",
+     "como_se_gana": "Llega a una racha de 3 días.", "rol": "logro", "umbral": 3},
+    {"id": "racha_7", "nombre": "Una semana", "descripcion": "Registraste actividad 7 días seguidos.",
+     "como_se_gana": "Llega a una racha de 7 días.", "rol": "logro", "umbral": 7},
+    {"id": "volviste", "nombre": "Volviste", "descripcion": "Regresaste después de unos días sin actividad.",
+     "como_se_gana": "Vuelve después de 3 o más días sin actividad.", "rol": "logro", "umbral": 3},
+    {"id": "nivel_5", "nombre": "Nivel 5", "descripcion": "Llegaste al nivel 5.",
+     "como_se_gana": "Llega al nivel 5.", "rol": "logro", "umbral": 5},
+]
 
 # ===== Misiones diarias (fijas, una vez al día cada una) =====
 # Las condiciones están en gamificacion.py (misiones_nuevas); aquí van el

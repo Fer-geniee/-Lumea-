@@ -295,6 +295,7 @@ def confirmar_alimento():
     sellos = obtener_sellos(db, alimento_codigo)  # ver /predecir
     gamificacion = registrar_actividad(
         db, usuario_id, "comida_registrada", alimento_codigo=alimento_codigo, sellos=sellos,
+        confirmacion_manual=True,  # una persona confirmó el plato: calcomanía "ayudaste_ia"
     ) if guardado_exitoso else None
 
     respuesta = {

@@ -162,6 +162,59 @@ def estado_misiones(ya_cumplidas):
     ]
 
 
+# ----- Calcomanías (insignias) -----
+# Cada regla recibe los "hechos" del usuario (un diccionario con lo que ya
+# hizo) y el umbral de su calcomanía, y responde si la cumple. Son funciones
+# puras: no tocan MySQL, así que se prueban solas (test_gamificacion.py).
+# Los hechos son:
+#   comidas_total     cuántas comidas tiene en historial_comida
+#   misiones_hechas   ids de misiones diarias cumplidas alguna vez
+#   tiene_animo       hizo al menos un check-in de ánimo
+#   ayudo_ia          confirmó a mano un plato (la IA dudó)
+#   racha_maxima      la racha más larga que ha tenido
+#   nivel_maximo      el nivel máximo alcanzado
+#   dias_ausente_max  la ausencia más larga (días completos sin actividad)
+REGLAS_CALCOMANIAS = {
+    "primera_foto": lambda h, umbral: h["comidas_total"] >= umbral,
+    "diez_registros": lambda h, umbral: h["comidas_total"] >= umbral,
+    "tres_al_dia": lambda h, umbral: "tres_comidas" in h["misiones_hechas"],
+    "fruta": lambda h, umbral: "fruta" in h["misiones_hechas"],
+    "como_llegas": lambda h, umbral: h["tiene_animo"],
+    "ayudaste_ia": lambda h, umbral: h["ayudo_ia"],
+    "racha_3": lambda h, umbral: h["racha_maxima"] >= umbral,
+    "racha_7": lambda h, umbral: h["racha_maxima"] >= umbral,
+    "volviste": lambda h, umbral: h["dias_ausente_max"] >= umbral,
+    "nivel_5": lambda h, umbral: h["nivel_maximo"] >= umbral,
+}
+
+
+def calcomania_por_id(calcomania_id):
+    return next((c for c in config.CALCOMANIAS if c["id"] == calcomania_id), None)
+
+
+def calcomanias_cumplidas(hechos):
+    """Ids de las calcomanías cuya regla cumplen estos hechos."""
+    return [c["id"] for c in config.CALCOMANIAS if REGLAS_CALCOMANIAS[c["id"]](hechos, c["umbral"])]
+
+
+def calcomanias_por_otorgar(hechos, ya_ganadas):
+    """Las que cumplen la regla y todavía no tenían: nunca se otorga dos veces."""
+    return [cid for cid in calcomanias_cumplidas(hechos) if cid not in ya_ganadas]
+
+
+def dias_ausente_maximo(fechas_de_actividad):
+    """La ausencia más larga entre dos días con actividad, en días completos
+    sin actividad (mismo criterio que dias_inactivos). Con menos de dos días
+    de actividad no hay ausencia: 0."""
+    fechas = sorted(set(fechas_de_actividad))
+    return max((max(0, (b - a).days - 1) for a, b in zip(fechas, fechas[1:])), default=0)
+
+
+def calcomania_publica(calcomania):
+    """Lo que se entrega en `calcomanias_nuevas` (sin el umbral interno)."""
+    return {k: calcomania[k] for k in ("id", "nombre", "descripcion", "rol")}
+
+
 def dias_inactivos(ultima_fecha, hoy):
     """Días completos sin actividad entre la última actividad y hoy. Hoy
     no cuenta (todavía puede registrar algo). Sin actividad nunca: 0."""
@@ -436,6 +489,14 @@ def asegurar_tablas(conexion):
                 INDEX idx_eventos_usuario_fecha (usuario_id, fecha)
             )
         """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS calcomanias_usuario (
+                usuario_id INT NOT NULL,
+                calcomania_id VARCHAR(40) NOT NULL,
+                fecha DATE NOT NULL,
+                PRIMARY KEY (usuario_id, calcomania_id)
+            )
+        """)
         conexion.commit()
     finally:
         cursor.close()
@@ -521,13 +582,17 @@ def _anotar(cursor, usuario_id, hoy, accion, xp):
     )
 
 
-def registrar_actividad(db, usuario_id, accion, estado_animo=None, alimento_codigo=None, sellos=None):
+def registrar_actividad(db, usuario_id, accion, estado_animo=None, alimento_codigo=None, sellos=None,
+                        confirmacion_manual=False):
     """Da el XP de `accion`, actualiza nivel, racha y meta del día.
 
     Para una comida (`alimento_codigo` y `sellos` del alimento FINAL, el
     que quedó guardado) también da el bonus de elección nutritiva y aplica
     la penalización por ultraprocesados (que vale 0). Para cualquier acción
     revisa las misiones diarias.
+
+    `confirmacion_manual` es True cuando la comida la confirmó la persona a
+    mano (/confirmar-alimento): cuenta para la calcomanía "ayudaste_ia".
 
     Antes de sumar, descuenta el XP de los días inactivos pendientes (la
     pérdida es "perezosa": se calcula cuando el usuario vuelve).
@@ -596,6 +661,14 @@ def registrar_actividad(db, usuario_id, accion, estado_animo=None, alimento_codi
             """,
             (usuario_id, hoy, xp_hoy, int(cumplida)),
         )
+
+        # 5. Calcomanías. Si fallan no se pierde el XP ya calculado: solo
+        #    se avisa que no hubo calcomanías nuevas.
+        try:
+            calcomanias_nuevas = _otorgar_calcomanias(cursor, usuario_id, hoy, confirmacion_manual)
+        except Exception as e:
+            print(f"Error al otorgar calcomanías (el XP sí se guardó): {e}")
+            calcomanias_nuevas = []
         db.conexion.commit()
 
         resumen = {
@@ -608,6 +681,7 @@ def registrar_actividad(db, usuario_id, accion, estado_animo=None, alimento_codi
             "nivel": progreso["nivel_maximo"],
             "subio_de_nivel": subio,
             "racha_actual": progreso["racha_actual"],
+            "calcomanias_nuevas": calcomanias_nuevas,
             "meta_diaria": {
                 "xp_hoy": xp_hoy,
                 "meta": config.META_DIARIA_XP,
@@ -624,6 +698,87 @@ def registrar_actividad(db, usuario_id, accion, estado_animo=None, alimento_codi
         return None
     finally:
         cursor.close()
+
+
+# ----- Calcomanías: base de datos -----
+
+
+def _calcomanias_ganadas(cursor, usuario_id):
+    """{id: fecha} de las calcomanías que el usuario ya tiene."""
+    cursor.execute("SELECT calcomania_id, fecha FROM calcomanias_usuario WHERE usuario_id = %s", (usuario_id,))
+    return {fila["calcomania_id"]: fila["fecha"] for fila in cursor.fetchall()}
+
+
+def _hechos_del_usuario(cursor, usuario_id, confirmacion_manual=False):
+    """Junta de la base los hechos que piden las reglas (ver
+    REGLAS_CALCOMANIAS). Sirve igual para el usuario que acaba de actuar y
+    para quien ya cumplía una regla antes de que existieran las calcomanías.
+
+    `confirmacion_manual` es la señal en vivo de /confirmar-alimento. Para
+    quien confirmó antes de que existieran, la base solo guarda certeza_ia
+    = 100 (una confirmación humana se guarda con 100.0)."""
+    cursor.execute("SELECT COUNT(*) AS n, COALESCE(SUM(certeza_ia >= 100), 0) AS manuales "
+                   "FROM historial_comida WHERE usuario_id = %s", (usuario_id,))
+    comidas = cursor.fetchone()
+    cursor.execute("SELECT COUNT(*) AS n FROM estado_animo WHERE usuario_id = %s", (usuario_id,))
+    animos = cursor.fetchone()["n"]
+    cursor.execute("SELECT DISTINCT accion FROM eventos_xp WHERE usuario_id = %s AND accion LIKE %s",
+                   (usuario_id, PREFIJO_MISION + "%"))
+    misiones = {fila["accion"][len(PREFIJO_MISION):] for fila in cursor.fetchall()}
+    cursor.execute("SELECT fecha FROM actividad_diaria WHERE usuario_id = %s", (usuario_id,))
+    fechas = [fila["fecha"] for fila in cursor.fetchall()]
+    progreso = _leer_progreso(cursor, usuario_id)
+    return {
+        "comidas_total": comidas["n"],
+        "misiones_hechas": misiones,
+        "tiene_animo": animos > 0,
+        "ayudo_ia": confirmacion_manual or int(comidas["manuales"]) > 0,
+        "racha_maxima": progreso["racha_maxima"],
+        "nivel_maximo": progreso["nivel_maximo"],
+        "dias_ausente_max": dias_ausente_maximo(fechas),
+    }
+
+
+def _otorgar_calcomanias(cursor, usuario_id, hoy, confirmacion_manual=False):
+    """Otorga las calcomanías que ya se cumplen y no se tenían. Devuelve
+    cuáles son nuevas (ya en su forma pública). INSERT IGNORE + la llave
+    primaria (usuario, calcomanía) hacen imposible otorgarla dos veces."""
+    hechos = _hechos_del_usuario(cursor, usuario_id, confirmacion_manual)
+    nuevas = calcomanias_por_otorgar(hechos, _calcomanias_ganadas(cursor, usuario_id))
+    for calcomania_id in nuevas:
+        cursor.execute("INSERT IGNORE INTO calcomanias_usuario (usuario_id, calcomania_id, fecha) VALUES (%s, %s, %s)",
+                       (usuario_id, calcomania_id, hoy))
+    return [calcomania_publica(calcomania_por_id(cid)) for cid in nuevas]
+
+
+def resumen_calcomanias(cursor, usuario_id):
+    """{"ganadas": n, "total": n} para GET /progreso."""
+    return {"ganadas": len(_calcomanias_ganadas(cursor, usuario_id)), "total": len(config.CALCOMANIAS)}
+
+
+def obtener_calcomanias(db, usuario_id):
+    """Para GET /calcomanias. A quien ya cumplía una regla antes de que
+    existiera el sistema se la otorga aquí, sin anunciarla como nueva (su
+    fecha es la de hoy: no se sabe cuándo la cumplió)."""
+    cursor = db.conexion.cursor(dictionary=True)
+    try:
+        _otorgar_calcomanias(cursor, usuario_id, date.today())
+        ganadas = _calcomanias_ganadas(cursor, usuario_id)
+        db.conexion.commit()
+    except Exception:
+        db.conexion.rollback()
+        raise
+    finally:
+        cursor.close()
+    lista = [
+        {
+            **{k: c[k] for k in ("id", "nombre", "descripcion", "como_se_gana", "rol")},
+            "ganada": c["id"] in ganadas,
+            "fecha": ganadas[c["id"]].isoformat() if c["id"] in ganadas else None,
+        }
+        for c in config.CALCOMANIAS
+    ]
+    return {"ganadas": len(ganadas), "total": len(config.CALCOMANIAS), "calcomanias": lista}
 
 
 def _estado_animo_de_hoy(cursor, usuario_id, hoy):
@@ -865,6 +1020,14 @@ def ruta_progreso():
     if error:
         return error
     return jsonify({"success": True, "progreso": obtener_progreso(_db, usuario_id)}), 200
+
+
+@bp.route("/calcomanias", methods=["GET"])
+def ruta_calcomanias():
+    usuario_id, error = _usuario_id_desde_email(request.args.get("email"))
+    if error:
+        return error
+    return jsonify({"success": True, **obtener_calcomanias(_db, usuario_id)}), 200
 
 
 @bp.route("/avatares", methods=["GET"])
