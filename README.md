@@ -36,7 +36,7 @@ Backend/
 ├── modelo_lumea101.keras + clases_101.json      Modelo Food-101 (101 clases).
 ├── pruebas/               Pruebas automáticas de la API, login, gamificación y confirmación.
 ├── entrenamiento/         Entrenamiento del modelo regional y limpieza/recolección del dataset.
-├── herramientas/          Evaluación y diagnóstico del modelo (incluye la prueba de campo).
+├── herramientas/          Evaluación y diagnóstico del modelo (incluye la prueba de campo) y crear_usuario_demo.py (cuenta de demostración para el video).
 ├── datos/                 Tablas nutricionales en CSV con sus fuentes (USDA, ICBF, receta).
 ├── docs/                  Contratos de la API, guía del frontend, colección de Postman.
 └── historico/             Evidencia de etapas anteriores (ver abajo). No se usa en producción.
