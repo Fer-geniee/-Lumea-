@@ -1,4 +1,5 @@
 import os
+import threading
 
 # Debe ir antes de cualquier import de tensorflow/keras (ver nota en predict.py)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
@@ -16,6 +17,25 @@ from predict import predecir_alimento, OPCIONES_CUANDO_DUDA  # única fuente de 
 
 app = Flask(__name__)
 CORS(app)
+
+# ===== Una petición a la vez (por la única conexión MySQL) =====
+# Flask atiende cada petición en su propio hilo, pero toda la app comparte UNA conexión a MySQL
+# (ver `db` abajo) y mysql-connector no aguanta dos hilos a la vez: la conexión se corrompe
+# ("MySQL Connection not available") y el servidor puede caerse con un segmentation fault.
+# Las pantallas de Progreso y Avatar piden 3 cosas al mismo tiempo, así que pasaba de verdad.
+# Este candado hace que las peticiones esperen su turno. Para un servidor de demostración
+# alcanza; con muchos usuarios se cambiaría por una conexión por petición (pool de conexiones).
+_turno = threading.Lock()
+
+
+@app.before_request
+def esperar_turno():
+    _turno.acquire()
+
+
+@app.teardown_request
+def ceder_turno(error=None):
+    _turno.release()
 
 db = BaseDatos()
 # Tablas y endpoints de gamificación (/progreso, /avatares, /avatar): viven
