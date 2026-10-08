@@ -204,30 +204,42 @@ volvió después de varios días, un aviso amable una sola vez.
 
 **Ruta:** `obtenerProgreso(email)` → `GET /progreso?email=...`
 
-Respuesta real de alguien que vuelve después de 3 días sin registrar nada
-(recortada; completa en `CONTRATO_GAMIFICACION.md`):
+**Vocabulario (8 oct):** en pantalla se dice **«semillas»** donde la API dice XP
+y **«etapa»** donde dice nivel. Las claves de la API **no cambian**
+(`xp_total`, `nivel`, `xp_ganado`...): cambia solo lo que se muestra. Ya no se
+pierden semillas por ausentarse; `mensaje_regreso` sale al volver después de 3
+o más días sin actividad (una sola vez).
+
+Respuesta real de alguien que vuelve después de 5 días completos sin registrar
+nada (recortada; completa en `CONTRATO_GAMIFICACION.md`):
 
 ```json
 {
   "success": true,
   "progreso": {
-    "xp_total": 20,
+    "xp_total": 40,
     "nivel": 2,
     "xp_inicio_nivel": 30,
     "xp_siguiente_nivel": 80,
-    "xp_faltante_siguiente_nivel": 60,
+    "xp_faltante_siguiente_nivel": 40,
     "racha_actual": 0,
     "racha_maxima": 1,
-    "ultima_fecha_actividad": "2026-09-23",
-    "xp_perdido_desde_ultima_visita": 15,
-    "mensaje_regreso": "¡Te extrañamos! Tu nivel y todo lo que desbloqueaste siguen siendo tuyos. Cuando quieras, registra algo hoy y vuelve a sumar XP.",
-    "meta_diaria": { "xp_hoy": 35, "meta": 15, "cumplida": true },
+    "ultima_fecha_actividad": "2026-10-02",
+    "xp_perdido_desde_ultima_visita": 0,
+    "mensaje_regreso": "🌿 Siempre puedes volver, tu camino no termina cuando haces una pausa, ni cuando te encuentras con dificultades. El camino continúa cuando perdonas y sostienes las dificultades en paz. ¡Qué bueno tenerte de vuelta!",
+    "meta_diaria": {
+      "cumplida": true,
+      "meta": 15,
+      "xp_hoy": 40
+    },
     "avatar": {
-      "id": "sol",
-      "nombre": "Sol",
-      "url": "https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural",
+      "id": "luna",
+      "nombre": "Luna",
+      "forma": "arch",
+      "color": "C9C3F0",
+      "url": "https://api.dicebear.com/10.x/gaze/svg?seed=lumea-luna&shapeVariant=arch&bodyColor=C9C3F0&eyesVariant=dots",
       "estado_animo_hoy": "bien",
-      "url_con_animo": "https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=smile&eyes=default&eyebrows=defaultNatural"
+      "url_con_animo": "https://api.dicebear.com/10.x/gaze/svg?seed=lumea-luna&shapeVariant=arch&bodyColor=C9C3F0&eyesVariant=happy"
     }
   }
 }
@@ -235,14 +247,14 @@ Respuesta real de alguien que vuelve después de 3 días sin registrar nada
 
 Cómo usar cada dato:
 
-- **Nivel:** `nivel`. **Nunca baja**, aunque se pierda XP.
-- **Barra de XP:** el XP puede quedar por debajo del inicio del nivel (aquí 20,
-  con el nivel 2 empezando en 30), así que no bajes de 0:
+- **Etapa:** `nivel`. **Nunca baja.**
+- **Barra de semillas:** por si algún día se enciende la pérdida, el XP podría
+  quedar por debajo del inicio del nivel, así que no bajes de 0:
   ```js
   const p = cuerpo.progreso;
   const porcentaje = p.xp_siguiente_nivel === null ? 100
     : Math.max(0, p.xp_total - p.xp_inicio_nivel) / (p.xp_siguiente_nivel - p.xp_inicio_nivel) * 100;
-  // texto: `Te faltan ${p.xp_faltante_siguiente_nivel} XP para el nivel ${p.nivel + 1}`
+  // texto: `Te faltan ${p.xp_faltante_siguiente_nivel} semillas para la etapa ${p.nivel + 1}`
   ```
   (`xp_siguiente_nivel` es `null` en el último nivel: ahí la barra va llena.)
 - **Racha:** `racha_actual` días. Si es 0: "Registra algo hoy para empezar una
@@ -257,11 +269,13 @@ Cómo usar cada dato:
   ```
 - **Aviso de regreso:** si `mensaje_regreso` no es `null`, muéstralo arriba, en
   un recuadro amable (por ejemplo `alert alert-success`), con el botón para
-  cerrarlo. Llega **una sola vez**: la siguiente vez ya viene `null`. Si
-  muestras el número (`xp_perdido_desde_ultima_visita`), que sea pequeño.
-  Nunca como regaño.
+  cerrarlo. Llega **una sola vez** por ausencia: la siguiente vez ya viene
+  `null`. Muéstralo tal cual, sin reescribirlo. `xp_perdido_desde_ultima_visita`
+  hoy siempre es 0 (la pérdida está apagada); no lo muestres.
 - **Avatar:** si el avatar de Figma está listo, las capas (pantalla 8). Si no,
-  la cara DiceBear con el ánimo de hoy: `<img src="${p.avatar.url_con_animo}" alt="Tu avatar">`.
+  el compañero DiceBear *gaze* con los ojos del ánimo de hoy: `<img src="${p.avatar.url_con_animo}" alt="Tu compañero">`.
+  La URL es quieta; si quieres animarlo, agrégale `&animationVariant=...` en el frontend.
+  También vienen `forma` y `color` (sin `#`) por si quieres dibujar algo con ellos.
   Para saber si Figma está listo, mira `imagenes_listas` en `GET /avatar`.
 
 | Estado | Qué mostrar |
@@ -384,10 +398,10 @@ Si `gamificacion` no es `null`:
 - **`detalle_xp`** dice de dónde salió cada parte, por si quieres mostrarlo en
   pequeño. Respuesta real al confirmar un banano (la primera comida del día):
   ```json
-  "detalle_xp": [{"motivo": "comida_registrada", "xp": 10}, {"motivo": "eleccion_nutritiva", "xp": 5}, {"motivo": "mision_fruta", "xp": 10}]
+  "detalle_xp": [{"motivo": "comida_registrada", "xp": 10}, {"motivo": "bonus_registro", "xp": 5}, {"motivo": "mision_fruta", "xp": 10}]
   ```
-  `eleccion_nutritiva` es el bonus por un alimento sin sellos que no es de
-  paquete. Puedes mostrarlo como "+5 elección nutritiva", **nunca** como
+  `bonus_registro` es el bonus por registrar una comida: es igual para
+  cualquier alimento. Puedes mostrarlo como "+5 por registrar", **nunca** como
   "comiste bien" o "saludable".
 - **`misiones_cumplidas`**: las misiones que se cumplieron con esta acción.
   Celebración: "¡Misión cumplida: Registra una fruta!".
@@ -422,11 +436,20 @@ trae `mensaje_educativo`: un dato y una alternativa para otro día. Respuesta re
 - Registrar un producto de paquete **no resta XP**. La app nunca castiga lo que
   alguien comió.
 
+**Consejo (nuevo, 8 oct):** si el alimento quedó registrado, la respuesta trae
+`consejo` con frases para leer: `aporta` (qué aporta), `para_completar` (qué le
+falta al plato; solo en comidas principales, si no es `null`),
+`a_tener_en_cuenta` (puede ser `null`) y `sellos`, una entrada
+`{sello, dato, idea}` por cada sello de advertencia. Muéstralo como texto, sin
+semáforos ni colores de "bien" o "mal". Si no hay consejo (grupo que falta
+confirmar), la clave no viene. Detalle y ejemplos reales en
+`CONTRATO_CONFIRMACION.md`.
+
 | Estado | Qué mostrar |
 |---|---|
 | Cargando | Ya pasó en la pantalla 3. |
 | Error | `guardado_baseDatos: false` con `success: true`: "Lo reconocimos, pero no se pudo guardar. Intenta de nuevo". |
-| Sin datos | `dato_curioso` y `mensaje_educativo` pueden ser `null`: simplemente no los muestres. |
+| Sin datos | `dato_curioso`, `mensaje_educativo` y los campos de `consejo` pueden ser `null`: simplemente no los muestres. |
 
 ---
 
@@ -581,8 +604,8 @@ const caras = cuerpo.progreso.avatar.urls_por_estado;
 // <img src="${caras.muy_bien}" alt="Muy bien">
 ```
 
-(Estas caras son de DiceBear y necesitan internet. El avatar de Figma no cambia
-de cara: el ánimo siempre usa DiceBear.)
+(Estos compañeros son de DiceBear y necesitan internet. El avatar de Figma no
+cambia de cara: el ánimo siempre usa DiceBear, y se nota en los ojos.)
 
 **Ruta para guardar:** `registrarEstadoAnimo(email, estado)` → `POST /estado-animo`
 con `{"email": "...", "estado": "bien"}`.
@@ -597,7 +620,7 @@ Respuesta real:
     "accion": "estado_animo",
     "xp_ganado": 5,
     "tope_diario_alcanzado": false,
-    "avatar_url": "https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=smile&eyes=default&eyebrows=defaultNatural",
+    "avatar_url": "https://api.dicebear.com/10.x/gaze/svg?seed=lumea-sol&shapeVariant=circle&bodyColor=F6B73C&eyesVariant=happy",
     "xp_total": 35,
     "nivel": 2,
     "subio_de_nivel": false,
@@ -750,8 +773,8 @@ un objeto de cada tipo, completa en `CONTRATO_GAMIFICACION.md`):
     ]
   },
   "respaldo_dicebear": {
-    "id": "sol", "nombre": "Sol",
-    "url": "https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural"
+    "id": "sol", "nombre": "Sol", "forma": "circle", "color": "F6B73C",
+    "url": "https://api.dicebear.com/10.x/gaze/svg?seed=lumea-sol&shapeVariant=circle&bodyColor=F6B73C&eyesVariant=dots"
   }
 }
 ```

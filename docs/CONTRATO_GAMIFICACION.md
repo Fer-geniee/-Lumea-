@@ -1,20 +1,29 @@
 # Contrato de la API de gamificación
 
-Para quien construya el frontend de la gamificación. Todos los ejemplos son **respuestas reales** del backend (26 y 27 sep y 5 oct 2026), no inventadas.
+Para quien construya el frontend de la gamificación. Todos los ejemplos son **respuestas reales** del backend (26 y 27 sep, 5 y 8 oct 2026), no inventadas.
 
 - Base: `http://127.0.0.1:5002` (igual que el resto de la API; ver `api.js` del frontend).
 - Identificación del usuario: por `email`, como el resto de la API. **Cuando esté listo el login, esto puede cambiar** (se ajusta en un solo lugar del backend: `_usuario_id_desde_email` en `gamificacion.py`).
 - Los números (XP por acción, topes, meta, niveles, pérdida por inactividad, avatares, ropa y accesorios) viven en `gamificacion_config.py` y son **provisionales**. No los copies en el frontend: `GET /progreso` los devuelve en `reglas`.
 
+## Vocabulario de pantalla (Camino del cuidado, 8 oct 2026)
+
+Lumea se reorientó con el «Camino del cuidado». **Es solo vocabulario de pantalla**: lo que se ve dice **«semillas»** donde la API dice XP y **«etapa»** donde dice nivel. **Las claves de la API no cambian**: `xp_total`, `xp_ganado`, `nivel`, `nivel_maximo`, `nivel_anterior`, `nivel_requerido`, `meta_diaria`, `subio_de_nivel`... siguen igual, para no romper el frontend. Cambia únicamente el texto que llega listo para mostrar (mensajes, nombres y descripciones, que escribe Isabella en `gamificacion_config.py`). Así que en la pantalla: `xp_total` se muestra como «semillas» y `nivel` como «etapa». Los otros cambios de esta fecha:
+
+- **Bonus por registro** (`bonus_registro`): reemplaza al bonus de «elección nutritiva». Ya no depende del alimento: es el mismo para un banano que para un producto con sellos.
+- **Sin pérdida por inactividad:** `xp_perdido_por_dia_inactivo` y `tope_perdida_por_periodo` valen 0. Nadie pierde semillas por ausentarse.
+- **`mensaje_regreso`** ahora depende de los **días de ausencia**, no de haber perdido XP.
+- **Compañeros gaze:** los seis avatares DiceBear son compañeros del estilo *gaze* 10.x, con `forma` y `color`; sus ojos muestran el ánimo.
+
 ## Reglas (para diseñar las pantallas)
 
 - Se gana XP por **registrar**: una comida (guardada por `/predecir` o por `/confirmar-alimento`) o el estado de ánimo del día.
-- **Puntos v2 (27 sep):** un bonus pequeño por **elección nutritiva** (+5, máx. 3 al día) y **misiones diarias** fijas (+10 cada una). Nunca se resta XP por lo que se comió: la penalización por ultraprocesados existe pero vale 0. Ver la sección "Puntos v2" más abajo.
+- **Puntos v2 (27 sep):** un bonus pequeño **por registrar** (`bonus_registro`, +5, máx. 3 al día, igual para cualquier alimento) y **misiones diarias** fijas (+10 cada una). Nunca se resta XP por lo que se comió: la penalización por ultraprocesados existe pero vale 0. Ver la sección "Puntos v2" más abajo.
 - El XP **no depende** del ánimo reportado. Nunca mostrar mensajes que premien calorías, peso ni cuerpo, ni que premien sentirse bien, ni que regañen por lo que se comió.
 - Cada acción tiene un **tope diario**. Pasado el tope, la acción se guarda igual, pero da 0 XP (`tope_diario_alcanzado: true`).
 - **Racha:** días seguidos con al menos una actividad. Si un día no hay actividad, se reinicia.
 - **Meta diaria:** llegar a `meta` XP en el día.
-- **Pérdida por inactividad (nuevo, 27 sep):** cada día completo sin ninguna actividad resta `xp_perdido_por_dia_inactivo` XP (hoy 5), con un tope de `tope_perdida_por_periodo` (hoy 20) por cada ausencia. El XP nunca baja de 0. **El nivel nunca baja** y **nada de lo desbloqueado se vuelve a bloquear**: ambos dependen del nivel máximo alcanzado. Con `xp_perdido_por_dia_inactivo = 0` la pérdida está apagada.
+- **Pérdida por inactividad (27 sep; apagada desde el 8 oct):** el mecanismo existe: cada día completo sin ninguna actividad restaría `xp_perdido_por_dia_inactivo` XP, con un tope de `tope_perdida_por_periodo` por ausencia. **Hoy los dos valen 0: no se pierde nada.** Si algún día se encienden, el XP nunca baja de 0, **el nivel nunca baja** y **nada de lo desbloqueado se vuelve a bloquear** (todo depende del nivel máximo alcanzado).
 - **Sin rankings** ni comparaciones con otros usuarios (lo promete `guialumea.html`).
 - **Calcomanías (5 oct 2026, decisión de Isabella):** sí hay, y cambian la decisión del 27 sep de "sin insignias ni logros". No dan XP ni se quitan. Ver la sección "Calcomanías".
 
@@ -23,15 +32,15 @@ Para quien construya el frontend de la gamificación. Todos los ejemplos son **r
 | Qué | XP | Tope |
 |---|---|---|
 | Registrar una comida | +10 | 5 al día |
-| Elección nutritiva (extra, sobre la comida) | +5 | 3 al día |
+| Bonus por registro (extra, sobre la comida) | +5 | 3 al día |
 | Misión "Registra una fruta" | +10 | 1 al día |
 | Misión "Registra 3 comidas" | +10 | 1 al día |
 | Misión "Haz tu check-in de ánimo" | +10 | 1 al día |
 | Registrar el estado de ánimo | +5 | 1 al día |
-| Día inactivo | −5 | −20 por ausencia |
+| Día inactivo | **0** (apagada; el parámetro existe) | — |
 | Registrar un ultraprocesado | **0** (parámetro existe, apagado) | — |
 
-- **Elección nutritiva:** el alimento **final** (el que quedó guardado: el reconocido o el confirmado) no es un código de grupo (`sopas`, `dulces`, `tamal`...), no tiene sellos de advertencia (lista vacía; si no se sabe, no cuenta) y no es un producto de paquete (dulces, papas y chitos, bebidas azucaradas).
+- **Bonus por registro:** se suma a cada comida guardada (reconocida o confirmada), **sea cual sea el alimento y tenga o no sellos**. Lo único que lo limita es el tope diario (`maximo_por_dia`). Antes (27 sep al 8 oct) era una «elección nutritiva» que dependía de los sellos y del tipo de producto; Isabella lo cambió para que el XP premie registrar y no lo que se come.
 - **Misiones:** fijas, iguales todos los días, una vez al día cada una. Cuentan desde la medianoche.
 - **Ultraprocesados:** al registrar un producto de paquete, `/predecir` y `/confirmar-alimento` devuelven `mensaje_educativo`: un dato y una alternativa para otro día, nunca un regaño. **No se resta XP.**
 
@@ -40,15 +49,26 @@ Para quien construya el frontend de la gamificación. Todos los ejemplos son **r
 El parámetro `XP_PENALIZACION_ULTRAPROCESADO` existe en `gamificacion_config.py`, pero vale 0, y con 0 no resta nada. Es a propósito:
 
 1. **Honestidad de los registros.** Si registrar una gaseosa quita puntos, la forma fácil de no perderlos es no registrarla. La app deja de reflejar lo que de verdad se come y pierde su sentido.
-2. **No asociar culpa a la comida en adolescentes.** La guía de la Academia Americana de Pediatría para prevenir la obesidad y los trastornos alimentarios en adolescentes (Golden et al., 2016, *Pediatrics* 138(3):e20161649) recomienda no promover dietas ni hablar de comida o peso en términos de culpa, y enfocarse en hábitos. Por eso el único efecto de "qué se comió" es un bonus positivo y pequeño.
+2. **No asociar culpa a la comida en adolescentes.** La guía de la Academia Americana de Pediatría para prevenir la obesidad y los trastornos alimentarios en adolescentes (Golden et al., 2016, *Pediatrics* 138(3):e20161649) recomienda no promover dietas ni hablar de comida o peso en términos de culpa, y enfocarse en hábitos. Por eso, desde el 8 oct, nada de lo que se gana depende de qué se comió: ni siquiera el bonus, que ahora premia solo el registro.
 
 Cambiarlo es una decisión del equipo, no un ajuste técnico.
 
-### Cómo funciona la pérdida (para explicarla en la sustentación)
+### Cómo funciona la pérdida (hoy apagada; para explicarla en la sustentación)
+
+**Hoy está apagada** (`xp_perdido_por_dia_inactivo = 0`): lo que sigue describe el mecanismo, que se conserva por si el equipo decide encenderlo.
 
 No hay un servidor encendido todo el tiempo, así que nadie "resta XP a medianoche". La pérdida se calcula **cuando el usuario vuelve**: en `GET /progreso` o al registrar algo. Se cuentan los días completos entre la última actividad y hoy (hoy no cuenta: todavía puede registrar). El backend guarda cuánto lleva descontado en esa ausencia, así que preguntar dos veces el mismo día no descuenta dos veces.
 
-Ejemplo con los valores de hoy: registra el lunes y vuelve el jueves. Martes y miércoles fueron días inactivos, así que pierde 10 XP. Si vuelve a abrir la app el jueves, no pierde nada más. Si no registra nada y abre el viernes, pierde 5 más (15 en total). Nunca pasa de 20 en la misma ausencia.
+Ejemplo con 5 XP por día y tope de 20 (valores de prueba, no los de hoy): registra el lunes y vuelve el jueves. Martes y miércoles fueron días inactivos, así que pierde 10 XP. Si vuelve a abrir la app el jueves, no pierde nada más. Si no registra nada y abre el viernes, pierde 5 más (15 en total). Nunca pasa de 20 en la misma ausencia.
+
+### Mensaje de regreso: depende de los días de ausencia
+
+`mensaje_regreso` (el texto de Isabella) sale cuando la persona vuelve después de **`DIAS_PARA_MENSAJE_REGRESO` (hoy 3) o más días completos sin actividad**, el mismo umbral de la calcomanía «volviste». Ya no depende de que se haya perdido XP.
+
+- Sale **una sola vez por ausencia**, en la primera respuesta de `GET /progreso` después de volver: o bien al abrir `/progreso` antes de registrar nada, o bien después de registrar algo (el aviso espera a la siguiente visita a `/progreso`).
+- Si la persona se ausenta otra vez, ese nuevo regreso vuelve a dar el mensaje.
+- Hoy de 1 o 2 días sin actividad no dice nada. Los días son «completos»: hoy no cuenta, porque todavía puede registrar algo.
+- Se anota en `eventos_xp` con 0 XP (`aviso_regreso_pendiente` y `aviso_regreso`), sin columnas nuevas.
 
 ## Qué ruta para qué
 
@@ -115,54 +135,131 @@ Respuesta real (recortada: son 10 en total) de alguien que registró un banano y
 
 Estado completo del usuario. Un usuario sin actividad todavía recibe ceros (no es error). Aquí se descuenta la pérdida por inactividad pendiente.
 
-Ejemplo real de alguien que vuelve después de 3 días sin actividad (tenía 35 XP y nivel 2). Para sacar este ejemplo se corrió en la base de datos la fecha de la última actividad 4 días atrás:
+Ejemplo real de alguien que vuelve después de 6 días sin actividad (5 días completos), con la pérdida apagada. Para sacarlo se corrió en la base de datos la fecha de la última actividad 6 días atrás:
 
 ```json
 {
-  "success": true,
   "progreso": {
-    "xp_total": 20,
-    "nivel": 2,
-    "xp_inicio_nivel": 30,
-    "xp_siguiente_nivel": 80,
-    "xp_faltante_siguiente_nivel": 60,
-    "racha_actual": 0,
-    "racha_maxima": 1,
-    "ultima_fecha_actividad": "2026-09-23",
-    "xp_perdido_desde_ultima_visita": 15,
-    "mensaje_regreso": "¡Te extrañamos! Tu nivel y todo lo que desbloqueaste siguen siendo tuyos. Cuando quieras, registra algo hoy y vuelve a sumar XP.",
-    "meta_diaria": { "xp_hoy": 35, "meta": 15, "cumplida": true },
     "avatar": {
-      "id": "sol",
-      "nombre": "Sol",
-      "url": "https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural",
+      "color": "C9C3F0",
       "estado_animo_hoy": "bien",
-      "url_con_animo": "https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=smile&eyes=default&eyebrows=defaultNatural",
+      "forma": "arch",
+      "id": "luna",
+      "nombre": "Luna",
+      "url": "https://api.dicebear.com/10.x/gaze/svg?seed=lumea-luna&shapeVariant=arch&bodyColor=C9C3F0&eyesVariant=dots",
+      "url_con_animo": "https://api.dicebear.com/10.x/gaze/svg?seed=lumea-luna&shapeVariant=arch&bodyColor=C9C3F0&eyesVariant=happy",
       "urls_por_estado": {
-        "muy_mal": "https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=sad&eyes=default&eyebrows=sadConcerned",
-        "mal": "https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=concerned&eyes=default&eyebrows=sadConcernedNatural",
-        "neutral": "https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=serious&eyes=default&eyebrows=defaultNatural",
-        "bien": "https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=smile&eyes=default&eyebrows=defaultNatural",
-        "muy_bien": "https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=smile&eyes=happy&eyebrows=raisedExcitedNatural"
+        "bien": "https://api.dicebear.com/10.x/gaze/svg?seed=lumea-luna&shapeVariant=arch&bodyColor=C9C3F0&eyesVariant=happy",
+        "mal": "https://api.dicebear.com/10.x/gaze/svg?seed=lumea-luna&shapeVariant=arch&bodyColor=C9C3F0&eyesVariant=small",
+        "muy_bien": "https://api.dicebear.com/10.x/gaze/svg?seed=lumea-luna&shapeVariant=arch&bodyColor=C9C3F0&eyesVariant=grin",
+        "muy_mal": "https://api.dicebear.com/10.x/gaze/svg?seed=lumea-luna&shapeVariant=arch&bodyColor=C9C3F0&eyesVariant=bars",
+        "neutral": "https://api.dicebear.com/10.x/gaze/svg?seed=lumea-luna&shapeVariant=arch&bodyColor=C9C3F0&eyesVariant=dots"
       }
     },
+    "calcomanias": {
+      "ganadas": 4,
+      "total": 10
+    },
+    "mensaje_regreso": "🌿 Siempre puedes volver, tu camino no termina cuando haces una pausa, ni cuando te encuentras con dificultades. El camino continúa cuando perdonas y sostienes las dificultades en paz. ¡Qué bueno tenerte de vuelta!",
+    "meta_diaria": {
+      "cumplida": true,
+      "meta": 15,
+      "xp_hoy": 40
+    },
+    "misiones": [
+      {
+        "cumplida": true,
+        "id": "fruta",
+        "nombre": "Agradece y disfruta una fruta de la creación",
+        "xp": 10
+      },
+      {
+        "cumplida": false,
+        "id": "tres_comidas",
+        "nombre": "Cuida de ti en tus tres comidas",
+        "xp": 10
+      },
+      {
+        "cumplida": true,
+        "id": "check_in_animo",
+        "nombre": "Haz una pausa y escucha cómo te sientes",
+        "xp": 10
+      }
+    ],
+    "nivel": 2,
+    "racha_actual": 0,
+    "racha_maxima": 1,
     "reglas": {
       "acciones": {
-        "comida_registrada": { "xp": 10, "maximo_por_dia": 5 },
-        "estado_animo": { "xp": 5, "maximo_por_dia": 1 }
+        "bonus_registro": {
+          "maximo_por_dia": 3,
+          "xp": 5
+        },
+        "comida_registrada": {
+          "maximo_por_dia": 5,
+          "xp": 10
+        },
+        "estado_animo": {
+          "maximo_por_dia": 1,
+          "xp": 5
+        }
       },
       "meta_diaria_xp": 15,
-      "niveles": [0, 30, 80, 150, 250, 400, 600, 850, 1150, 1500],
-      "xp_perdido_por_dia_inactivo": 5,
-      "tope_perdida_por_periodo": 20
-    }
-  }
+      "misiones_diarias": [
+        {
+          "id": "fruta",
+          "nombre": "Agradece y disfruta una fruta de la creación",
+          "xp": 10
+        },
+        {
+          "id": "tres_comidas",
+          "nombre": "Cuida de ti en tus tres comidas",
+          "xp": 10
+        },
+        {
+          "id": "check_in_animo",
+          "nombre": "Haz una pausa y escucha cómo te sientes",
+          "xp": 10
+        }
+      ],
+      "niveles": [
+        0,
+        30,
+        80,
+        150,
+        250,
+        400,
+        600,
+        850,
+        1150,
+        1500
+      ],
+      "tope_perdida_por_periodo": 0,
+      "xp_penalizacion_ultraprocesado": 0,
+      "xp_perdido_por_dia_inactivo": 0
+    },
+    "ultima_fecha_actividad": "2026-10-02",
+    "xp_faltante_siguiente_nivel": 40,
+    "xp_inicio_nivel": 30,
+    "xp_perdido_desde_ultima_visita": 0,
+    "xp_siguiente_nivel": 80,
+    "xp_total": 40
+  },
+  "success": true
 }
 ```
 
-(`meta_diaria.xp_hoy` dice 35 porque en la prueba se registró ese mismo día; con una ausencia de verdad sería 0.)
+(`meta_diaria.xp_hoy` y las misiones muestran lo de hoy: en la prueba se registró algo ese mismo día para tener una racha y una cara con ánimo; con una ausencia de verdad `racha_actual` sería 0.)
 
-La segunda llamada del mismo día responde lo mismo pero con `"xp_perdido_desde_ultima_visita": 0` y `"mensaje_regreso": null`: **el aviso se da una sola vez**.
+La segunda llamada responde lo mismo pero con `"mensaje_regreso": null`: **el aviso se da una sola vez**. Respuesta real de esa segunda llamada, en esos dos campos:
+
+```json
+{
+  "xp_total": 40,
+  "xp_perdido_desde_ultima_visita": 0,
+  "mensaje_regreso": null
+}
+```
 
 **Misiones del día** (campo `misiones` de `GET /progreso`, respuesta real después de registrar una fruta, tres comidas y el ánimo):
 
@@ -180,15 +277,15 @@ La segunda llamada del mismo día responde lo mismo pero con `"xp_perdido_desde_
 "calcomanias": { "ganadas": 4, "total": 10 }
 ```
 
-Y `reglas` trae además `misiones_diarias` y `xp_penalizacion_ultraprocesado` (hoy 0), y `acciones` incluye `eleccion_nutritiva`.
+Y `reglas` trae además `misiones_diarias` y `xp_penalizacion_ultraprocesado` (hoy 0), y `acciones` incluye `bonus_registro`.
 
 Notas:
-- `nivel` es el **nivel máximo alcanzado**: nunca baja. Después de perder XP, `xp_total` puede quedar **por debajo** de `xp_inicio_nivel` (en el ejemplo, 20 con el nivel 2 empezando en 30). Para la barra de progreso usa `max(0, xp_total - xp_inicio_nivel) / (xp_siguiente_nivel - xp_inicio_nivel)`, o muestra "te faltan `xp_faltante_siguiente_nivel` XP para el nivel 3".
+- `nivel` es el **nivel máximo alcanzado**: nunca baja. Si algún día se enciende la pérdida, `xp_total` podría quedar **por debajo** de `xp_inicio_nivel`. Para la barra de progreso usa `max(0, xp_total - xp_inicio_nivel) / (xp_siguiente_nivel - xp_inicio_nivel)`, o muestra «te faltan `xp_faltante_siguiente_nivel` semillas para la etapa siguiente».
 - `xp_siguiente_nivel` y `xp_faltante_siguiente_nivel` son `null` en el último nivel.
-- `xp_perdido_desde_ultima_visita` también incluye lo que se descontó si el usuario registró algo antes de abrir `/progreso`.
-- Muestra `mensaje_regreso` tal cual, con tono amable. Si quieres mostrar el número, que sea discreto; nunca como regaño.
+- `xp_perdido_desde_ultima_visita` vale 0 mientras la pérdida esté apagada (si se enciende, también incluye lo que se descontó si el usuario registró algo antes de abrir `/progreso`).
+- Muestra `mensaje_regreso` tal cual, con tono amable; no lo reescribas. Si algún día se enciende la pérdida y quieres mostrar el número, que sea discreto; nunca como regaño.
 - `racha_actual` ya viene "vigente": si la última actividad fue antes de ayer, llega en 0.
-- `avatar` es el avatar **DiceBear**. `avatar.url` es la cara neutra. `url_con_animo` usa el último estado de ánimo de **hoy** (neutra si no hay; en ese caso `estado_animo_hoy` es `null`). `urls_por_estado` sirve para dibujar el selector de ánimo con la cara del propio avatar.
+- `avatar` es el **compañero** DiceBear *gaze* 10.x, con su `forma` y su `color` (hexadecimal de 6 dígitos, **sin `#`**). `avatar.url` es el compañero con los ojos neutros. `url_con_animo` usa el último estado de ánimo de **hoy** (neutros si no hay; en ese caso `estado_animo_hoy` es `null`). `urls_por_estado` sirve para dibujar el selector de ánimo con el propio compañero. Las URL son **quietas**: gaze solo anima si se le pide `animationVariant`, y eso lo agrega el frontend donde quiera.
 
 Errores: `400` sin `email`, `404` si el correo no tiene perfil.
 
@@ -245,8 +342,11 @@ Respuesta real (nivel máximo 2, sin imágenes todavía):
     ]
   },
   "respaldo_dicebear": {
-    "id": "sol", "nombre": "Sol",
-    "url": "https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural"
+    "color": "F6B73C",
+    "forma": "circle",
+    "id": "sol",
+    "nombre": "Sol",
+    "url": "https://api.dicebear.com/10.x/gaze/svg?seed=lumea-sol&shapeVariant=circle&bodyColor=F6B73C&eyesVariant=dots"
   }
 }
 ```
@@ -313,22 +413,49 @@ Catálogo completo, con lo que el usuario ya desbloqueó. **Cambió el 27 sep:**
 
 ```json
 {
-  "success": true,
-  "xp_total": 35,
-  "nivel_maximo": 2,
   "avatar_actual": "sol",
   "avatares": [
-    { "id": "sol",  "nombre": "Sol",  "nivel_requerido": 1, "desbloqueado": true,  "niveles_faltantes": 0, "seleccionado": true,
-      "url": "https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural" },
-    { "id": "luna", "nombre": "Luna", "nivel_requerido": 1, "desbloqueado": true,  "niveles_faltantes": 0, "seleccionado": false,
-      "url": "https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-luna&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural" },
-    { "id": "rio",  "nombre": "Río",  "nivel_requerido": 3, "desbloqueado": false, "niveles_faltantes": 1, "seleccionado": false,
-      "url": "https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-rio&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural" }
-  ]
+    {
+      "color": "F6B73C",
+      "desbloqueado": true,
+      "forma": "circle",
+      "id": "sol",
+      "nivel_requerido": 1,
+      "niveles_faltantes": 0,
+      "nombre": "Sol",
+      "seleccionado": true,
+      "url": "https://api.dicebear.com/10.x/gaze/svg?seed=lumea-sol&shapeVariant=circle&bodyColor=F6B73C&eyesVariant=dots"
+    },
+    {
+      "color": "C9C3F0",
+      "desbloqueado": true,
+      "forma": "arch",
+      "id": "luna",
+      "nivel_requerido": 1,
+      "niveles_faltantes": 0,
+      "nombre": "Luna",
+      "seleccionado": false,
+      "url": "https://api.dicebear.com/10.x/gaze/svg?seed=lumea-luna&shapeVariant=arch&bodyColor=C9C3F0&eyesVariant=dots"
+    },
+    {
+      "color": "52DCD8",
+      "desbloqueado": false,
+      "forma": "pill",
+      "id": "rio",
+      "nivel_requerido": 3,
+      "niveles_faltantes": 1,
+      "nombre": "Río",
+      "seleccionado": false,
+      "url": "https://api.dicebear.com/10.x/gaze/svg?seed=lumea-rio&shapeVariant=pill&bodyColor=52DCD8&eyesVariant=dots"
+    }
+  ],
+  "nivel_maximo": 2,
+  "success": true,
+  "xp_total": 40
 }
 ```
 
-(Recortado a 3 de los 6 avatares.) Errores: `400` sin `email`, `404` sin perfil.
+(Recortado a 3 de los 6 compañeros; cada uno trae `forma` y `color`, que ya van dentro de la `url`, por si el frontend no quiere leerla.) Errores: `400` sin `email`, `404` sin perfil.
 
 ### `POST /avatar`
 
@@ -342,12 +469,14 @@ Respuesta `200`:
 
 ```json
 {
-  "success": true,
   "avatar": {
+    "color": "C9C3F0",
+    "forma": "arch",
     "id": "luna",
     "nombre": "Luna",
-    "url": "https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-luna&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural"
-  }
+    "url": "https://api.dicebear.com/10.x/gaze/svg?seed=lumea-luna&shapeVariant=arch&bodyColor=C9C3F0&eyesVariant=dots"
+  },
+  "success": true
 }
 ```
 
@@ -364,30 +493,65 @@ Respuesta `200`:
 ```json
 {
   "accion": "comida_registrada",
-  "xp_ganado": 25,
-  "detalle_xp": [
-    { "motivo": "comida_registrada", "xp": 10 },
-    { "motivo": "eleccion_nutritiva", "xp": 5 },
-    { "motivo": "mision_fruta", "xp": 10 }
+  "calcomanias_nuevas": [
+    {
+      "descripcion": "Has dado el primer paso en el camino del cuidado.",
+      "id": "primera_foto",
+      "nombre": "Primer paso",
+      "rol": "comida"
+    },
+    {
+      "descripcion": "Has comido y registrado una fruta.",
+      "id": "fruta",
+      "nombre": "Una fruta para alegrar tu día",
+      "rol": "mision"
+    },
+    {
+      "descripcion": "Confirmaste un plato cuando la IA dudó.",
+      "id": "ayudaste_ia",
+      "nombre": "Inteligencia humana al rescate",
+      "rol": "duda"
+    }
   ],
-  "tope_diario_alcanzado": false,
-  "misiones_cumplidas": [ { "id": "fruta", "nombre": "Registra una fruta", "xp": 10 } ],
-  "xp_total": 25,
+  "desbloqueos": [],
+  "detalle_xp": [
+    {
+      "motivo": "comida_registrada",
+      "xp": 10
+    },
+    {
+      "motivo": "bonus_registro",
+      "xp": 5
+    },
+    {
+      "motivo": "mision_fruta",
+      "xp": 10
+    }
+  ],
+  "meta_diaria": {
+    "cumplida": true,
+    "meta": 15,
+    "recien_cumplida": true,
+    "xp_hoy": 25
+  },
+  "misiones_cumplidas": [
+    {
+      "id": "fruta",
+      "nombre": "Agradece y disfruta una fruta de la creación",
+      "xp": 10
+    }
+  ],
   "nivel": 1,
   "nivel_anterior": 1,
-  "subio_de_nivel": false,
-  "desbloqueos": [],
-  "calcomanias_nuevas": [
-    { "id": "primera_foto", "nombre": "Primera foto", "descripcion": "Registraste tu primera comida.", "rol": "comida" },
-    { "id": "fruta", "nombre": "Fruta del día", "descripcion": "Registraste una fruta.", "rol": "mision" },
-    { "id": "ayudaste_ia", "nombre": "Le ayudaste a la IA", "descripcion": "Confirmaste un plato cuando la IA dudó.", "rol": "duda" }
-  ],
   "racha_actual": 1,
-  "meta_diaria": { "xp_hoy": 25, "meta": 15, "cumplida": true, "recien_cumplida": true }
+  "subio_de_nivel": false,
+  "tope_diario_alcanzado": false,
+  "xp_ganado": 25,
+  "xp_total": 25
 }
 ```
 
-- **`xp_ganado` es el total de esta acción** (antes era solo el de la acción base): muéstralo como "+25 XP". `detalle_xp` dice de dónde salió cada parte, por si quieres mostrarlo ("+10 comida, +5 elección nutritiva, +10 misión").
+- **`xp_ganado` es el total de esta acción** (antes era solo el de la acción base): muéstralo como "+25 XP". `detalle_xp` dice de dónde salió cada parte, por si quieres mostrarlo ("+10 comida, +5 bonus por registro, +10 misión").
 - `misiones_cumplidas` trae las misiones que se cumplieron **con esta acción**: celebración ("¡Misión cumplida: Registra una fruta!").
 - `tope_diario_alcanzado` se refiere a la acción base (la comida o el ánimo).
 
@@ -396,19 +560,32 @@ Y la misma respuesta, con una bebida de paquete (la tercera comida del día), tr
 ```json
 {
   "alimento_codigo": "cocacola_original",
-  "sellos_advertencia": ["azucares", "edulcorantes"],
+  "sellos_advertencia": [
+    "azucares",
+    "edulcorantes"
+  ],
   "mensaje_educativo": "Dato: las gaseosas y bebidas azucaradas tienen bastante azúcar añadida. Si otro día quieres variar, el agua con limón o un jugo de fruta natural también refrescan.",
   "gamificacion": {
-    "xp_ganado": 20,
+    "xp_ganado": 25,
     "detalle_xp": [
-      { "motivo": "comida_registrada", "xp": 10 },
-      { "motivo": "mision_tres_comidas", "xp": 10 }
+      {
+        "motivo": "comida_registrada",
+        "xp": 10
+      },
+      {
+        "motivo": "bonus_registro",
+        "xp": 5
+      },
+      {
+        "motivo": "mision_tres_comidas",
+        "xp": 10
+      }
     ]
   }
 }
 ```
 
-(Recortada.) Sin bonus, **sin resta**, y `mensaje_educativo` para mostrar con tono amable. Es `null` para lo que no es de paquete.
+(Recortada; la respuesta completa también trae `consejo`, ver `CONTRATO_CONFIRMACION.md`.) El **mismo bonus por registro** que una fruta, **sin resta**, y `mensaje_educativo` para mostrar con tono amable. Es `null` para lo que no es de paquete.
 
 - `subio_de_nivel` y `meta_diaria.recien_cumplida` son `true` solo en la acción que lo provocó: úsalos para mostrar una celebración una sola vez.
 - **Subida de nivel completa (5 oct):** `nivel_anterior` es el nivel máximo **antes** de esta acción (igual a `nivel` si no subió). `desbloqueos` lista todo lo que se abrió al subir: cada avatar u objeto con `nivel_anterior < nivel_requerido <= nivel`, y `[]` si no subió. Cada elemento es `{tipo, id, nombre, nivel_requerido}`, con `tipo` = `"avatar"` (DiceBear), `"ropa"` o `"accesorio"`. Respuesta real (un mango que llevó a alguien del nivel 1 al 2):
@@ -421,8 +598,8 @@ Y la misma respuesta, con una bebida de paquete (la tercera comida del día), tr
   Si un solo salto cruza varios niveles, vienen todos, sin repetir. Para ponerse lo nuevo, `GET /avatar`.
 - `calcomanias_nuevas`: las calcomanías ganadas con esta acción (ver "Calcomanías"); `[]` si ninguna. Es `[]` también si algo falló al otorgarlas: el XP se guarda igual.
 - `nivel` es el nivel máximo (nunca baja).
-- Si el usuario vuelve después de días inactivos y registra algo **antes** de abrir `/progreso`, `xp_total` ya viene con la pérdida descontada; el aviso llega en la siguiente llamada a `GET /progreso`.
-- En `POST /estado-animo` viene además `avatar_url`: la cara DiceBear con la expresión del ánimo que se acaba de registrar.
+- Si el usuario vuelve después de días inactivos y registra algo **antes** de abrir `/progreso`, el `mensaje_regreso` llega en la siguiente llamada a `GET /progreso` (y, si algún día se enciende la pérdida, `xp_total` ya viene con lo descontado).
+- En `POST /estado-animo` viene además `avatar_url`: el compañero DiceBear con los ojos del ánimo que se acaba de registrar.
 
 ## Eliminado
 
@@ -435,5 +612,5 @@ Y la misma respuesta, con una bebida de paquete (la tercera comida del día), tr
 
 ## Imágenes
 
-- **DiceBear** (`api.dicebear.com`, estilo *avataaars* de Pablo Stanley: diseño "free for personal and commercial use"; código MIT). Se cargan con un `<img src="...">` normal. **Necesitan internet**: si el día de la presentación no hay conexión, no se van a ver (se pueden descargar los SVG y servirlos localmente). La semilla de cada avatar es fija (`lumea-sol`, ...): nunca se manda el correo ni otro dato del usuario a DiceBear.
+- **DiceBear** (`api.dicebear.com/10.x/gaze/svg`, estilo *gaze*, versión 10.x; valores de forma y ojos verificados el 7 oct 2026 en `@dicebear/styles` 10.6.0). Se cargan con un `<img src="...">` normal. **Necesitan internet**: si el día de la presentación no hay conexión, no se van a ver (se pueden descargar los SVG y servirlos localmente). La semilla de cada avatar es fija (`lumea-sol`, ...): nunca se manda el correo ni otro dato del usuario a DiceBear.
 - **Capas de Figma**: las sirve el propio backend desde `Backend/static/avatar/` (`http://127.0.0.1:5002/static/avatar/<archivo>`). No necesitan internet.
