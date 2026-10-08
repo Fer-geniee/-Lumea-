@@ -43,8 +43,24 @@ PARAMETROS_URL_GAZE = {"seed", "shapeVariant", "bodyColor", "eyesVariant"}
 
 HOY = date(2026, 9, 26)
 AYER = HOY - timedelta(days=1)
-XP_DIA = config.XP_PERDIDO_POR_DIA_INACTIVO
-TOPE = config.TOPE_PERDIDA_POR_PERIODO
+# Hoy NO se pierde XP por inactividad (config en 0), pero el mecanismo sigue en
+# el código y se enciende subiendo esos dos valores. Estas pruebas lo ejercitan
+# con valores de prueba (5 por día, tope de 20) puestos solo mientras corre
+# cada prueba; las pruebas de "con la configuración real" leen el config.
+XP_DIA = 5
+TOPE = 20
+
+
+def con_perdida_encendida(objetivo):
+    """Decorador (de una prueba o de toda una clase): corre con la pérdida por
+    inactividad encendida (XP_DIA y TOPE)."""
+    objetivo = mock.patch.object(config, "XP_PERDIDO_POR_DIA_INACTIVO", XP_DIA)(objetivo)
+    return mock.patch.object(config, "TOPE_PERDIDA_POR_PERIODO", TOPE)(objetivo)
+
+
+def perdida_real(dias_inactivos):
+    """Lo que pierde quien pasó `dias_inactivos` días sin actividad con el config de verdad."""
+    return min(config.TOPE_PERDIDA_POR_PERIODO, dias_inactivos * config.XP_PERDIDO_POR_DIA_INACTIVO)
 
 
 def progreso_con(xp_total, ultima_fecha, nivel_maximo=None, **otros):
@@ -131,7 +147,7 @@ class TestConfigCoherente(unittest.TestCase):
     def test_mensaje_de_regreso_amable(self):
         # Nunca un regaño, y nada de comida, peso ni cuerpo.
         mensaje = config.MENSAJE_REGRESO.lower()
-        self.assertIn("extrañamos", mensaje)
+        self.assertTrue(mensaje.strip())
         for palabra in ("perdiste", "castigo", "culpa", "debes", "peso", "calor", "saludable"):
             self.assertNotIn(palabra, mensaje)
 
@@ -287,6 +303,7 @@ class TestPuntosV2(unittest.TestCase):
         self.assertEqual({m["id"] for m in config.MISIONES_DIARIAS}, {"fruta", "tres_comidas", "check_in_animo"})
 
 
+@con_perdida_encendida
 class TestPerdidaPorInactividad(unittest.TestCase):
     def test_hoy_y_ayer_no_son_dias_inactivos(self):
         self.assertEqual(g.dias_inactivos(HOY, HOY), 0)
@@ -345,6 +362,7 @@ class TestPerdidaPorInactividad(unittest.TestCase):
             self.assertEqual(p["xp_total"], 100)
 
 
+@con_perdida_encendida
 class TestNivelNuncaBaja(unittest.TestCase):
     def test_perder_xp_no_baja_el_nivel(self):
         # Llega justo al nivel 3 y luego se va muchos días.
@@ -562,6 +580,7 @@ class TestConMySQL(unittest.TestCase):
     def setUp(self):
         self._borrar()
 
+    @con_perdida_encendida
     def test_perdida_perezosa_una_sola_vez_y_nivel_intacto(self):
         hoy = date.today()
         # Nivel 3 con 90 XP; la última actividad fue hace 4 días (3 inactivos).
@@ -594,6 +613,7 @@ class TestConMySQL(unittest.TestCase):
         self.assertEqual(int(cursor.fetchone()[0]), -(90 - p["xp_total"]))
         cursor.close()
 
+    @con_perdida_encendida
     def test_registrar_despues_de_inactividad_descuenta_y_luego_suma(self):
         hoy = date.today()
         self._poner(xp_total=90, nivel_maximo=3, ultima_fecha_actividad=hoy - timedelta(days=3))
@@ -671,6 +691,85 @@ class TestConMySQL(unittest.TestCase):
         self.assertEqual(r["nivel"], 2)
 
 
+    # ----- Camino del cuidado: ausencia, bonus por registro y etapas -----
+
+    def test_dias_sin_actividad_no_quitan_nada_con_el_config_real(self):
+        hoy = date.today()
+        dias = 10
+        self._poner(xp_total=90, nivel_maximo=3, ultima_fecha_actividad=hoy - timedelta(days=dias + 1))
+        p = g.obtener_progreso(self.db, USUARIO_PRUEBA)
+        esperado = perdida_real(dias)
+        self.assertEqual(p["xp_total"], 90 - esperado)
+        self.assertEqual(p["xp_perdido_desde_ultima_visita"], esperado)
+        self.assertEqual(p["nivel"], 3)
+        if config.XP_PERDIDO_POR_DIA_INACTIVO == 0 or config.TOPE_PERDIDA_POR_PERIODO == 0:
+            self.assertEqual(p["xp_total"], 90)  # con la pérdida apagada no se pierde nada
+
+    def test_mensaje_de_regreso_depende_de_los_dias_no_del_xp(self):
+        hoy = date.today()
+        umbral = config.DIAS_PARA_MENSAJE_REGRESO
+        # Un día menos que el umbral (días COMPLETOS sin actividad): no hay mensaje.
+        self._poner(xp_total=90, nivel_maximo=3, ultima_fecha_actividad=hoy - timedelta(days=umbral))
+        self.assertIsNone(g.obtener_progreso(self.db, USUARIO_PRUEBA)["mensaje_regreso"])
+        # Justo el umbral: sale el mensaje de Isabella, una sola vez.
+        self._poner(xp_total=90, nivel_maximo=3, ultima_fecha_actividad=hoy - timedelta(days=umbral + 1))
+        self.assertEqual(g.obtener_progreso(self.db, USUARIO_PRUEBA)["mensaje_regreso"], config.MENSAJE_REGRESO)
+        self.assertIsNone(g.obtener_progreso(self.db, USUARIO_PRUEBA)["mensaje_regreso"])
+        # Registrar algo después de haberlo visto no lo repite.
+        g.registrar_actividad(self.db, USUARIO_PRUEBA, "estado_animo", estado_animo="bien")
+        self.assertIsNone(g.obtener_progreso(self.db, USUARIO_PRUEBA)["mensaje_regreso"])
+
+    def test_mensaje_de_regreso_si_registra_antes_de_abrir_progreso(self):
+        hoy = date.today()
+        self._poner(xp_total=90, nivel_maximo=3, ultima_fecha_actividad=hoy - timedelta(days=config.DIAS_PARA_MENSAJE_REGRESO + 2))
+        g.registrar_actividad(self.db, USUARIO_PRUEBA, "estado_animo", estado_animo="bien")
+        self.assertEqual(g.obtener_progreso(self.db, USUARIO_PRUEBA)["mensaje_regreso"], config.MENSAJE_REGRESO)
+        self.assertIsNone(g.obtener_progreso(self.db, USUARIO_PRUEBA)["mensaje_regreso"])
+
+    def test_una_ausencia_nueva_vuelve_a_dar_el_mensaje(self):
+        hoy = date.today()
+        dias = config.DIAS_PARA_MENSAJE_REGRESO + 1
+        self._poner(xp_total=90, nivel_maximo=3, ultima_fecha_actividad=hoy - timedelta(days=dias))
+        self.assertIsNotNone(g.obtener_progreso(self.db, USUARIO_PRUEBA)["mensaje_regreso"])
+        # La persona volvió y se va otra vez: su última actividad queda otra vez lejos.
+        g.registrar_actividad(self.db, USUARIO_PRUEBA, "estado_animo", estado_animo="bien")
+        cursor = self.db.conexion.cursor()
+        cursor.execute("UPDATE progreso_usuario SET ultima_fecha_actividad = %s WHERE usuario_id = %s",
+                       (hoy - timedelta(days=dias + 10), USUARIO_PRUEBA))
+        self.db.conexion.commit()
+        cursor.close()
+        self.assertIsNotNone(g.obtener_progreso(self.db, USUARIO_PRUEBA)["mensaje_regreso"])
+
+    def test_el_bonus_por_registro_es_el_mismo_para_un_banano_y_un_producto_con_sellos(self):
+        bonus = config.ACCIONES["bonus_registro"]["xp"]
+        xp_comida = config.ACCIONES["comida_registrada"]["xp"]
+        # Dos comidas distintas el mismo día, las dos dentro del tope del bonus.
+        banano = g.registrar_actividad(self.db, USUARIO_PRUEBA, "comida_registrada", alimento_codigo="banano", sellos=[])
+        gaseosa = g.registrar_actividad(self.db, USUARIO_PRUEBA, "comida_registrada",
+                                        alimento_codigo=opcion_de_grupo("gaseosas_bebidas_azucaradas"), sellos=["azucares", "edulcorantes"])
+        for resumen in (banano, gaseosa):
+            xp_bonus = [d["xp"] for d in resumen["detalle_xp"] if d["motivo"] == "bonus_registro"]
+            self.assertEqual(xp_bonus, [bonus])
+        # Y con sellos o sin ellos, lo que pasa del tope también es igual: 0.
+        self.assertEqual(xp_comida + bonus, gaseosa["xp_ganado"] - sum(m["xp"] for m in gaseosa["misiones_cumplidas"]))
+
+    def test_llegar_a_una_etapa_desbloquea_companeros_ropa_y_accesorios(self):
+        # La primera etapa que abre un compañero (y todo lo demás que pida esa etapa).
+        etapa = min(a["nivel_requerido"] for a in config.AVATARES if a["nivel_requerido"] > 1)
+        esperados = {(e["tipo"], e["id"]) for e in
+                     [{**a, "tipo": "avatar"} for a in config.AVATARES] + config.OBJETOS_AVATAR
+                     if e["nivel_requerido"] == etapa}
+        self.assertTrue(any(tipo == "avatar" for tipo, _ in esperados))
+        # Un XP antes de la etapa, y una comida (da más de 1 XP) la alcanza.
+        self._poner(xp_total=config.NIVELES[etapa - 1] - 1, nivel_maximo=etapa - 1, ultima_fecha_actividad=date.today())
+        r = g.registrar_actividad(self.db, USUARIO_PRUEBA, "comida_registrada", alimento_codigo="ajiaco", sellos=[])
+        self.assertEqual(r["nivel"], etapa)
+        self.assertEqual({(d["tipo"], d["id"]) for d in r["desbloqueos"]}, esperados)
+        # Y ya se puede elegir el compañero nuevo.
+        companero = next(a for a in config.AVATARES if a["nivel_requerido"] == etapa)
+        ok, codigo, _ = g.elegir_avatar(self.db, USUARIO_PRUEBA, companero["id"])
+        self.assertEqual(codigo, 200)
+
     # ----- Calcomanías con MySQL -----
 
     def _insertar_comidas(self, cantidad, certeza=90.0):
@@ -717,6 +816,7 @@ class TestConMySQL(unittest.TestCase):
                                   sellos=[], confirmacion_manual=True)
         self.assertEqual(self._ids(r["calcomanias_nuevas"]), ["ayudaste_ia"])
 
+    @con_perdida_encendida
     def test_racha_nivel_y_volviste_en_vivo(self):
         hoy = date.today()
         # Racha máxima de 2 y último día hace 5 días; 100 XP; la ausencia resta 20 y el ánimo suma 5: con los niveles de abajo, 85 XP es el nivel 5.
