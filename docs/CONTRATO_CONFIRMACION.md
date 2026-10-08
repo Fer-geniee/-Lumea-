@@ -159,6 +159,71 @@ Si el frontend quiere hacer esa distinción en pantalla, algo como "Referencia s
 
 De dónde salen: `Pipelines de datos/cargar_sellos.py` copia a `tabla_alimentos.sellos_advertencia` los sellos que cada importador calculó con `criterio_saludable.py`. Hay que correrlo después de cualquier importador. El detalle de cada fila (fuente, código de barras, correcciones, datos que faltan) está en los `alimentos_*_fuentes.csv`.
 
+## `consejo` (campo nuevo en `/predecir` y `/confirmar-alimento`)
+
+El consejo educativo al reconocer un alimento. Lumea **no califica** el alimento: cuenta qué aporta, qué le falta al plato (solo en las comidas principales) y, si tiene sellos de advertencia, un dato y una idea. Se basa en las Guías Alimentarias del ICBF (el plato tiene seis grupos: `cereales`, `frutas_verduras`, `lacteos`, `proteinas`, `grasas` y `azucares`) y en la OMS. Todos los textos están en `consejos_config.py`, con su fuente en cada comentario; el mapa de alimentos a grupos, en `datos/grupos_plato.csv`.
+
+Aparece en los mismos casos que `sellos_advertencia`:
+
+- en `POST /confirmar-alimento`, siempre;
+- en `POST /predecir` cuando la comida se registró sola (`success: true`). Cuando hay que confirmar (`seleccion_manual: true`) **no viene la clave**: todavía no se sabe qué alimento es, y `sopas` y `dulces` no tienen consejo propio.
+
+`dato_curioso` y `mensaje_educativo` siguen igual: el consejo es un campo aparte.
+
+| Campo | Qué es |
+|---|---|
+| `grupo` | Grupo principal del alimento (el primero de su fila en `grupos_plato.csv`). `null` si no tiene (la aromática sin endulzar). |
+| `aporta` | Qué aporta el alimento. El texto propio del alimento si lo tiene; si no, el de su grupo. |
+| `para_completar` | Solo en los platos (no en frutas, bebidas, paquetes ni postres): el primer grupo que le falta, en el orden verduras y frutas, proteínas, cereales. `null` si no le falta ninguno. |
+| `a_tener_en_cuenta` | Un dato del alimento. `null` si no tiene texto propio. |
+| `sellos` | Una entrada `{"sello", "dato", "idea"}` por cada sello de `sellos_advertencia`, en el mismo orden. `[]` si no tiene o no se sabe. |
+
+Cómo mostrarlo: son frases para leer, en tono amable. No las conviertas en semáforos, puntajes ni colores de "bien" o "mal", y no agregues juicios propios.
+
+Ejemplo: `banano` (fruta sin sellos; no lleva `para_completar`):
+
+```json
+"consejo": {
+  "grupo": "frutas_verduras",
+  "aporta": "Trae carbohidratos que dan energía y potasio, un mineral que usan tus músculos y nervios.",
+  "para_completar": null,
+  "a_tener_en_cuenta": "Sus azúcares son naturales y vienen con fibra. Maduro es más dulce porque su almidón se convierte en azúcar.",
+  "sellos": []
+}
+```
+
+Ejemplo: `gaseosas_bebidas_azucaradas` (bebida con un sello):
+
+```json
+"consejo": {
+  "grupo": "azucares",
+  "aporta": "Aporta agua y energía rápida del azúcar, pero no trae vitaminas, minerales ni fibra.",
+  "para_completar": null,
+  "a_tener_en_cuenta": "Una lata de 355 ml trae unos 35 g de azúcar, más que los 25 g que la OMS sugiere como ideal para todo el día.",
+  "sellos": [
+    {
+      "sello": "azucares",
+      "dato": "Tiene azúcar añadida alta. La OMS sugiere que los azúcares libres sean menos del 10 % de la energía del día: unos 50 g para alguien que come 2.000 kcal.",
+      "idea": "Si otro día quieres algo dulce, una fruta entera trae su propio azúcar junto con fibra y agua."
+    }
+  ]
+}
+```
+
+Ejemplo: `bandeja_paisa` (plato al que le falta un grupo; no tiene sellos con los datos que tenemos):
+
+```json
+"consejo": {
+  "grupo": "proteinas",
+  "aporta": "Combina casi todos los grupos: fríjol y carne (proteína), arroz y arepa (energía) y aguacate.",
+  "para_completar": "Para completar el plato, súmale una fruta o una verdura: las Guías del ICBF las recomiendan en todas las comidas.",
+  "a_tener_en_cuenta": "Es un plato abundante y muy completo: escucha tu hambre para decidir cuánto comer.",
+  "sellos": []
+}
+```
+
+Los tres son respuestas reales de `consejos.consejo_para` (8 oct 2026). Pruebas: `python3 pruebas/test_consejos.py`.
+
 ## Grupos y opciones
 
 ### `sopas`
