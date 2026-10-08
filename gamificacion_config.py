@@ -175,17 +175,17 @@ MENSAJE_REGRESO = (
     "🌿 Siempre puedes volver, "
     "tu camino no termina cuando haces una pausa, ni cuando te encuentras con dificultades. "
     "El camino continúa cuando perdonas y sostienes las dificultades en paz."
-    "¡Bienvenido de nuevo querido usuario!"
+    "¡Qué bueno tenerte de vuelta!"
 )
 
 # ===== Avatares DiceBear (la cara que cambia con el estado de ánimo) =====
 # Se usan para el check-in de ánimo, y como avatar de respaldo si las
 # imágenes de Figma (más abajo) no están listas a tiempo.
-# Estilo avataaars de Pablo Stanley: "Free for personal and commercial
-# use" (diseño) + MIT (código de DiceBear). Solo cara y hombros -- nada
-# de cuerpo, a propósito. Versión fija (9.x) porque es la versión cuyos
-# valores de parámetros se verificaron contra el esquema oficial
-# (@dicebear/avataaars 9.4.2, 26 sep 2026).
+# Compañeros del estilo "gaze" de DiceBear 10.x: cada uno tiene una forma
+# y un color, y SUS OJOS muestran el estado de ánimo (EXPRESION_POR_ESTADO,
+# más abajo). Versión fija (10.x) porque es la versión cuyos valores se
+# verificaron en @dicebear/styles 10.6.0 (7 oct 2026); test_gamificacion.py
+# los valida. Las URL son quietas: la animación la agrega el frontend.
 DICEBEAR_URL = "https://api.dicebear.com/10.x/gaze/svg"
 DICEBEAR_PARAMETROS_FIJOS = {}
 EXPRESION_NEUTRA = {"eyesVariant": "dots"}
@@ -209,30 +209,14 @@ EXPRESION_POR_ESTADO = {
 
 
 AVATARES = [
-    {"id": "sol", "nombre": "Sol", "semilla": "lumea-sol", "nivel_requerido": 1},
-    {"id": "luna", "nombre": "Luna", "semilla": "lumea-luna", "nivel_requerido": 1},
-    {"id": "rio", "nombre": "Río", "semilla": "lumea-rio", "nivel_requerido": 3},
-    {"id": "montana", "nombre": "Montaña", "semilla": "lumea-montana", "nivel_requerido": 5},
-    {"id": "orquidea", "nombre": "Orquídea", "semilla": "lumea-orquidea", "nivel_requerido": 7},
-    {"id": "colibri", "nombre": "Colibrí", "semilla": "lumea-colibri", "nivel_requerido": 9},
+    {"id": "sol", "nombre": "Sol", "semilla": "lumea-sol", "forma": "circle", "color": "F6B73C", "nivel_requerido": 1},
+    {"id": "luna", "nombre": "Luna", "semilla": "lumea-luna", "forma": "arch", "color": "C9C3F0", "nivel_requerido": 1},
+    {"id": "rio", "nombre": "Río", "semilla": "lumea-rio", "forma": "pill", "color": "52DCD8", "nivel_requerido": 3},
+    {"id": "montana", "nombre": "Montaña", "semilla": "lumea-montana", "forma": "triangle", "color": "8FBF7A", "nivel_requerido": 5},
+    {"id": "orquidea", "nombre": "Orquídea", "semilla": "lumea-orquidea", "forma": "diamond", "color": "E89BC4", "nivel_requerido": 7},
+    {"id": "colibri", "nombre": "Colibrí", "semilla": "lumea-colibri", "forma": "egg", "color": "3FB6A8", "nivel_requerido": 9},
 ]
 AVATAR_POR_DEFECTO = "sol"
-
-# Expresión del avatar cuando no hay estado de ánimo registrado hoy.
-EXPRESION_NEUTRA = {"mouth": "default", "eyes": "default", "eyebrows": "defaultNatural"}
-
-# Expresión del avatar según el estado de ánimo (mismas claves que
-# BaseDatos.ESTADOS_VALIDOS). Valores tomados SOLO de las opciones
-# oficiales de DiceBear; se evitan a propósito las exageradas o feas
-# (vomit, screamOpen, xDizzy, eyeRoll...). test_gamificacion.py verifica
-# que todos los valores existan en DiceBear.
-EXPRESION_POR_ESTADO = {
-    "muy_mal": {"mouth": "sad", "eyes": "default", "eyebrows": "sadConcerned"},
-    "mal": {"mouth": "concerned", "eyes": "default", "eyebrows": "sadConcernedNatural"},
-    "neutral": {"mouth": "serious", "eyes": "default", "eyebrows": "defaultNatural"},
-    "bien": {"mouth": "smile", "eyes": "default", "eyebrows": "defaultNatural"},
-    "muy_bien": {"mouth": "smile", "eyes": "happy", "eyebrows": "raisedExcitedNatural"},
-}
 
 # ===== Avatar por capas (diseño en Figma) -- OPCIONAL =====
 # El avatar del perfil se arma apilando imágenes PNG del mismo tamaño y
