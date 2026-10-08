@@ -190,32 +190,7 @@ def opcion_de_grupo(grupo_id, indice=0):
 
 
 class TestPuntosV2(unittest.TestCase):
-    """Elección nutritiva, ultraprocesados y misiones (lógica pura)."""
-
-    def test_eleccion_nutritiva_fruta_sin_sellos(self):
-        self.assertTrue(g.es_eleccion_nutritiva("banano", []))
-
-    def test_con_sellos_no_es_eleccion_nutritiva(self):
-        self.assertFalse(g.es_eleccion_nutritiva("chicharron", ["sodio", "grasas_saturadas"]))
-
-    def test_sin_saber_los_sellos_no_cuenta(self):
-        self.assertFalse(g.es_eleccion_nutritiva("banano", None))
-
-    def test_los_codigos_de_grupo_nunca_cuentan(self):
-        for codigo in ("sopas", "dulces", "tamal", "frituras_empaquetadas", "gaseosas_bebidas_azucaradas"):
-            with self.subTest(codigo=codigo):
-                self.assertFalse(g.es_eleccion_nutritiva(codigo, []))
-
-    def test_un_producto_de_paquete_sin_sellos_no_cuenta(self):
-        # Algunas frituras de paquete no pasan ningún umbral de sellos:
-        # igual son de paquete, así que no dan el bonus.
-        for grupo_id in config.GRUPOS_PRODUCTO_DE_PAQUETE:
-            with self.subTest(grupo=grupo_id):
-                self.assertFalse(g.es_eleccion_nutritiva(opcion_de_grupo(grupo_id), []))
-
-    def test_platos_confirmados_de_un_grupo_si_cuentan(self):
-        # "ajiaco" es una opción del grupo sopas (no el código del grupo).
-        self.assertTrue(g.es_eleccion_nutritiva("ajiaco", []))
+    """Mensajes de productos de paquete y misiones (lógica pura)."""
 
     def test_mensaje_educativo_solo_para_productos_de_paquete(self):
         self.assertIsNone(g.mensaje_educativo("banano"))
@@ -621,31 +596,31 @@ class TestConMySQL(unittest.TestCase):
 
     def test_puntos_v2_comidas_bonus_y_misiones(self):
         xp_comida = config.ACCIONES["comida_registrada"]["xp"]
-        bonus = config.ACCIONES["eleccion_nutritiva"]["xp"]
+        bonus = config.ACCIONES["bonus_registro"]["xp"]
+        tope_bonus = config.ACCIONES["bonus_registro"]["maximo_por_dia"]
         xp_mision = {m["id"]: m["xp"] for m in config.MISIONES_DIARIAS}
+        gaseosa = opcion_de_grupo("gaseosas_bebidas_azucaradas")
 
-        # 1. Una fruta sin sellos: comida + elección nutritiva + misión "fruta".
+        # 1. Una fruta: comida + bonus por registro + misión "fruta".
         r = g.registrar_actividad(self.db, USUARIO_PRUEBA, "comida_registrada", alimento_codigo="banano", sellos=[])
         self.assertEqual(r["xp_ganado"], xp_comida + bonus + xp_mision["fruta"])
         self.assertEqual([m["id"] for m in r["misiones_cumplidas"]], ["fruta"])
-        self.assertEqual({d["motivo"] for d in r["detalle_xp"]}, {"comida_registrada", "eleccion_nutritiva", "mision_fruta"})
+        self.assertEqual({d["motivo"] for d in r["detalle_xp"]}, {"comida_registrada", "bonus_registro", "mision_fruta"})
 
         # 2. Otra fruta: la misión ya estaba cumplida hoy.
         r = g.registrar_actividad(self.db, USUARIO_PRUEBA, "comida_registrada", alimento_codigo="uva", sellos=[])
         self.assertEqual(r["xp_ganado"], xp_comida + bonus)
 
-        # 3. Una bebida de paquete: sin bonus, sin castigo (penalización en 0)
-        #    y es la tercera comida: misión "tres_comidas".
-        gaseosa = opcion_de_grupo("gaseosas_bebidas_azucaradas")
+        # 3. Una bebida de paquete con sellos da el MISMO bonus que la fruta (sin castigo:
+        #    la penalización está en 0) y, al ser la tercera comida, la misión "tres_comidas".
         r = g.registrar_actividad(self.db, USUARIO_PRUEBA, "comida_registrada", alimento_codigo=gaseosa, sellos=["azucares"])
-        self.assertEqual(r["xp_ganado"], xp_comida + xp_mision["tres_comidas"])
+        self.assertEqual(r["xp_ganado"], xp_comida + bonus + xp_mision["tres_comidas"])
 
-        # 4. Cuarta comida nutritiva: el bonus ya se dio 2 veces, queda 1.
-        r = g.registrar_actividad(self.db, USUARIO_PRUEBA, "comida_registrada", alimento_codigo="ajiaco", sellos=[])
-        self.assertEqual(r["xp_ganado"], xp_comida + bonus)
-        # 5. Quinta: el bonus llegó a su tope de 3 al día.
-        r = g.registrar_actividad(self.db, USUARIO_PRUEBA, "comida_registrada", alimento_codigo="pera", sellos=[])
-        self.assertEqual(r["xp_ganado"], xp_comida)
+        # 4 y 5. Pasado el tope diario del bonus, queda solo el XP de la comida.
+        self.assertEqual(tope_bonus, 3)  # si Isabella cambia el tope, ajustar los pasos 4 y 5
+        for codigo in ("ajiaco", "pera"):
+            r = g.registrar_actividad(self.db, USUARIO_PRUEBA, "comida_registrada", alimento_codigo=codigo, sellos=[])
+            self.assertEqual(r["xp_ganado"], xp_comida)
 
         p = g.obtener_progreso(self.db, USUARIO_PRUEBA)
         estado = {m["id"]: m["cumplida"] for m in p["misiones"]}

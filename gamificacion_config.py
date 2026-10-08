@@ -12,15 +12,15 @@ el avatar por capas se agregaron el 27 sep 2026 (reunión del equipo).
 El 27 sep el equipo decidió NO tener insignias; el 5 oct 2026 Isabella
 cambió esa decisión y se agregaron las calcomanías (ver CALCOMANIAS).
 "Puntos v2" (27 sep 2026, diseño decidido por el equipo): bonus por
-elección nutritiva, misiones diarias fijas y penalización por
+registro, misiones diarias fijas y penalización por
 ultraprocesados que existe pero vale 0.
 
 Reglas de contenido que cualquier cambio debe respetar (ver
 DEFENSA_TECNICA_LUMEA.md, sección 5 -- población adolescente):
 - La mayor parte del XP premia la constancia en el hábito de registrar.
-  Lo único que depende de QUÉ se comió es un bonus pequeño y POSITIVO
-  (elección nutritiva, con tope diario). Nunca se resta XP por lo que se
-  comió: XP_PENALIZACION_ULTRAPROCESADO vale 0 (ver su comentario). Nada
+  Nada de lo que se gana depende de QUÉ se comió: el bonus por registro
+  es el mismo para cualquier alimento (con tope diario). Nunca se resta XP
+  por lo que se comió: XP_PENALIZACION_ULTRAPROCESADO vale 0 (ver su comentario). Nada
   depende de peso, calorías "quemadas" ni del cuerpo.
 - Registrar el estado de ánimo da el mismo XP sea cual sea el ánimo:
   premiar "estar bien" empujaría a reportar un ánimo falso.
@@ -39,23 +39,19 @@ DEFENSA_TECNICA_LUMEA.md, sección 5 -- población adolescente):
 # registrar_actividad(db, usuario_id, "<accion>") desde el endpoint.
 ACCIONES = {
     "comida_registrada": {"xp": 10, "maximo_por_dia": 5},
-    # Extra que se suma a comida_registrada si el alimento FINAL es una
-    # elección nutritiva (ver ELECCION_NUTRITIVA más abajo). No se registra
-    # sola: la otorga gamificacion.py al registrar una comida.
+    # Extra que se suma a comida_registrada al registrar cualquier comida
+    # (no depende del alimento ni de sus sellos). No se registra sola: la
+    # otorga gamificacion.py al registrar una comida, con su propio tope.
     "bonus_registro": {"xp": 5, "maximo_por_dia": 3},
     "estado_animo": {"xp": 5, "maximo_por_dia": 1},
 }
 
-# ===== Elección nutritiva =====
-# Un alimento cuenta como elección nutritiva si, al registrarlo:
-# - es el alimento FINAL (el reconocido o el confirmado), nunca un código
-#   de grupo de confirmación ("sopas", "dulces", "tamal"...);
-# - no tiene sellos de advertencia (lista vacía; si no se sabe, no cuenta);
-# - no es un producto de paquete (los de GRUPOS_PRODUCTO_DE_PAQUETE).
-# Es un bonus pequeño y positivo. No convierte lo demás en "malo".
-#
+# ===== Productos de paquete =====
 # Grupos de grupos_confusion.py cuyos productos son de paquete
-# (ultraprocesados): dulces, papas/chitos y bebidas azucaradas.
+# (ultraprocesados): dulces, papas/chitos y bebidas azucaradas. Hoy solo
+# sirven para el mensaje educativo (MENSAJES_ULTRAPROCESADO) y para
+# XP_PENALIZACION_ULTRAPROCESADO (que vale 0). El bonus por registro NO
+# depende de ellos.
 GRUPOS_PRODUCTO_DE_PAQUETE = ["dulces", "frituras_empaquetadas", "gaseosas_bebidas_azucaradas"]
 
 # ===== Ultraprocesados: penalización (apagada) y mensaje educativo =====

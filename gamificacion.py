@@ -96,10 +96,7 @@ def xp_a_otorgar(accion, veces_previas_hoy):
     return regla["xp"] if veces_previas_hoy < regla["maximo_por_dia"] else 0
 
 
-# ---- Puntos v2: elección nutritiva, ultraprocesados y misiones ----
-
-CODIGOS_DE_GRUPO = {grupo["id"] for grupo in GRUPOS_CONFUSION}
-
+# ---- Puntos v2: bonus por registro, ultraprocesados y misiones ----
 
 def grupo_de_paquete(alimento_codigo):
     """El id del grupo de productos de paquete al que pertenece el
@@ -112,17 +109,6 @@ def grupo_de_paquete(alimento_codigo):
         if alimento_codigo in codigos:
             return grupo["id"]
     return None
-
-
-def es_eleccion_nutritiva(alimento_codigo, sellos):
-    """True si el alimento final da el bonus de elección nutritiva: no es
-    un código de grupo, no tiene sellos (lista vacía; None = no se sabe, no
-    cuenta) y no es un producto de paquete."""
-    if not alimento_codigo or alimento_codigo in CODIGOS_DE_GRUPO:
-        return False
-    if sellos is None or len(sellos) > 0:
-        return False
-    return grupo_de_paquete(alimento_codigo) is None
 
 
 def mensaje_educativo(alimento_codigo):
@@ -663,10 +649,11 @@ def registrar_actividad(db, usuario_id, accion, estado_animo=None, alimento_codi
                         confirmacion_manual=False):
     """Da el XP de `accion`, actualiza nivel, racha y meta del día.
 
-    Para una comida (`alimento_codigo` y `sellos` del alimento FINAL, el
-    que quedó guardado) también da el bonus de elección nutritiva y aplica
-    la penalización por ultraprocesados (que vale 0). Para cualquier acción
-    revisa las misiones diarias.
+    Para una comida (`alimento_codigo` del alimento FINAL, el que quedó
+    guardado) también da el bonus por registro, igual para cualquier
+    alimento, y aplica la penalización por ultraprocesados (que vale 0).
+    Para cualquier acción revisa las misiones diarias. `sellos` ya no
+    influye en el XP; se conserva en la firma porque los endpoints lo pasan.
 
     `confirmacion_manual` es True cuando la comida la confirmó la persona a
     mano (/confirmar-alimento): cuenta para la calcomanía "ayudaste_ia".
