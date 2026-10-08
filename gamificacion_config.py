@@ -1,13 +1,23 @@
 """
+Fundamento: ¿Por qué implementamos gamificación en Lumea?
+- La gamificación es una estrategia de diseño que utiliza elementos de juego en contextos 
+no lúdicos para motivar y aumentar la participación de los usuarios.
+- En Lumea, la gamificación se implementa para fomentar hábitos saludables de alimentación 
+y bienestar emocional, incentivando a los usuarios a registrar sus comidas y estados de ánimo de manera constante.
+- La gamificación busca crear una experiencia más atractiva y motivadora para los usuarios,
+promoviendo la constancia y el compromiso con su bienestar personal.    
+Asimismo, se tiene en cuenta la población adolescente, evitando comparaciones entre usuarios y promoviendo un enfoque positivo y de apoyo. 
+Y las enseñanzas de San Francisco de Asís, que nos inspiran a cuidar de nosotros mismos y de nuestro entorno con amor y respeto.
+
 gamificacion_config.py -- TODAS las reglas numéricas de la gamificación.
 
-Es el único archivo que hay que tocar para ajustar la mecánica (por
-ejemplo, cuando llegue la guía de componentes del profesor). Los
+
+Es el único archivo que hay que tocar para ajustar la mecánica. Los
 endpoints y la lógica (gamificacion.py) leen de aquí; ningún número está
 escrito en ellos.
 
-Los valores actuales son PROVISIONALES (acordados el 26 sep 2026 para
-tener algo funcionando), no el diseño final. La pérdida por inactividad y
+Los valores actuales son PROVISIONALES, fueron acordados el 26 sep 2026 para
+tener algo funcionando, no el diseño final. La pérdida por inactividad y
 el avatar por capas se agregaron el 27 sep 2026 (reunión del equipo).
 El 27 sep el equipo decidió NO tener insignias; el 5 oct 2026 Isabella
 cambió esa decisión y se agregaron las calcomanías (ver CALCOMANIAS).
@@ -31,6 +41,7 @@ DEFENSA_TECNICA_LUMEA.md, sección 5 -- población adolescente):
 - Perder XP nunca le quita a nadie lo que ya logró: el NIVEL no baja y lo
   desbloqueado no se vuelve a bloquear. Los mensajes de regreso son
   amables, nunca un regaño.
+
 """
 
 # XP que da cada acción y cuántas veces al día cuenta. Pasado el máximo,
@@ -97,7 +108,7 @@ MENSAJES_ULTRAPROCESADO = {
 # y los ids no se cambian sin cambiar también ese diccionario.
 # "rol" le dice al frontend qué dibujo/color usar.
 CALCOMANIAS = [
-    {"id": "primera_foto", "nombre": "Primer paso", "descripcion": "Haz dado el primer paso en el camino del cuidado.",
+    {"id": "primera_foto", "nombre": "Primer paso", "descripcion": "Has dado el primer paso en el camino del cuidado.",
      "como_se_gana": "Registra tu primera comida.", "rol": "comida", "umbral": 1},
     {"id": "diez_registros", "nombre": "Diez momentos", "descripcion": "Llevas 10 comidas registradas, cuidando de ti y de tu cuerpo.",
      "como_se_gana": "Registra 10 comidas.", "rol": "comida", "umbral": 10},
@@ -105,7 +116,7 @@ CALCOMANIAS = [
      "como_se_gana": "Cumple la misión de registrar 3 comidas en un día.", "rol": "mision", "umbral": 1},
     {"id": "fruta", "nombre": "Una fruta para alegrar tu día", "descripcion": "Has comido y registrado una fruta.",
      "como_se_gana": "Cumple la misión de registrar una fruta.", "rol": "mision", "umbral": 1},
-    {"id": "como_llegas", "nombre": "Cómo llegas", "descripcion": "Te detuviste un momento a reconocer como te sientes.",
+    {"id": "como_llegas", "nombre": "Cómo llegas", "descripcion": "Te detuviste un momento a reconocer cómo te sientes.",
      "como_se_gana": "Haz tu primer check-in de ánimo.", "rol": "emocion", "umbral": 1},
     {"id": "ayudaste_ia", "nombre": "Inteligencia humana al rescate", "descripcion": "Confirmaste un plato cuando la IA dudó.",
      "como_se_gana": "Confirma un plato cuando la IA no esté segura.", "rol": "duda", "umbral": 1},
@@ -171,7 +182,7 @@ TOPE_PERDIDA_POR_PERIODO = 0
 MENSAJE_REGRESO = (
     "🌿 Siempre puedes volver, "
     "tu camino no termina cuando haces una pausa, ni cuando te encuentras con dificultades. "
-    "El camino continúa cuando perdonas y sostienes las dificultades en paz."
+    "El camino continúa cuando perdonas y sostienes las dificultades en paz. "
     "¡Qué bueno tenerte de vuelta!"
 )
 

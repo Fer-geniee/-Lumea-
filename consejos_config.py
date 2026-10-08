@@ -237,4 +237,8 @@ ALIMENTOS = {
         "aporta": "Combina masa (energía) y queso (lácteo), y según lo que lleve encima, verduras o carne.",
         "a_tener_en_cuenta": "El queso y los embutidos le suben el sodio; una ensalada al lado completa el plato.",
     },
+        "aromática": {
+        "aporta": "Es una bebida caliente que hidrata; sin endulzar, casi no aporta calorías.",
+        "a_tener_en_cuenta": "Si la endulzas, el azúcar o la panela le suman energía; puedes probarla primero sin endulzar.",
+    },
 }
