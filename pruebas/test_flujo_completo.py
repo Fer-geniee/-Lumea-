@@ -164,7 +164,9 @@ def main():
     comidas_guardadas += 1
     xp_esperado += xp_de(c)
     comprobar("la fruta cumple la misión 'fruta'", "fruta" in [m["id"] for m in gami.get("misiones_cumplidas", [])])
-    comprobar("la fruta sin sellos da elección nutritiva", any(d["motivo"] == "eleccion_nutritiva" for d in gami.get("detalle_xp", [])))
+    comprobar("la fruta da el bonus por registro", any(d["motivo"] == "bonus_registro" for d in gami.get("detalle_xp", [])))
+    comprobar("la respuesta trae el consejo de la fruta (sin 'para_completar')",
+              isinstance(c.get("consejo"), dict) and c["consejo"]["para_completar"] is None)
 
     paso("6. Check-in de ánimo")
     r = post("/estado-animo", {"email": EMAIL, "estado": "mal"})

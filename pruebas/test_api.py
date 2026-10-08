@@ -94,8 +94,10 @@ def probar_estado_animo():
     comprobar("el primer check-in cumple la misión del día", [m["id"] for m in gami.get("misiones_cumplidas", [])] == ["check_in_animo"]
               and gami.get("xp_ganado") == xp_animo + xp_mision, f"xp_ganado={gami.get('xp_ganado')}")
     xp_total = gami.get("xp_ganado", 0)
-    comprobar("avatar_url trae la expresión de 'muy_mal'",
-              "mouth=" + config.EXPRESION_POR_ESTADO["muy_mal"]["mouth"] in (gami.get("avatar_url") or ""))
+    comprobar("avatar_url es un compañero gaze con los ojos de 'muy_mal'",
+              (gami.get("avatar_url") or "").startswith(config.DICEBEAR_URL + "?")
+              and "eyesVariant=" + config.EXPRESION_POR_ESTADO["muy_mal"]["eyesVariant"] in (gami.get("avatar_url") or ""),
+              f"avatar_url={gami.get('avatar_url')}")
 
     cuerpo = verificar("POST /estado-animo otra vez (muy_bien)", post("/estado-animo", {"email": EMAIL_PRUEBA, "estado": "muy_bien"}))
     gami = cuerpo.get("gamificacion") or {}
@@ -133,8 +135,12 @@ def probar_confirmar_alimento():
     motivos = xp_por_motivo(gami)
     comprobar("confirmar una comida da el XP de comida", motivos.get("comida_registrada") == config.ACCIONES["comida_registrada"]["xp"],
               f"detalle_xp={gami.get('detalle_xp')}")
-    comprobar("banano (fruta sin sellos) da elección nutritiva y la misión fruta",
-              "eleccion_nutritiva" in motivos and "mision_fruta" in motivos, f"detalle_xp={gami.get('detalle_xp')}")
+    comprobar("banano da el bonus por registro y la misión fruta",
+              motivos.get("bonus_registro") == config.ACCIONES["bonus_registro"]["xp"] and "mision_fruta" in motivos,
+              f"detalle_xp={gami.get('detalle_xp')}")
+    comprobar("banano trae un consejo sin 'para_completar' (es una fruta)",
+              isinstance(cuerpo.get("consejo"), dict) and cuerpo["consejo"]["para_completar"] is None
+              and cuerpo["consejo"]["grupo"] == "frutas_verduras", f"consejo={cuerpo.get('consejo')}")
     comprobar("banano no activa sellos de advertencia (lista vacía)", cuerpo.get("sellos_advertencia") == [],
               f"sellos_advertencia={cuerpo.get('sellos_advertencia')!r}")
     comprobar("banano no trae mensaje educativo", cuerpo.get("mensaje_educativo") is None)
@@ -152,8 +158,12 @@ def probar_confirmar_alimento():
     cuerpo = verificar(f"POST /confirmar-alimento ({gaseosa})", post("/confirmar-alimento", {"alimento_codigo": gaseosa, "email": EMAIL_PRUEBA}), mostrar=False)
     gami = cuerpo.get("gamificacion") or {}
     comprobar("un producto de paquete trae mensaje educativo", bool(cuerpo.get("mensaje_educativo")), f"{cuerpo.get('mensaje_educativo')!r}")
-    comprobar("un producto de paquete no da bonus ni resta XP",
-              "eleccion_nutritiva" not in xp_por_motivo(gami) and all(d["xp"] >= 0 for d in gami.get("detalle_xp", [])))
+    comprobar("un producto de paquete da el mismo bonus por registro que una fruta y no resta XP",
+              xp_por_motivo(gami).get("bonus_registro") == config.ACCIONES["bonus_registro"]["xp"]
+              and all(d["xp"] >= 0 for d in gami.get("detalle_xp", [])))
+    comprobar("el consejo de un producto de paquete trae una entrada por cada sello",
+              [s["sello"] for s in (cuerpo.get("consejo") or {}).get("sellos", [])] == cuerpo.get("sellos_advertencia"),
+              f"sellos={cuerpo.get('sellos_advertencia')}, consejo={cuerpo.get('consejo')}")
     xp += gami.get("xp_ganado", 0)
     # Los códigos de agrupación visual nunca deben aceptarse (ver grupos_confusion.py)
     verificar("POST /confirmar-alimento con 'sopas' (debe rechazar)",
