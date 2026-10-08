@@ -23,7 +23,9 @@ Tablas:
   (0 si ya había llegado al tope del día), y una fila con XP negativo
   ("perdida_inactividad") cada vez que se descuenta XP por días
   inactivos. Sirve para contar cuántas veces se hizo cada acción hoy y
-  para poder explicar de dónde salió el XP de cada usuario.
+  para poder explicar de dónde salió el XP de cada usuario. También guarda,
+  con 0 XP, si ya se le dio el mensaje de regreso de una ausencia
+  ("aviso_regreso_pendiente" y "aviso_regreso"), para dárselo una sola vez.
 """
 
 import os
@@ -265,6 +267,12 @@ def aplicar_inactividad(progreso, hoy):
     progreso["xp_perdido_periodo"] = descontado
     progreso["xp_perdido_sin_avisar"] += restar
     return restar
+
+
+def debe_avisar_regreso(dias):
+    """True si `dias` días completos sin actividad bastan para el mensaje de
+    regreso (config.DIAS_PARA_MENSAJE_REGRESO). No depende del XP perdido."""
+    return dias >= config.DIAS_PARA_MENSAJE_REGRESO
 
 
 def sumar_actividad(progreso, xp, hoy):
@@ -558,6 +566,55 @@ def _descontar_inactividad(cursor, progreso, hoy):
     return restado
 
 
+# El mensaje de regreso se da UNA vez por ausencia. Cada ausencia se identifica
+# por el día de la última actividad antes de irse (progreso["ultima_fecha_actividad"]).
+# Se guarda en eventos_xp con 0 XP, así no hace falta una columna nueva:
+# - ACCION_REGRESO_PENDIENTE: la persona ya volvió y registró algo, pero todavía
+#   no abrió /progreso (que es donde se entrega el mensaje). La fecha es la
+#   del último día activo antes de la ausencia.
+# - ACCION_REGRESO: el mensaje ya se entregó para esa ausencia.
+ACCION_REGRESO_PENDIENTE = "aviso_regreso_pendiente"
+ACCION_REGRESO = "aviso_regreso"
+
+
+def _ya_se_aviso_de_esta_ausencia(cursor, usuario_id, ultima_fecha):
+    cursor.execute(
+        "SELECT 1 FROM eventos_xp WHERE usuario_id = %s AND fecha = %s AND accion IN (%s, %s) LIMIT 1",
+        (usuario_id, ultima_fecha, ACCION_REGRESO_PENDIENTE, ACCION_REGRESO),
+    )
+    return cursor.fetchone() is not None
+
+
+def _anotar_regreso(cursor, progreso, hoy, accion):
+    """Si la ausencia que está terminando (o en curso) llega al umbral y no se
+    ha avisado, deja constancia con `accion` y devuelve True. Se llama ANTES de
+    sumar_actividad, mientras ultima_fecha_actividad es la de antes de irse."""
+    ultima = progreso["ultima_fecha_actividad"]
+    if not debe_avisar_regreso(dias_inactivos(ultima, hoy)):
+        return False
+    if _ya_se_aviso_de_esta_ausencia(cursor, progreso["usuario_id"], ultima):
+        return False
+    cursor.execute(
+        "INSERT INTO eventos_xp (usuario_id, fecha, accion, xp) VALUES (%s, %s, %s, 0)",
+        (progreso["usuario_id"], ultima, accion),
+    )
+    return True
+
+
+def _tomar_aviso_de_regreso(cursor, progreso, hoy):
+    """True si en esta respuesta toca dar el mensaje de regreso. Lo marca como
+    entregado, así la próxima vez da False."""
+    # 1. Volvió y registró algo desde la última vez que abrió /progreso.
+    cursor.execute(
+        "UPDATE eventos_xp SET accion = %s WHERE usuario_id = %s AND accion = %s",
+        (ACCION_REGRESO, progreso["usuario_id"], ACCION_REGRESO_PENDIENTE),
+    )
+    if cursor.rowcount:
+        return True
+    # 2. Abrió /progreso después de la pausa, antes de registrar nada.
+    return _anotar_regreso(cursor, progreso, hoy, ACCION_REGRESO)
+
+
 def _leer_xp_de_hoy(cursor, usuario_id, hoy):
     cursor.execute(
         "SELECT xp_ganado FROM actividad_diaria WHERE usuario_id = %s AND fecha = %s",
@@ -657,6 +714,7 @@ def registrar_actividad(db, usuario_id, accion, estado_animo=None, alimento_codi
 
         progreso = _leer_progreso(cursor, usuario_id, bloquear=True)
         _descontar_inactividad(cursor, progreso, hoy)
+        _anotar_regreso(cursor, progreso, hoy, ACCION_REGRESO_PENDIENTE)  # antes de que ultima_fecha cambie
         nivel_anterior = progreso["nivel_maximo"]
         subio = sumar_actividad(progreso, ganado, hoy)
 
@@ -827,6 +885,7 @@ def obtener_progreso(db, usuario_id):
         if xp_perdido:
             progreso["xp_perdido_sin_avisar"] = 0  # ya se le avisó
             _guardar_progreso(cursor, progreso)
+        dar_mensaje_regreso = _tomar_aviso_de_regreso(cursor, progreso, hoy)
         xp_hoy = _leer_xp_de_hoy(cursor, usuario_id, hoy)
         estado_hoy = _estado_animo_de_hoy(cursor, usuario_id, hoy)
         misiones_hoy = _misiones_cumplidas_hoy(cursor, usuario_id, hoy)
@@ -852,7 +911,7 @@ def obtener_progreso(db, usuario_id):
         "racha_maxima": progreso["racha_maxima"],
         "ultima_fecha_actividad": ultima.isoformat() if ultima else None,
         "xp_perdido_desde_ultima_visita": xp_perdido,
-        "mensaje_regreso": config.MENSAJE_REGRESO if xp_perdido else None,
+        "mensaje_regreso": config.MENSAJE_REGRESO if dar_mensaje_regreso else None,
         "meta_diaria": {
             "xp_hoy": xp_hoy,
             "meta": config.META_DIARIA_XP,

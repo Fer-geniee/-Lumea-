@@ -169,14 +169,21 @@ NIVELES = [0, 30, 80, 150, 250, 400, 600, 850, 1150, 1500]
 XP_PERDIDO_POR_DIA_INACTIVO = 0
 TOPE_PERDIDA_POR_PERIODO = 0
 
-# Lo que ve el usuario al volver si perdió XP. Amable, nunca un regaño, y
-# sin mencionar comida, peso ni cuerpo.
+# Lo que ve el usuario al volver después de una pausa (ver
+# DIAS_PARA_MENSAJE_REGRESO). Amable, nunca un regaño, y sin mencionar
+# comida, peso ni cuerpo.
 MENSAJE_REGRESO = (
     "🌿 Siempre puedes volver, "
     "tu camino no termina cuando haces una pausa, ni cuando te encuentras con dificultades. "
     "El camino continúa cuando perdonas y sostienes las dificultades en paz."
     "¡Qué bueno tenerte de vuelta!"
 )
+
+# Cuántos días completos sin actividad hacen falta para que, al volver, salga
+# el MENSAJE_REGRESO (una sola vez por ausencia). Es el mismo umbral de la
+# calcomanía "volviste". Como la pérdida de XP está en 0, el mensaje ya no
+# depende de que se haya perdido algo: depende solo de los días de ausencia.
+DIAS_PARA_MENSAJE_REGRESO = 3
 
 # ===== Avatares DiceBear (la cara que cambia con el estado de ánimo) =====
 # Se usan para el check-in de ánimo, y como avatar de respaldo si las
