@@ -406,7 +406,8 @@ def estado_avatar_capas(progreso):
             ]
             for tipo in config.TIPOS_OBJETO
         },
-        "respaldo_dicebear": {"id": respaldo["id"], "nombre": respaldo["nombre"], "url": url_avatar(respaldo)},
+        "respaldo_dicebear": {"id": respaldo["id"], "nombre": respaldo["nombre"], "forma": respaldo["forma"],
+                              "color": respaldo["color"], "url": url_avatar(respaldo)},
     }
 
 
@@ -909,6 +910,8 @@ def obtener_progreso(db, usuario_id):
         "avatar": {
             "id": avatar["id"],
             "nombre": avatar["nombre"],
+            "forma": avatar["forma"],
+            "color": avatar["color"],
             "url": url_avatar(avatar),
             "estado_animo_hoy": estado_hoy,
             "url_con_animo": url_avatar(avatar, estado_hoy),
@@ -943,6 +946,8 @@ def listar_avatares(db, usuario_id):
             {
                 "id": a["id"],
                 "nombre": a["nombre"],
+                "forma": a["forma"],
+                "color": a["color"],
                 "url": url_avatar(a),
                 "nivel_requerido": a["nivel_requerido"],
                 "desbloqueado": desbloqueado(a, nivel),
@@ -982,7 +987,8 @@ def elegir_avatar(db, usuario_id, avatar_id):
         cursor.close()
     return True, 200, {
         "success": True,
-        "avatar": {"id": avatar["id"], "nombre": avatar["nombre"], "url": url_avatar(avatar)},
+        "avatar": {"id": avatar["id"], "nombre": avatar["nombre"], "forma": avatar["forma"],
+                   "color": avatar["color"], "url": url_avatar(avatar)},
     }
 
 

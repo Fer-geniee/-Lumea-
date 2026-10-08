@@ -22,27 +22,24 @@ import unittest
 from datetime import date, timedelta
 from unittest import mock
 
+import inspect
 import json
 import os
+from urllib.parse import parse_qs, urlparse
 
 import gamificacion as g
 import gamificacion_config as config
 from database import BaseDatos, conectar_mysql
 from grupos_confusion import GRUPOS_CONFUSION
 
-# Valores válidos de DiceBear avataaars 9.x, copiados del esquema oficial
-# (@dicebear/avataaars 9.4.2, lib/schema.js) el 26 sep 2026. Si alguien
-# pone en el config una expresión que no existe, DiceBear responde 400 y
-# el avatar no se ve: esta prueba lo detecta antes.
-DICEBEAR_VALIDOS = {
-    "mouth": {"concerned", "default", "disbelief", "eating", "grimace", "sad", "screamOpen",
-              "serious", "smile", "tongue", "twinkle", "vomit"},
-    "eyes": {"closed", "cry", "default", "eyeRoll", "happy", "hearts", "side", "squint",
-             "surprised", "winkWacky", "wink", "xDizzy"},
-    "eyebrows": {"angryNatural", "defaultNatural", "flatNatural", "frownNatural",
-                 "raisedExcitedNatural", "sadConcernedNatural", "unibrowNatural", "upDownNatural",
-                 "angry", "default", "raisedExcited", "sadConcerned", "upDown"},
-}
+# Valores válidos de DiceBear gaze 10.x, verificados el 7 oct 2026 en
+# @dicebear/styles 10.6.0. Si alguien pone en el config una forma o unos ojos
+# que no existen, DiceBear responde 400 y el compañero no se ve: estas
+# pruebas lo detectan antes.
+FORMAS_GAZE = {"circle", "square", "triangle", "pentagon", "hexagon", "octagon", "diamond",
+               "pill", "column", "egg", "arch"}
+OJOS_GAZE = {"dots", "big", "small", "shine", "beans", "bars", "wide", "tall", "happy", "grin", "squint"}
+PARAMETROS_URL_GAZE = {"seed", "shapeVariant", "bodyColor", "eyesVariant"}
 
 HOY = date(2026, 9, 26)
 AYER = HOY - timedelta(days=1)
@@ -160,28 +157,66 @@ class TestConfigCoherente(unittest.TestCase):
 
     def test_expresiones_existen_en_dicebear(self):
         for estado, expresion in [("neutra", config.EXPRESION_NEUTRA), *config.EXPRESION_POR_ESTADO.items()]:
-            for parametro, valor in expresion.items():
-                with self.subTest(estado=estado, parametro=parametro):
-                    self.assertIn(valor, DICEBEAR_VALIDOS[parametro])
+            with self.subTest(estado=estado):
+                self.assertEqual(set(expresion), {"eyesVariant"})
+                self.assertIn(expresion["eyesVariant"], OJOS_GAZE)
+
+    def test_cada_companero_tiene_forma_y_color_validos(self):
+        for avatar in config.AVATARES:
+            with self.subTest(avatar=avatar["id"]):
+                self.assertIn(avatar["forma"], FORMAS_GAZE)
+                # Color hexadecimal de 6 dígitos, SIN "#" (así lo pide DiceBear).
+                self.assertRegex(avatar["color"], r"^[0-9A-Fa-f]{6}$")
+
+    def test_la_url_base_es_gaze_10(self):
+        self.assertEqual(config.DICEBEAR_URL, "https://api.dicebear.com/10.x/gaze/svg")
 
 
 class TestUrlAvatar(unittest.TestCase):
-    def test_usa_la_semilla_del_catalogo_y_la_expresion(self):
+    @staticmethod
+    def parametros(url):
+        return {k: v[0] for k, v in parse_qs(urlparse(url).query).items()}
+
+    def test_usa_la_semilla_la_forma_el_color_y_los_ojos_del_animo(self):
         avatar = g.avatar_por_id("sol")
         url = g.url_avatar(avatar, "muy_bien")
         self.assertTrue(url.startswith(config.DICEBEAR_URL + "?"))
-        self.assertIn("seed=lumea-sol", url)
-        self.assertIn("mouth=smile", url)
-        self.assertIn("eyes=happy", url)
+        self.assertEqual(self.parametros(url), {
+            "seed": "lumea-sol", "shapeVariant": avatar["forma"], "bodyColor": avatar["color"],
+            "eyesVariant": config.EXPRESION_POR_ESTADO["muy_bien"]["eyesVariant"],
+        })
 
-    def test_sin_estado_usa_expresion_neutra(self):
+    def test_sin_estado_usa_ojos_neutros(self):
         url = g.url_avatar(g.avatar_por_id("sol"))
-        self.assertIn(f"mouth={config.EXPRESION_NEUTRA['mouth']}", url)
+        self.assertEqual(self.parametros(url)["eyesVariant"], config.EXPRESION_NEUTRA["eyesVariant"])
+
+    def test_todas_las_urls_son_gaze_validas_y_quietas(self):
+        for avatar in config.AVATARES:
+            for estado in [None, *config.EXPRESION_POR_ESTADO]:
+                with self.subTest(avatar=avatar["id"], estado=estado):
+                    url = g.url_avatar(avatar, estado)
+                    self.assertTrue(url.startswith("https://api.dicebear.com/10.x/gaze/svg?"))
+                    parametros = self.parametros(url)
+                    # Solo estos cuatro parámetros: sin animationVariant (las URL son quietas).
+                    self.assertEqual(set(parametros), PARAMETROS_URL_GAZE)
+                    self.assertIn(parametros["shapeVariant"], FORMAS_GAZE)
+                    self.assertIn(parametros["eyesVariant"], OJOS_GAZE)
+                    self.assertRegex(parametros["bodyColor"], r"^[0-9A-Fa-f]{6}$")
+
+    def test_los_cinco_animos_dan_las_mismas_semillas(self):
+        # Cambia la cara (los ojos), nunca la semilla: el compañero es el mismo.
+        for avatar in config.AVATARES:
+            with self.subTest(avatar=avatar["id"]):
+                semillas = {self.parametros(g.url_avatar(avatar, estado))["seed"] for estado in config.EXPRESION_POR_ESTADO}
+                self.assertEqual(semillas, {avatar["semilla"]})
 
     def test_ningun_avatar_depende_de_datos_del_usuario(self):
-        # La semilla sale del catálogo; nunca debe parecer un correo.
+        # La semilla sale del catálogo (fija); nunca parece un correo ni cambia con la persona.
         for avatar in config.AVATARES:
-            self.assertNotIn("@", avatar["semilla"])
+            self.assertRegex(avatar["semilla"], r"^lumea-[a-z]+$")
+        # url_avatar solo recibe el compañero y el ánimo: ninguna otra cosa va a DiceBear.
+        self.assertEqual(
+            list(inspect.signature(g.url_avatar).parameters), ["avatar", "estado_animo"])
 
 
 def opcion_de_grupo(grupo_id, indice=0):
