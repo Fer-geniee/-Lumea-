@@ -42,7 +42,7 @@ ACCIONES = {
     # Extra que se suma a comida_registrada si el alimento FINAL es una
     # elección nutritiva (ver ELECCION_NUTRITIVA más abajo). No se registra
     # sola: la otorga gamificacion.py al registrar una comida.
-    "eleccion_nutritiva": {"xp": 5, "maximo_por_dia": 3},
+    "bonus_registro": {"xp": 5, "maximo_por_dia": 3},
     "estado_animo": {"xp": 5, "maximo_por_dia": 1},
 }
 
@@ -101,26 +101,26 @@ MENSAJES_ULTRAPROCESADO = {
 # y los ids no se cambian sin cambiar también ese diccionario.
 # "rol" le dice al frontend qué dibujo/color usar.
 CALCOMANIAS = [
-    {"id": "primera_foto", "nombre": "Primera foto", "descripcion": "Registraste tu primera comida.",
+    {"id": "primera_foto", "nombre": "Primer paso", "descripcion": "Haz dado el primer paso en el camino del cuidado.",
      "como_se_gana": "Registra tu primera comida.", "rol": "comida", "umbral": 1},
-    {"id": "diez_registros", "nombre": "Diez registros", "descripcion": "Llevas 10 comidas registradas.",
+    {"id": "diez_registros", "nombre": "Diez momentos", "descripcion": "Llevas 10 comidas registradas, cuidando de ti y de tu cuerpo.",
      "como_se_gana": "Registra 10 comidas.", "rol": "comida", "umbral": 10},
-    {"id": "tres_al_dia", "nombre": "Tres al día", "descripcion": "Registraste 3 comidas en un mismo día.",
+    {"id": "tres_al_dia", "nombre": "Un día completo", "descripcion": "Prestas atención a tu alimentación tres veces en el día.",
      "como_se_gana": "Cumple la misión de registrar 3 comidas en un día.", "rol": "mision", "umbral": 1},
-    {"id": "fruta", "nombre": "Fruta del día", "descripcion": "Registraste una fruta.",
+    {"id": "fruta", "nombre": "Una fruta para alegrar tu día", "descripcion": "Has comido y registrado una fruta.",
      "como_se_gana": "Cumple la misión de registrar una fruta.", "rol": "mision", "umbral": 1},
-    {"id": "como_llegas", "nombre": "Cómo llegas", "descripcion": "Hiciste tu primer check-in de ánimo.",
+    {"id": "como_llegas", "nombre": "Cómo llegas", "descripcion": "Te detuviste un momento a reconocer como te sientes.",
      "como_se_gana": "Haz tu primer check-in de ánimo.", "rol": "emocion", "umbral": 1},
-    {"id": "ayudaste_ia", "nombre": "Le ayudaste a la IA", "descripcion": "Confirmaste un plato cuando la IA dudó.",
+    {"id": "ayudaste_ia", "nombre": "Inteligencia humana al rescate", "descripcion": "Confirmaste un plato cuando la IA dudó.",
      "como_se_gana": "Confirma un plato cuando la IA no esté segura.", "rol": "duda", "umbral": 1},
-    {"id": "racha_3", "nombre": "Tres días seguidos", "descripcion": "Registraste actividad 3 días seguidos.",
+    {"id": "racha_3", "nombre": "Tres días caminando juntos", "descripcion": "Mantuviste tu actividad durante 3 días seguidos.",
      "como_se_gana": "Llega a una racha de 3 días.", "rol": "logro", "umbral": 3},
-    {"id": "racha_7", "nombre": "Una semana", "descripcion": "Registraste actividad 7 días seguidos.",
+    {"id": "racha_7", "nombre": "Siete días caminando juntos", "descripcion": "Cuidaste de ti con perseverancia durante una semana completa.",
      "como_se_gana": "Llega a una racha de 7 días.", "rol": "logro", "umbral": 7},
-    {"id": "volviste", "nombre": "Volviste", "descripcion": "Regresaste después de unos días sin actividad.",
+    {"id": "volviste", "nombre": "El camino continua", "descripcion": "Después de una pausa vuelves a cuidar de ti y de tu cuerpo.",
      "como_se_gana": "Vuelve después de 3 o más días sin actividad.", "rol": "logro", "umbral": 3},
-    {"id": "nivel_5", "nombre": "Nivel 5", "descripcion": "Llegaste al nivel 5.",
-     "como_se_gana": "Llega al nivel 5.", "rol": "logro", "umbral": 5},
+    {"id": "nivel_5", "nombre": "Etapa: El Jardín", "descripcion": "Llegaste a una etapa nueva en tu camino de bienestar",
+     "como_se_gana": "Llega a la etapa 5.", "rol": "logro", "umbral": 5},
 ]
 
 # ===== Misiones diarias (fijas, una vez al día cada una) =====
@@ -128,9 +128,9 @@ CALCOMANIAS = [
 # nombre que se muestra y el XP. Los ids no se cambian sin cambiar también
 # gamificacion.py.
 MISIONES_DIARIAS = [
-    {"id": "fruta", "nombre": "Registra una fruta", "xp": 10},
-    {"id": "tres_comidas", "nombre": "Registra 3 comidas", "xp": 10},
-    {"id": "check_in_animo", "nombre": "Haz tu check-in de ánimo", "xp": 10},
+    {"id": "fruta", "nombre": "Agradece y disfruta una fruta de la creación", "xp": 10},
+    {"id": "tres_comidas", "nombre": "Cuida de ti en tus tres comidas", "xp": 10},
+    {"id": "check_in_animo", "nombre": "Haz una pausa y escucha cómo te sientes", "xp": 10},
 ]
 # Qué alimentos cuentan como fruta para la misión (clases del modelo).
 FRUTAS = ["banano", "fresa", "mango", "manzana", "naranja", "pera", "pina", "uva"]
@@ -166,14 +166,16 @@ NIVELES = [0, 30, 80, 150, 250, 400, 600, 850, 1150, 1500]
 # El XP nunca baja de 0. El NIVEL nunca baja (se guarda el nivel máximo
 # alcanzado aparte del XP actual) y nada de lo desbloqueado se vuelve a
 # bloquear, porque se desbloquea por nivel máximo.
-XP_PERDIDO_POR_DIA_INACTIVO = 5
-TOPE_PERDIDA_POR_PERIODO = 20
+XP_PERDIDO_POR_DIA_INACTIVO = 0
+TOPE_PERDIDA_POR_PERIODO = 0
 
 # Lo que ve el usuario al volver si perdió XP. Amable, nunca un regaño, y
 # sin mencionar comida, peso ni cuerpo.
 MENSAJE_REGRESO = (
-    "¡Te extrañamos! Tu nivel y todo lo que desbloqueaste siguen siendo tuyos. "
-    "Cuando quieras, registra algo hoy y vuelve a sumar XP."
+    "🌿 Siempre puedes volver, "
+    "tu camino no termina cuando haces una pausa, ni cuando te encuentras con dificultades. "
+    "El camino continúa cuando perdonas y sostienes las dificultades en paz."
+    "¡Bienvenido de nuevo querido usuario!"
 )
 
 # ===== Avatares DiceBear (la cara que cambia con el estado de ánimo) =====
@@ -184,11 +186,17 @@ MENSAJE_REGRESO = (
 # de cuerpo, a propósito. Versión fija (9.x) porque es la versión cuyos
 # valores de parámetros se verificaron contra el esquema oficial
 # (@dicebear/avataaars 9.4.2, 26 sep 2026).
-DICEBEAR_URL = "https://api.dicebear.com/9.x/avataaars/svg"
+DICEBEAR_URL = "https://api.dicebear.com/10.x/gaze/svg"
+DICEBEAR_PARAMETROS_FIJOS = {}
+EXPRESION_NEUTRA = {"eyesVariant": "dots"}
+EXPRESION_POR_ESTADO = {
+    "muy_mal": {"eyesVariant": "bars"},
+    "mal": {"eyesVariant": "small"},
+    "neutral": {"eyesVariant": "dots"},
+    "bien": {"eyesVariant": "happy"},
+    "muy_bien": {"eyesVariant": "grin"},
+}
 
-# Parámetros que llevan TODOS los avatares. Sin barba: la audiencia son
-# estudiantes de colegio.
-DICEBEAR_PARAMETROS_FIJOS = {"facialHairProbability": 0}
 
 # Cada avatar se dibuja a partir de una semilla FIJA del catálogo -- nunca
 # del correo ni de otro dato del usuario, para no enviarle datos
@@ -198,6 +206,8 @@ DICEBEAR_PARAMETROS_FIJOS = {"facialHairProbability": 0}
 # actual), así que perder XP por inactividad nunca vuelve a bloquear un
 # avatar. Son los mismos umbrales que antes estaban en XP (80 XP = nivel
 # 3, 250 = nivel 5, 600 = nivel 7, 1150 = nivel 9).
+
+
 AVATARES = [
     {"id": "sol", "nombre": "Sol", "semilla": "lumea-sol", "nivel_requerido": 1},
     {"id": "luna", "nombre": "Luna", "semilla": "lumea-luna", "nivel_requerido": 1},

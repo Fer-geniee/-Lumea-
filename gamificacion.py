@@ -316,7 +316,9 @@ def url_avatar(avatar, estado_animo=None):
     """URL de DiceBear del avatar, con la expresión del estado de ánimo
     (o la neutra si no hay)."""
     expresion = config.EXPRESION_POR_ESTADO.get(estado_animo, config.EXPRESION_NEUTRA)
-    parametros = {"seed": avatar["semilla"], **config.DICEBEAR_PARAMETROS_FIJOS, **expresion}
+    parametros = {"seed": avatar["semilla"], "shapeVariant": avatar["Forma"], "bodyColor": avatar["Color"],
+                  **config.DICEBEAR_PARAMETROS_FIJOS, **expresion}
+
     return f"{config.DICEBEAR_URL}?{urlencode(parametros)}"
 
 
@@ -636,7 +638,7 @@ def registrar_actividad(db, usuario_id, accion, estado_animo=None, alimento_codi
 
         es_comida = accion == "comida_registrada"
         # 2. Bonus por elección nutritiva (solo comidas, con su propio tope)
-        if es_comida and es_eleccion_nutritiva(alimento_codigo, sellos):
+        if es_comida:
             bonus = xp_a_otorgar("eleccion_nutritiva", _veces_hoy(cursor, usuario_id, hoy, "eleccion_nutritiva"))
             _anotar(cursor, usuario_id, hoy, "eleccion_nutritiva", bonus)
             if bonus:
