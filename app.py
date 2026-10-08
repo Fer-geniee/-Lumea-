@@ -13,6 +13,7 @@ from gamificacion import registrar_gamificacion, registrar_actividad, mensaje_ed
 from gamificacion_config import FRUTAS
 from grupos_confusion import grupo_para, codigos_de_opciones, detalle_de_opciones
 from sellos import obtener_sellos
+from consejos import consejo_para
 from predict import predecir_alimento, OPCIONES_CUANDO_DUDA  # única fuente de inferencia (fusión con predict.py)
 
 app = Flask(__name__)
@@ -273,6 +274,8 @@ def predecir():
                 'sellos_advertencia': sellos,
                 # Producto de paquete: un dato y una alternativa, nunca un regaño.
                 'mensaje_educativo': mensaje_educativo(nombre_tecnico),
+                # Qué aporta, qué le falta al plato y, si hay sellos, un dato y una idea (consejos.py).
+                'consejo': consejo_para(nombre_tecnico, sellos),
                 'modelo_usado': resultado.get('modelo_usado'),
                 'gamificacion': gamificacion,
             }
@@ -356,6 +359,7 @@ def confirmar_alimento():
         'dato_curioso': dato_curioso,
         'sellos_advertencia': sellos,
         'mensaje_educativo': mensaje_educativo(alimento_codigo),
+        'consejo': consejo_para(alimento_codigo, sellos),
         'gamificacion': gamificacion,
     }
     return jsonify(respuesta), 200
