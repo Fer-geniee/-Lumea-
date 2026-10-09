@@ -83,6 +83,50 @@ class TestPerfil(unittest.TestCase):
         self.assertEqual(r.get_json()["perfil"]["objetivo"], "tomar_agua")
         self.assertNotIn("peso", r.get_json()["perfil"])
 
+    # ---------- B2: edad mínima y aviso al acudiente ----------
+    def test_edad_fuera_de_rango_o_que_no_es_entero_da_400(self):
+        for edad in (10, 0, -5, 121, 15.5, "15", True, None):
+            with self.subTest(edad=edad):
+                self.assertEqual(self.crear(edad=edad).status_code, 400)
+
+    def test_edades_limite_validas(self):
+        for edad in (11, 17, 18, 120):
+            with self.subTest(edad=edad):
+                _borrar_perfil_de_prueba()
+                self.assertEqual(self.crear(edad=edad).status_code, 200)
+
+    def test_menor_sin_acudiente_da_400_con_el_texto(self):
+        for cambio in (False, "__quitar__", "true", 1):
+            with self.subTest(acudiente_sabe=cambio):
+                r = self.crear(edad=17, acudiente_sabe=cambio)
+                self.assertEqual(r.status_code, 400)
+                self.assertEqual(r.get_json()["error"], servidor.MENSAJE_ACUDIENTE)
+
+    def test_mayor_de_edad_no_necesita_acudiente(self):
+        self.assertEqual(self.crear(edad=18, acudiente_sabe="__quitar__").status_code, 200)
+
+    def test_se_guarda_la_casilla_y_la_fecha(self):
+        self.assertEqual(self.crear(edad=14).status_code, 200)
+        cursor = servidor.db.conexion.cursor()
+        cursor.execute("SELECT acudiente_sabe, acudiente_fecha FROM perfil WHERE email = %s", (EMAIL_PRUEBA,))
+        sabe, fecha = cursor.fetchone()
+        servidor.db.conexion.commit()
+        cursor.close()
+        self.assertEqual(sabe, 1)
+        self.assertIsNotNone(fecha)
+
+    def test_editar_sin_casilla_no_borra_la_fecha(self):
+        self.crear(edad=14)
+        r = self.cliente.post("/perfil", json={"nombre": "Otro nombre", "email": EMAIL_PRUEBA, "edad": 19, "genero": "otro"})
+        self.assertEqual(r.status_code, 200, r.get_json())
+        cursor = servidor.db.conexion.cursor()
+        cursor.execute("SELECT acudiente_sabe, acudiente_fecha FROM perfil WHERE email = %s", (EMAIL_PRUEBA,))
+        sabe, fecha = cursor.fetchone()
+        servidor.db.conexion.commit()
+        cursor.close()
+        self.assertEqual(sabe, 1)
+        self.assertIsNotNone(fecha)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

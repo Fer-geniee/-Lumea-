@@ -67,7 +67,7 @@ def post(ruta, json=None, **kwargs):
 def probar_perfil():
     # Desde el login con Bcrypt, crear una cuenta exige contraseña (mínimo 6).
     datos = {
-        "nombre": "Prueba test_api", "email": EMAIL_PRUEBA, "edad": 15, "genero": "otro",
+        "nombre": "Prueba test_api", "email": EMAIL_PRUEBA, "edad": 15, "acudiente_sabe": True, "genero": "otro",
         "objetivo": "comer_balanceado",
     }
     verificar("POST /perfil sin contraseña (cuenta nueva) -> 400", post("/perfil", datos), esperado=400)

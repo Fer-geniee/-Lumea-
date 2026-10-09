@@ -26,7 +26,7 @@ class TestPeticionesSimultaneas(unittest.TestCase):
     def setUpClass(cls):
         cls.cliente = servidor.app.test_client()
         cls.cliente.post("/perfil", json={
-            "nombre": "Prueba concurrencia", "email": EMAIL_PRUEBA, "edad": 15, "genero": "otro",
+            "nombre": "Prueba concurrencia", "email": EMAIL_PRUEBA, "edad": 15, "acudiente_sabe": True, "genero": "otro",
             "objetivo": "comer_balanceado", "contraseña": "prueba-123",
         })
 

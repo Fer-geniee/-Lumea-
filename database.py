@@ -174,6 +174,9 @@ class BaseDatos:
             self._asegurar_columna(cursor, "perfil", "password_hash", "password_hash CHAR(60) NULL AFTER objetivo")
             self._permitir_null_en_password_hash(cursor)
             self._permitir_null_en_peso_y_altura(cursor)
+            # Aviso al acudiente (9 oct): casilla y fecha en que se marcó.
+            self._asegurar_columna(cursor, "perfil", "acudiente_sabe", "acudiente_sabe TINYINT(1) NULL")
+            self._asegurar_columna(cursor, "perfil", "acudiente_fecha", "acudiente_fecha DATETIME NULL")
             self.conexion.commit()
 
         except Error as e:
@@ -318,7 +321,7 @@ class BaseDatos:
     # al guardar.
     OBJETIVOS_VALIDOS = {"comer_balanceado", "conocer_lo_que_como"}
 
-    def guardar_perfil(self, nombre, email, edad, genero, objetivo=None, contraseña=None):
+    def guardar_perfil(self, nombre, email, edad, genero, objetivo=None, contraseña=None, acudiente_sabe=False):
         """Crea el perfil si el correo es nuevo, o actualiza el existente si ya
         existe -- 'email' es el identificador único de cada usuario (ver
         DEFENSA_TECNICA_LUMEA.md sección 5: perfiles múltiples con contraseña.
@@ -331,7 +334,12 @@ class BaseDatos:
 
         Peso y altura ya no se piden (9 oct): las columnas siguen en la tabla
         por los perfiles viejos, pero aquí se guardan siempre como NULL, así
-        que volver a guardar un perfil viejo también borra esos datos."""
+        que volver a guardar un perfil viejo también borra esos datos.
+
+        acudiente_sabe: la persona marcó que su madre, padre o acudiente sabe
+        que usa Lumea. Es un aviso, no una autorización verificada. La fecha
+        se anota solo la primera vez que se marca; una edición posterior sin
+        la casilla no la borra."""
         if not self.conexion or not self.conexion.is_connected():
             return False
         if objetivo is not None and objetivo not in self.OBJETIVOS_VALIDOS:
@@ -344,14 +352,18 @@ class BaseDatos:
                 salt = bcrypt.gensalt()
                 hash_contraseña = bcrypt.hashpw(contraseña.encode('utf-8'), salt).decode('utf-8')
             sql = '''
-                INSERT INTO perfil (nombre, email, edad, genero, peso, altura, objetivo, password_hash)
-                VALUES (%s, %s, %s, %s, NULL, NULL, %s, %s)
+                INSERT INTO perfil (nombre, email, edad, genero, peso, altura, objetivo, password_hash,
+                                    acudiente_sabe, acudiente_fecha)
+                VALUES (%s, %s, %s, %s, NULL, NULL, %s, %s, %s, IF(%s, NOW(), NULL))
                 ON DUPLICATE KEY UPDATE
                     nombre = VALUES(nombre), edad = VALUES(edad), genero = VALUES(genero),
                     peso = NULL, altura = NULL, objetivo = VALUES(objetivo), 
+                    acudiente_fecha = IF(%s AND acudiente_fecha IS NULL, NOW(), acudiente_fecha),
+                    acudiente_sabe = IF(%s, 1, acudiente_sabe),
                     password_hash = IFNULL(password_hash, VALUES(password_hash))  -- si ya tenía hash, se conserva; solo se pone si no tenía
             '''
-            cursor.execute(sql, (nombre, email, edad, genero, objetivo, hash_contraseña))
+            sabe = 1 if acudiente_sabe else 0
+            cursor.execute(sql, (nombre, email, edad, genero, objetivo, hash_contraseña, sabe, sabe, sabe, sabe))
             self.conexion.commit()
             return True
         except Error as e:

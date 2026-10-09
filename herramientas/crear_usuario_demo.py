@@ -118,8 +118,8 @@ def _crear_perfil(conexion, contrasena):
     hash_bcrypt = bcrypt.hashpw(contrasena.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
     cursor = conexion.cursor()
     cursor.execute(
-        "INSERT INTO perfil (nombre, email, edad, genero, objetivo, password_hash) "
-        "VALUES (%s, %s, %s, %s, %s, %s)",
+        "INSERT INTO perfil (nombre, email, edad, genero, objetivo, password_hash, acudiente_sabe, acudiente_fecha) "
+        "VALUES (%s, %s, %s, %s, %s, %s, 1, NOW())",
         (PERFIL_DEMO["nombre"], EMAIL_DEMO, PERFIL_DEMO["edad"], PERFIL_DEMO["genero"],
          PERFIL_DEMO["objetivo"], hash_bcrypt),
     )

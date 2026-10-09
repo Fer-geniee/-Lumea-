@@ -51,7 +51,7 @@ def email_para(nombre):
 
 def registrar(email, contrasena=CONTRASENA):
     datos = {
-        "nombre": "Prueba login", "email": email, "edad": 15, "genero": "otro",
+        "nombre": "Prueba login", "email": email, "edad": 15, "acudiente_sabe": True, "genero": "otro",
         "objetivo": "comer_balanceado",
     }
     if contrasena is not None:

@@ -90,7 +90,7 @@ def main():
     comidas_guardadas = 0
 
     paso("1. Ana crea su cuenta")
-    datos = {"nombre": "Ana Flujo", "email": EMAIL, "edad": 15, "genero": "femenino",
+    datos = {"nombre": "Ana Flujo", "email": EMAIL, "edad": 15, "acudiente_sabe": True, "genero": "femenino",
              "objetivo": "comer_balanceado"}
     comprobar("sin contraseña -> 400", post("/perfil", datos).status_code == 400)
     comprobar("contraseña de 5 caracteres -> 400", post("/perfil", {**datos, "contraseña": "12345"}).status_code == 400)

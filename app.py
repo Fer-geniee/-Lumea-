@@ -383,6 +383,25 @@ def error_de_contraseña(contraseña):
     return None
 
 
+EDAD_MINIMA = 11
+EDAD_MAXIMA = 120
+EDAD_MAYORIA = 18
+MENSAJE_ACUDIENTE = 'Para menores de 18 años, tu madre, padre o acudiente debe saber que usas Lumea.'
+
+
+def error_de_edad_o_acudiente(datos):
+    """Texto del error (400) si la edad o el aviso al acudiente no valen, o None.
+    La casilla del acudiente es un AVISO, no una autorización verificada
+    (ver DEFENSA_TECNICA_LUMEA.md, sección 5)."""
+    edad = datos.get('edad')
+    # bool es subclase de int en Python: True no puede pasar por una edad de 1.
+    if not isinstance(edad, int) or isinstance(edad, bool) or not EDAD_MINIMA <= edad <= EDAD_MAXIMA:
+        return f'La edad debe ser un número entero entre {EDAD_MINIMA} y {EDAD_MAXIMA}.'
+    if edad < EDAD_MAYORIA and datos.get('acudiente_sabe') is not True:
+        return MENSAJE_ACUDIENTE
+    return None
+
+
 @app.route('/perfil', methods=['POST'])
 def guardar_perfil():
     """Crea la cuenta (con contraseña obligatoria) o actualiza los datos de un
@@ -397,6 +416,9 @@ def guardar_perfil():
     faltantes = [campo for campo in requeridos if campo not in datos]
     if faltantes:
         return jsonify({'error': f'Faltan campos: {", ".join(faltantes)}'}), 400
+    error = error_de_edad_o_acudiente(datos)
+    if error:
+        return jsonify({'error': error}), 400
 
     contraseña = datos.get('contraseña')
     tiene_contraseña = db.estado_contraseña(datos['email'])  # None = el correo no tiene perfil
@@ -414,7 +436,7 @@ def guardar_perfil():
 
     exito = db.guardar_perfil(
         datos['nombre'], datos['email'], datos['edad'], datos['genero'],
-        datos.get('objetivo'), contraseña,
+        datos.get('objetivo'), contraseña, acudiente_sabe=datos.get('acudiente_sabe') is True,
     )
     if exito:
         return jsonify({'success': True, 'mensaje': 'Perfil guardado.'}), 200
