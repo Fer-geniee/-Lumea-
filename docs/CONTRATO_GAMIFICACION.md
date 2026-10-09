@@ -370,8 +370,8 @@ Respuesta real (nivel máximo 4, con trenzas, tono 5, pecas y el overol puesto; 
 }
 ```
 
-- **`persona.rasgos`** trae SIEMPRE los 8 rasgos (los de por defecto si la persona no ha elegido). Una persona neutra: `skinColor c99062`, `topVariant short`, `hairColor 3b2f2f`, `eyesVariant open`, `mouthVariant smile`, mejillas y barba `null`, `shirtColor 40c057`.
-- **`rasgos_disponibles`**: por cada rasgo, su `nombre` en español y sus `opciones` `{valor: nombre}`, **en el orden en que deben mostrarse** (Tono 1 a Tono 8; el servidor ya no reordena las claves alfabéticamente). Solo mejillas y barba traen `ninguno` (el nombre de la opción «sin esto», que se guarda como `null`). Los tonos de piel se llaman «Tono 1» a «Tono 8». Los peinados no incluyen gorras ni gorros.
+- **`persona.rasgos`** trae SIEMPRE los 13 rasgos (los de por defecto si la persona no ha elegido). Una persona neutra: `skinColor c99062`, `topVariant short`, `hairColor 3b2f2f`, `eyesVariant open`, `mouthVariant smile`, mejillas y barba `null`, `shirtColor 40c057`, `eyebrowsVariant flat`, `noseVariant small`, `pantsColor 3b5b8c`, `shoesColor 343a40` y `backgroundColor null` (sin fondo).
+- **`rasgos_disponibles`**: por cada rasgo, su `nombre` en español y sus `opciones` `{valor: nombre}`, **en el orden en que deben mostrarse** (Tono 1 a Tono 8; el servidor ya no reordena las claves alfabéticamente). Solo mejillas, barba y fondo traen `ninguno` (el nombre de la opción «sin esto»: «Ninguno», «Ninguna» y «Sin fondo»; se guarda como `null`). Los tonos de piel se llaman «Tono 1» a «Tono 8». Los peinados no incluyen gorras ni gorros.
 - **`objetos`**: cada objeto trae `parametros`, `nivel_requerido`, `desbloqueado`, `niveles_faltantes` (0 si ya está abierto) y `puesto`. Para el candado: «Etapa `nivel_requerido`» o «Te faltan `niveles_faltantes` etapas».
 - **`puesto`** (arriba del todo) es lo mismo que `persona.puesto`.
 - **EN DESUSO** (siguen respondiendo para no romper a nadie): `base`, `bases`, `capas`, `imagenes_listas`, `imagen_lista`, y las rutas `POST /avatar/base`. La persona ya no se arma con imágenes PNG. `respaldo_dicebear` sigue siendo el compañero gaze.
@@ -384,7 +384,7 @@ Errores: `400` sin `email`, `404` sin perfil.
 { "email": "ana@correo.com", "rasgos": { "topVariant": "braids", "skinColor": "b07347", "cheeksVariant": null } }
 ```
 
-- Cada **clave** debe existir en `rasgos_disponibles` y cada **valor** debe ser una de sus `opciones`. `null` solo vale en mejillas y barba (`cheeksVariant`, `beardVariant`). Los colores van sin `#`.
+- Cada **clave** debe existir en `rasgos_disponibles` y cada **valor** debe ser una de sus `opciones`. `null` solo vale en mejillas, barba y fondo (`cheeksVariant`, `beardVariant`, `backgroundColor`). Los colores van sin `#`.
 - Lo nuevo se **mezcla** con lo ya guardado: se puede mandar solo el rasgo que cambió.
 - **No se verifica la etapa**: los rasgos son libres.
 - `200`: el mismo cuerpo de `GET /avatar`, ya con los rasgos nuevos.
@@ -393,6 +393,30 @@ Errores: `400` sin `email`, `404` sin perfil.
 |---|---|---|
 | `400` | Falta `rasgos` o está vacío, una clave no existe, o un valor no vale (si algo no vale, **no se guarda nada**) | `{"error": "El valor de \"topVariant\" no es válido."}` |
 | `404` | El correo no tiene perfil | `{"error": "No existe un perfil con ese correo."}` |
+
+### Los 13 rasgos
+
+Todos son libres (nunca se bloquean). Los valores salen de `voxel-art.json` (`@dicebear/styles` 10.6.0); los colores van en hexadecimal sin `#`.
+
+| Clave | Nombre en pantalla | Opciones | Por defecto |
+|---|---|---|---|
+| `skinColor` | Tono de piel | 8 (Tono 1 a Tono 8) | `c99062` |
+| `topVariant` | Peinado | 17 (sin gorras ni gorros) | `short` |
+| `hairColor` | Color de pelo | 12 | `3b2f2f` |
+| `eyesVariant` | Ojos | 8 | `open` |
+| `mouthVariant` | Boca | 10 | `smile` |
+| `cheeksVariant` | Mejillas | 3 + «Ninguno» (`null`) | `null` |
+| `beardVariant` | Barba | 4 + «Ninguna» (`null`) | `null` |
+| `shirtColor` | Color de la camiseta | 10 | `40c057` |
+| `eyebrowsVariant` | Cejas · *9 oct* | 4: `flat` Rectas, `raised` Levantadas, `angry` **Fruncidas**, `soft` Suaves | `flat` |
+| `noseVariant` | Nariz · *9 oct* | 4: `block` Cuadrada, `wide` Ancha, `small` Pequeña, `tall` Alargada | `small` |
+| `pantsColor` | Color del pantalón · *9 oct* | 6 | `3b5b8c` |
+| `shoesColor` | Color de los zapatos · *9 oct* | 6 | `343a40` |
+| `backgroundColor` | Fondo · *9 oct* | 5 + «Sin fondo» (`null`) | `null` |
+
+**Fondo.** `null` es «sin fondo»: el frontend lo dibuja transparente (`backgroundColor: ['ffffff00']`). Los otros 5 son colores suaves (celeste, lila, lavanda, rosa claro, durazno).
+
+**Pantalón y camiseta del mismo color: se permite.** En `voxel-art.json` el pantalón tiene `notEqualTo: ["shirt"]`. Se probó con `@dicebear/core` 10.7.0 pidiendo los dos del mismo gris (`495057`, el único color que comparten las dos listas): DiceBear **no cambia ninguno**, los dibuja iguales. La regla solo vale cuando DiceBear elige el color al azar, y el frontend nunca lo deja al azar. Por eso la API **no responde 400** por esa combinación. (Con el vestido el pantalón ni se ve.)
 
 ### `POST /avatar/equipar`
 

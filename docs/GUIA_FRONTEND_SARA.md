@@ -736,8 +736,9 @@ navegador con DiceBear), y debajo dos cosas con reglas distintas:
 - **«Mi armario»**: la ropa y los accesorios. **Cada etapa desbloquea una prenda
   nueva** que cambia a la persona. Lo desbloqueado se toca para ponérselo o
   quitárselo; lo bloqueado sale con **candado** y «Etapa N».
-- **«Cómo me veo»**: los **rasgos** (piel, peinado, color de pelo, ojos, boca,
-  mejillas, barba y color de la camiseta). Son **libres**: nunca se bloquean,
+- **«Cómo me veo»**: los **rasgos** (piel, peinado, color de pelo, ojos, cejas,
+  nariz, boca, mejillas, barba, color de la camiseta, del pantalón y de los
+  zapatos, y fondo; son 13). Son **libres**: nunca se bloquean,
   porque la identidad no es un premio.
 
 Contrato completo y con ejemplos reales: `CONTRATO_GAMIFICACION.md`, sección «La
@@ -762,7 +763,9 @@ redibuja con esa respuesta, sin volver a pedir nada.
   "persona": {
     "estilo": "voxel-art",
     "rasgos": { "skinColor": "b07347", "topVariant": "braids", "hairColor": "3b2f2f", "eyesVariant": "open",
-                "mouthVariant": "smile", "cheeksVariant": "freckles", "beardVariant": null, "shirtColor": "40c057" },
+                "mouthVariant": "smile", "cheeksVariant": "freckles", "beardVariant": null, "shirtColor": "40c057",
+                "eyebrowsVariant": "flat", "noseVariant": "small", "pantsColor": "3b5b8c", "shoesColor": "343a40",
+                "backgroundColor": null },
     "puesto": { "ropa": { "id": "overol", "nombre": "Overol de jardín", "parametros": { "outfitVariant": "overalls" } },
                 "accesorio": null }
   },
@@ -815,8 +818,8 @@ que nunca baja. Aunque alguien pierda XP por no entrar, conserva todo.
 ### «Cómo me veo»: guardar los rasgos
 
 Un grupo de `radio` con su `label` por rasgo, con los nombres de
-`rasgos_disponibles` **en el orden en que vienen** (Tono 1 a Tono 8). Mejillas y
-barba traen además `ninguno` («Ninguno», «Ninguna»): se manda `null`. La vista
+`rasgos_disponibles` **en el orden en que vienen** (Tono 1 a Tono 8). Mejillas,
+barba y fondo traen además `ninguno` («Ninguno», «Ninguna», «Sin fondo»): se manda `null`; el fondo `null` se dibuja transparente. Las cejas `angry` se llaman «Fruncidas». Un pantalón del mismo color que la camiseta es válido (DiceBear los dibuja iguales; no hay que validarlo). La vista
 previa cambia al instante; el botón «Guardar cómo me veo» manda **solo claves que
 estén en `rasgos_disponibles`**:
 
