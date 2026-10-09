@@ -174,7 +174,7 @@ Aparece en los mismos casos que `sellos_advertencia`:
 |---|---|
 | `grupo` | Grupo principal del alimento (el primero de su fila en `grupos_plato.csv`). `null` si no tiene (la aromática sin endulzar). |
 | `aporta` | Qué aporta el alimento. El texto propio del alimento si lo tiene; si no, el de su grupo. |
-| `para_completar` | Solo en los platos (no en frutas, bebidas, paquetes ni postres): el primer grupo que le falta, en el orden verduras y frutas, proteínas, cereales. `null` si no le falta ninguno. |
+| `para_completar` | Solo en los platos (no en frutas, bebidas, paquetes ni postres): el primer grupo que le falta, en el orden verduras y frutas, proteínas, cereales. `null` si no le falta ninguno.  Desde el 9 oct el texto ya no empieza con «Para completar el plato,»: la pantalla pone ese título («Para completar tu plato») y el texto arranca con «Súmale…».|
 | `a_tener_en_cuenta` | Un dato del alimento. `null` si no tiene texto propio. |
 | `sellos` | Una entrada `{"sello", "dato", "idea"}` por cada sello de `sellos_advertencia`, en el mismo orden. `[]` si no tiene o no se sabe. |
 
@@ -216,7 +216,7 @@ Ejemplo: `bandeja_paisa` (plato al que le falta un grupo; no tiene sellos con lo
 "consejo": {
   "grupo": "proteinas",
   "aporta": "Combina casi todos los grupos: fríjol y carne (proteína), arroz y arepa (energía) y aguacate.",
-  "para_completar": "Para completar el plato, súmale una fruta o una verdura: las Guías del ICBF las recomiendan en todas las comidas.",
+  "para_completar": "Súmale una fruta o una verdura: las Guías del ICBF las recomiendan en todas las comidas.",
   "a_tener_en_cuenta": "Es un plato abundante y muy completo: escucha tu hambre para decidir cuánto comer.",
   "sellos": []
 }

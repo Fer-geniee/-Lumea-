@@ -91,10 +91,10 @@ GRUPOS = {
 # sueltas ni productos de paquete: ahí no se arma un plato.
 PARA_COMPLETAR = {
     # "en todas las comidas" [GABA]
-    "frutas_verduras": "Para completar el plato, súmale una fruta o una verdura: las Guías del ICBF "
+    "frutas_verduras": "Súmale una fruta o una verdura: las Guías del ICBF "
                        "las recomiendan en todas las comidas.",
-    "proteinas": "Para completar el plato, súmale una proteína: huevo, fríjol, lenteja, pollo o pescado.",
-    "cereales": "Para completar el plato, súmale algo que dé energía: arroz, arepa, papa, yuca o plátano.",
+    "proteinas": "Súmale una proteína: huevo, fríjol, lenteja, pollo o pescado.",
+    "cereales": "Súmale algo que dé energía: arroz, arepa, papa, yuca o plátano.",
 }
 
 # =========================================================================
