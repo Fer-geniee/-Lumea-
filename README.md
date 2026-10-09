@@ -92,7 +92,7 @@ ni del ánimo reportado.
 - **Etapas** (10 niveles): el nivel máximo nunca baja, y todo lo que se desbloquea por etapa se queda desbloqueado.
 - **Compañeros**: criaturas DiceBear *gaze* cuyos ojos muestran el ánimo.
 - **La persona y sus prendas**: un avatar *voxel-art* que el frontend dibuja en el navegador (no le pide nada a DiceBear). Los
-  **rasgos** (piel, peinado, ojos...) son libres; cada etapa desbloquea **una prenda o accesorio** nuevo.
+  **rasgos** (13: piel, peinado, ojos, cejas, nariz, ropa de abajo, fondo...) son libres; cada etapa desbloquea **una prenda o accesorio** nuevo.
 - **Calcomanías** (10): se ganan por lo que la persona hace; no dan semillas, no se quitan y no hay ranking.
 
 Todos los números viven en `gamificacion_config.py`. Fundamento y autoría: `DEFENSA_TECNICA_LUMEA.md` (secciones 11 y 12, en el repositorio de la raíz del proyecto).
@@ -126,9 +126,9 @@ Desde `Backend/`. Las de «con servidor» necesitan `app.py` corriendo (si el 50
 
 | Prueba | Qué revisa | Pruebas |
 |---|---|---|
-| `python3 pruebas/test_api.py` (con servidor) | Todos los endpoints | 96 |
+| `python3 pruebas/test_api.py` (con servidor) | Todos los endpoints | 103 |
 | `python3 pruebas/test_flujo_completo.py [--log archivo]` (con servidor) | El recorrido completo de una estudiante; con `--log`, que el log no tenga hashes ni contraseñas | 43 |
-| `python3 pruebas/test_gamificacion.py` | Lógica de gamificación, avatar y rasgos | 102 |
+| `python3 pruebas/test_gamificacion.py` | Lógica de gamificación, avatar y rasgos | 104 |
 | `python3 pruebas/test_login.py` (con servidor) | Login con bcrypt | 8 |
 | `python3 pruebas/test_confirmacion.py` | Grupos de confirmación y sellos | 14 |
 | `python3 pruebas/test_consejos.py` | Consejos y su mapa de grupos | 26 |
@@ -137,7 +137,7 @@ Desde `Backend/`. Las de «con servidor» necesitan `app.py` corriendo (si el 50
 | `python3 pruebas/test_dato_del_dia.py` | `/dato-del-dia` | 12 |
 | `python3 pruebas/test_historial.py` | `grupo` y `sellos` en `/historial` | 6 |
 
-En total **319**. Además, `python3 "../Pipelines de datos/verificar_integridad_clases.py"` (desde `Backend/`, solo en el repositorio de la raíz) revisa que
+En total **328**. Además, `python3 "../Pipelines de datos/verificar_integridad_clases.py"` (desde `Backend/`, solo en el repositorio de la raíz) revisa que
 las clases del modelo tengan fila de nutrición, y `python3 herramientas/verificar_modelo.py` revisa un modelo antes de reemplazarlo.
 
 ## Créditos
