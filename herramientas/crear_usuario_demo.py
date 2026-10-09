@@ -43,7 +43,7 @@ EMAIL_DEMO = "demo@lumea.co"
 # Datos genéricos: no corresponden a ninguna persona real.
 PERFIL_DEMO = {
     "nombre": "Cuenta de demostración", "edad": 15, "genero": "otro",
-    "peso": 55, "altura": 160, "objetivo": "comer_balanceado",
+    "objetivo": "comer_balanceado",
 }
 
 # Los 7 días terminan ayer. Cada día: las comidas (código del alimento y la
@@ -118,10 +118,10 @@ def _crear_perfil(conexion, contrasena):
     hash_bcrypt = bcrypt.hashpw(contrasena.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
     cursor = conexion.cursor()
     cursor.execute(
-        "INSERT INTO perfil (nombre, email, edad, genero, peso, altura, objetivo, password_hash) "
-        "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
+        "INSERT INTO perfil (nombre, email, edad, genero, objetivo, password_hash) "
+        "VALUES (%s, %s, %s, %s, %s, %s)",
         (PERFIL_DEMO["nombre"], EMAIL_DEMO, PERFIL_DEMO["edad"], PERFIL_DEMO["genero"],
-         PERFIL_DEMO["peso"], PERFIL_DEMO["altura"], PERFIL_DEMO["objetivo"], hash_bcrypt),
+         PERFIL_DEMO["objetivo"], hash_bcrypt),
     )
     conexion.commit()
     usuario_id = cursor.lastrowid

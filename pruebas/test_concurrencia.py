@@ -27,7 +27,7 @@ class TestPeticionesSimultaneas(unittest.TestCase):
         cls.cliente = servidor.app.test_client()
         cls.cliente.post("/perfil", json={
             "nombre": "Prueba concurrencia", "email": EMAIL_PRUEBA, "edad": 15, "genero": "otro",
-            "peso": 55, "altura": 160, "objetivo": "comer_balanceado", "contraseña": "prueba-123",
+            "objetivo": "comer_balanceado", "contraseña": "prueba-123",
         })
 
     @classmethod

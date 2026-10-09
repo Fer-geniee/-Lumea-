@@ -68,7 +68,7 @@ def probar_perfil():
     # Desde el login con Bcrypt, crear una cuenta exige contraseña (mínimo 6).
     datos = {
         "nombre": "Prueba test_api", "email": EMAIL_PRUEBA, "edad": 15, "genero": "otro",
-        "peso": 55.0, "altura": 160, "objetivo": "comer_balanceado",
+        "objetivo": "comer_balanceado",
     }
     verificar("POST /perfil sin contraseña (cuenta nueva) -> 400", post("/perfil", datos), esperado=400)
     verificar("POST /perfil con contraseña corta -> 400", post("/perfil", {**datos, "contraseña": "123"}), esperado=400)

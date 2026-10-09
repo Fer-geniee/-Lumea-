@@ -64,7 +64,7 @@ class TestEndpoints(unittest.TestCase):
         cls.prediccion_original = servidor.predecir_alimento
         cls.cliente.post("/perfil", json={
             "nombre": "Prueba confirmación", "email": EMAIL_PRUEBA, "edad": 15, "genero": "otro",
-            "peso": 55, "altura": 160, "objetivo": "comer_balanceado", "contraseña": "prueba-123",
+            "objetivo": "comer_balanceado", "contraseña": "prueba-123",
         })
 
     @classmethod

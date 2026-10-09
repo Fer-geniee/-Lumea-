@@ -173,6 +173,7 @@ class BaseDatos:
             # una). Con NOT NULL, MySQL no dejaba crear ni editar perfiles.
             self._asegurar_columna(cursor, "perfil", "password_hash", "password_hash CHAR(60) NULL AFTER objetivo")
             self._permitir_null_en_password_hash(cursor)
+            self._permitir_null_en_peso_y_altura(cursor)
             self.conexion.commit()
 
         except Error as e:
@@ -198,6 +199,22 @@ class BaseDatos:
         if not existe:
             cursor.execute(f"ALTER TABLE {tabla} ADD COLUMN {definicion_sql}")
             print(f"Columna agregada: {tabla}.{columna}")
+
+    def _permitir_null_en_peso_y_altura(self, cursor):
+        """peso y altura ya no se piden: si alguna base los creó NOT NULL,
+        se cambian para aceptar NULL (idempotente; no borra las columnas)."""
+        for columna, tipo in (("peso", "FLOAT"), ("altura", "INT")):
+            cursor.execute(
+                """
+                SELECT IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = 'lumea_db' AND TABLE_NAME = 'perfil' AND COLUMN_NAME = %s
+                """,
+                (columna,),
+            )
+            fila = cursor.fetchone()
+            if fila and fila[0] == "NO":
+                cursor.execute(f"ALTER TABLE perfil MODIFY COLUMN {columna} {tipo} NULL")
+                print(f"Columna reparada: perfil.{columna} ahora permite NULL")
 
     def _permitir_null_en_password_hash(self, cursor):
         """Repara las bases donde password_hash quedó como NOT NULL (la primera
@@ -295,12 +312,13 @@ class BaseDatos:
     # ================= MÓDULO PERFIL =================
     # Valores válidos para 'objetivo': metas de HÁBITO, deliberadamente NO de
     # peso corporal (audiencia adolescente). Ver DEFENSA_TECNICA_LUMEA.md sección 5.
-    OBJETIVOS_VALIDOS = {
-        "comer_balanceado", "tomar_agua", "moverse_mas",
-        "dormir_mejor", "conocer_lo_que_como",
-    }
+    # Son los mismos 'value' que envía crear-cuenta.html. Lumea no promete agua,
+    # sueño ni ejercicio (no los mide), así que esos objetivos salieron el 9 oct.
+    # Un perfil viejo con otro objetivo se sigue LEYENDO sin error: solo se valida
+    # al guardar.
+    OBJETIVOS_VALIDOS = {"comer_balanceado", "conocer_lo_que_como"}
 
-    def guardar_perfil(self, nombre, email, edad, genero, peso, altura, objetivo=None, contraseña=None):
+    def guardar_perfil(self, nombre, email, edad, genero, objetivo=None, contraseña=None):
         """Crea el perfil si el correo es nuevo, o actualiza el existente si ya
         existe -- 'email' es el identificador único de cada usuario (ver
         DEFENSA_TECNICA_LUMEA.md sección 5: perfiles múltiples con contraseña.
@@ -309,7 +327,11 @@ class BaseDatos:
         La contraseña llega ya validada desde app.py (largo mínimo y máximo).
         El hash solo se guarda si el perfil todavía no tenía uno: POST /perfil
         no puede CAMBIAR una contraseña, porque identifica a la persona solo
-        por el correo y cualquiera podría reemplazar la de otro."""
+        por el correo y cualquiera podría reemplazar la de otro.
+
+        Peso y altura ya no se piden (9 oct): las columnas siguen en la tabla
+        por los perfiles viejos, pero aquí se guardan siempre como NULL, así
+        que volver a guardar un perfil viejo también borra esos datos."""
         if not self.conexion or not self.conexion.is_connected():
             return False
         if objetivo is not None and objetivo not in self.OBJETIVOS_VALIDOS:
@@ -323,13 +345,13 @@ class BaseDatos:
                 hash_contraseña = bcrypt.hashpw(contraseña.encode('utf-8'), salt).decode('utf-8')
             sql = '''
                 INSERT INTO perfil (nombre, email, edad, genero, peso, altura, objetivo, password_hash)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, NULL, NULL, %s, %s)
                 ON DUPLICATE KEY UPDATE
                     nombre = VALUES(nombre), edad = VALUES(edad), genero = VALUES(genero),
-                    peso = VALUES(peso), altura = VALUES(altura), objetivo = VALUES(objetivo), 
+                    peso = NULL, altura = NULL, objetivo = VALUES(objetivo), 
                     password_hash = IFNULL(password_hash, VALUES(password_hash))  -- si ya tenía hash, se conserva; solo se pone si no tenía
             '''
-            cursor.execute(sql, (nombre, email, edad, genero, peso, altura, objetivo, hash_contraseña))
+            cursor.execute(sql, (nombre, email, edad, genero, objetivo, hash_contraseña))
             self.conexion.commit()
             return True
         except Error as e:
@@ -345,8 +367,11 @@ class BaseDatos:
         try:
             cursor.execute('SELECT * FROM perfil WHERE email = %s', (email,))
             perfil = cursor.fetchone()
-            if perfil and "password_hash" in perfil:
-                del perfil["password_hash"]  # No enviar el hash de contraseña al cliente
+            if perfil:
+                # No enviar el hash al cliente, ni peso y altura (Lumea ya no
+                # los pide; los perfiles viejos aún pueden tenerlos guardados).
+                for campo in ("password_hash", "peso", "altura"):
+                    perfil.pop(campo, None)
             return perfil
 
         except Error as e:

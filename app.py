@@ -392,7 +392,8 @@ def guardar_perfil():
         # 503 = el servicio no está disponible: no es culpa de lo que envió el usuario.
         return jsonify({'error': 'Sin conexión con la base de datos. ¿MySQL está encendido?'}), 503
     datos = request.get_json(silent=True) or {}
-    requeridos = ['nombre', 'email', 'edad', 'genero', 'peso', 'altura']
+    # peso y altura ya no se piden (9 oct): si llegan, se ignoran.
+    requeridos = ['nombre', 'email', 'edad', 'genero']
     faltantes = [campo for campo in requeridos if campo not in datos]
     if faltantes:
         return jsonify({'error': f'Faltan campos: {", ".join(faltantes)}'}), 400
@@ -413,7 +414,7 @@ def guardar_perfil():
 
     exito = db.guardar_perfil(
         datos['nombre'], datos['email'], datos['edad'], datos['genero'],
-        datos['peso'], datos['altura'], datos.get('objetivo'), contraseña,
+        datos.get('objetivo'), contraseña,
     )
     if exito:
         return jsonify({'success': True, 'mensaje': 'Perfil guardado.'}), 200
