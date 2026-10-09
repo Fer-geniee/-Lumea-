@@ -1,7 +1,7 @@
 # Lumea · Backend
 
 API REST en Flask que recibe la foto de un alimento, la reconoce con dos redes
-MobileNetV2 (transfer learning), consulta su información nutricional en MySQL y
+MobileNetV2 (transfer learning), entrenadas con dos datasets (uno regional y food101), consulta su información nutricional en MySQL y
 responde en JSON. También maneja perfiles con login (bcrypt), estado de ánimo,
 historial y gamificación.
 
