@@ -266,6 +266,24 @@ def probar_avatar_capas(nivel):
                        post("/avatar/rasgos", {"email": EMAIL_PRUEBA, "rasgos": {"beardVariant": "goatee", "cheeksVariant": None}}), mostrar=False)
     rasgos = cuerpo.get("persona", {}).get("rasgos", {})
     comprobar("lo nuevo se mezcla con lo guardado", rasgos.get("topVariant") == "braids" and rasgos.get("beardVariant") == "goatee")
+    cuerpo = verificar("POST /avatar/rasgos (cejas, nariz, pantalón, zapatos y fondo)",
+                       post("/avatar/rasgos", {"email": EMAIL_PRUEBA, "rasgos": {
+                           "eyebrowsVariant": "angry", "noseVariant": "wide", "pantsColor": "6b4f3a",
+                           "shoesColor": "d6336c", "backgroundColor": "ffd5dc"}}), mostrar=False)
+    rasgos = cuerpo.get("persona", {}).get("rasgos", {})
+    comprobar("los rasgos nuevos se guardan y no borran los anteriores",
+              rasgos.get("eyebrowsVariant") == "angry" and rasgos.get("backgroundColor") == "ffd5dc" and rasgos.get("topVariant") == "braids")
+    cuerpo = verificar("POST /avatar/rasgos (sin fondo, null)", post("/avatar/rasgos", {"email": EMAIL_PRUEBA, "rasgos": {"backgroundColor": None}}), mostrar=False)
+    comprobar("el fondo vuelve a null", cuerpo.get("persona", {}).get("rasgos", {}).get("backgroundColor") is None)
+    verificar("POST /avatar/rasgos con un color de pantalón que no existe -> 400",
+              post("/avatar/rasgos", {"email": EMAIL_PRUEBA, "rasgos": {"pantsColor": "40c057"}}), esperado=400)
+    verificar("POST /avatar/rasgos con null en las cejas -> 400",
+              post("/avatar/rasgos", {"email": EMAIL_PRUEBA, "rasgos": {"eyebrowsVariant": None}}), esperado=400)
+    cuerpo = get("/avatar", email=EMAIL_PRUEBA).json()
+    comprobar("rasgos_disponibles trae las claves nuevas, con «Sin fondo» solo en el fondo",
+              all(k in cuerpo.get("rasgos_disponibles", {}) for k in ("eyebrowsVariant", "noseVariant", "pantsColor", "shoesColor", "backgroundColor"))
+              and cuerpo["rasgos_disponibles"]["backgroundColor"].get("ninguno") == "Sin fondo"
+              and "ninguno" not in cuerpo["rasgos_disponibles"]["pantsColor"])
     cuerpo = verificar("GET /avatar recuerda los rasgos", get("/avatar", email=EMAIL_PRUEBA), mostrar=False)
     comprobar("los rasgos quedaron guardados", cuerpo.get("persona", {}).get("rasgos", {}).get("skinColor") == "6a3d1f")
     for nombre, rasgos_malos in (("valor que no existe", {"topVariant": "sombrero"}), ("gorra como peinado", {"topVariant": "cap"}),

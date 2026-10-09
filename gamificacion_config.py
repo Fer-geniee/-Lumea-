@@ -306,12 +306,33 @@ RASGOS = {
         "e64980": "Rosado", "f76707": "Naranja", "fab005": "Amarillo", "40c057": "Verde",
         "12b886": "Turquesa", "228be6": "Azul", "4c6ef5": "Añil", "7950f2": "Morado",
         "e8590c": "Mandarina", "495057": "Gris"}},
+    # Rasgos agregados el 9 oct (B8). Todos libres, igual que los de arriba.
+    "eyebrowsVariant": {"nombre": "Cejas", "opciones": {
+        "flat": "Rectas", "raised": "Levantadas", "angry": "Fruncidas", "soft": "Suaves"}},
+    "noseVariant": {"nombre": "Nariz", "opciones": {
+        "block": "Cuadrada", "wide": "Ancha", "small": "Pequeña", "tall": "Alargada"}},
+    # pantsColor tiene `notEqualTo: ["shirt"]` en voxel-art.json, pero DiceBear solo lo aplica
+    # cuando ELIGE el color al azar: si el pantalón y la camiseta se piden del mismo color
+    # (hoy solo coincide el gris 495057), los dibuja iguales sin cambiar ninguno (probado
+    # con @dicebear/core 10.7.0). Por eso la API NO lo rechaza.
+    "pantsColor": {"nombre": "Color del pantalón", "opciones": {
+        "3b5b8c": "Azul jean", "2f4160": "Azul noche", "4a4e69": "Gris violeta",
+        "6b4f3a": "Café", "495057": "Gris oscuro", "7a86a8": "Azul grisáceo"}},
+    "shoesColor": {"nombre": "Color de los zapatos", "opciones": {
+        "f1f3f5": "Blancos", "343a40": "Negros", "d6336c": "Rosados",
+        "1971c2": "Azules", "f08c00": "Naranjas", "6741d9": "Morados"}},
+    # Sin fondo = null (el frontend lo dibuja transparente).
+    "backgroundColor": {"nombre": "Fondo", "ninguno": "Sin fondo", "opciones": {
+        "b6e3f4": "Celeste", "c0aede": "Lila", "d1d4f9": "Lavanda",
+        "ffd5dc": "Rosa claro", "ffdfbf": "Durazno"}},
 }
 
 # Una persona neutra, para quien todavía no ha elegido nada.
 RASGOS_POR_DEFECTO = {
     "skinColor": "c99062", "topVariant": "short", "hairColor": "3b2f2f", "eyesVariant": "open",
     "mouthVariant": "smile", "cheeksVariant": None, "beardVariant": None, "shirtColor": "40c057",
+    "eyebrowsVariant": "flat", "noseVariant": "small", "pantsColor": "3b5b8c", "shoesColor": "343a40",
+    "backgroundColor": None,
 }
 
 # ----- EN DESUSO (9 oct): las capas PNG de la diseñadora -----

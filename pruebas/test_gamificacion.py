@@ -187,12 +187,23 @@ class TestConfigCoherente(unittest.TestCase):
         for clave, valor in config.RASGOS_POR_DEFECTO.items():
             with self.subTest(rasgo=clave):
                 self.assertTrue(g.rasgo_valido(clave, valor))
-        self.assertEqual({k for k, r in config.RASGOS.items() if "ninguno" in r}, {"cheeksVariant", "beardVariant"})
+        self.assertEqual({k for k, r in config.RASGOS.items() if "ninguno" in r}, {"cheeksVariant", "beardVariant", "backgroundColor"})
         self.assertEqual(len(config.RASGOS["skinColor"]["opciones"]), 8)
         self.assertEqual(len(config.RASGOS["hairColor"]["opciones"]), 12)
         self.assertEqual(len(config.RASGOS["eyesVariant"]["opciones"]), 8)
         self.assertEqual(len(config.RASGOS["mouthVariant"]["opciones"]), 10)
         self.assertEqual(len(config.RASGOS["shirtColor"]["opciones"]), 10)
+        # Rasgos de B8 (9 oct).
+        self.assertEqual(list(config.RASGOS["eyebrowsVariant"]["opciones"]), ["flat", "raised", "angry", "soft"])
+        self.assertEqual(config.RASGOS["eyebrowsVariant"]["opciones"]["angry"], "Fruncidas")   # nombre amable
+        self.assertEqual(list(config.RASGOS["noseVariant"]["opciones"]), ["block", "wide", "small", "tall"])
+        self.assertEqual(len(config.RASGOS["pantsColor"]["opciones"]), 6)
+        self.assertEqual(len(config.RASGOS["shoesColor"]["opciones"]), 6)
+        self.assertEqual(len(config.RASGOS["backgroundColor"]["opciones"]), 5)
+        self.assertEqual(config.RASGOS["backgroundColor"]["ninguno"], "Sin fondo")
+        self.assertIsNone(config.RASGOS_POR_DEFECTO["backgroundColor"])
+        for clave in ("eyebrowsVariant", "noseVariant", "pantsColor", "shoesColor", "backgroundColor"):
+            self.assertIn(clave, config.RASGOS_POR_DEFECTO)
         self.assertEqual(list(config.RASGOS["skinColor"]["opciones"].values()), [f"Tono {n}" for n in range(1, 9)])
         # Las gorras y los gorros reemplazan el peinado en voxel-art: no son peinados.
         for no_peinado in ("cap", "beanie", "animalEars", "bunnyEars"):
@@ -500,6 +511,24 @@ class TestAvatarPorCapas(unittest.TestCase):
 
     def test_validar_rasgos(self):
         self.assertIsNone(g.validar_rasgos({"topVariant": "braids", "cheeksVariant": None, "beardVariant": None}))
+
+    def test_rasgos_nuevos_validos_e_invalidos(self):
+        validos = {"eyebrowsVariant": "angry", "noseVariant": "tall", "pantsColor": "6b4f3a",
+                   "shoesColor": "d6336c", "backgroundColor": "ffd5dc"}
+        self.assertIsNone(g.validar_rasgos(validos))
+        self.assertIsNone(g.validar_rasgos({"backgroundColor": None}))          # sin fondo
+        for malo in ({"eyebrowsVariant": "bushy"}, {"eyebrowsVariant": None}, {"noseVariant": None},
+                     {"pantsColor": "40c057"},                                 # color de camiseta, no de pantalón
+                     {"pantsColor": None}, {"shoesColor": None}, {"shoesColor": "#343a40"},
+                     {"backgroundColor": "ffffff00"}, {"backgroundColor": "transparent"}):
+            with self.subTest(rasgos=malo):
+                self.assertIsNotNone(g.validar_rasgos(malo))
+
+    def test_pantalon_y_camiseta_del_mismo_color_se_permiten(self):
+        # voxel-art.json tiene notEqualTo ["shirt"] para el pantalón, pero DiceBear solo lo aplica
+        # al elegir al azar: pedidos los dos del mismo gris, los dibuja iguales (probado con
+        # @dicebear/core 10.7.0). La API no lo rechaza.
+        self.assertIsNone(g.validar_rasgos({"shirtColor": "495057", "pantsColor": "495057"}))
         malos = [
             {}, None, [], "braids",
             {"colorDeLaLuna": "x"},                    # clave que no existe
