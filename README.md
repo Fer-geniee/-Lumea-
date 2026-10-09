@@ -142,12 +142,10 @@ las clases del modelo tengan fila de nutrición, y `python3 herramientas/verific
 
 ## Créditos
 
-[Isabella: confirma los roles]
-
-- **Isabella**: proyecto Lumea, decisiones de producto y de contenido, revisión de todo lo que se entrega.
-- **Sara**: frontend (repositorio aparte).
-- **Laura**: diseño de pantallas y del avatar en Figma.
-- **Claude Code** (Anthropic): asistente de programación del backend, bajo la dirección de Isabella.
+- **Isabella Fernanda Obando Ordóñez**: líder técnica y de producto, arquitecta de software. Backend (Python, Flask, MySQL), modelos de IA y datos nutricionales, gamificación «Camino del cuidado», consejos y dirección del rediseño.
+- **Sara Jiménez**: desarrolladora frontend y diseñadora UI (páginas, estilos y primera interfaz web).
+- **Laura Narváez**: diseñadora UX/UI y redactora de contenidos (diseños en Figma, logo, paleta original, textos de la app, términos y condiciones y «Conócenos»).
+- **Claude (Anthropic)**: consultora (planeación, revisión y acompañamiento). **Claude Code**: asistente de programación bajo la dirección de Isabella; cada aporte está registrado en la bitácora de IA.
 
 ## Uso de IA
 
