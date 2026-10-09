@@ -457,6 +457,15 @@ class TestAvatarPorCapas(unittest.TestCase):
             for o in lista:
                 self.assertTrue({"id", "nombre", "parametros", "nivel_requerido", "desbloqueado"} <= set(o))
 
+    def test_el_servidor_manda_las_opciones_en_el_orden_del_config(self):
+        # Flask ordenaba las claves alfabéticamente: "Tono 8" salía antes que "Tono 1".
+        import app as servidor
+        with servidor.app.app_context():
+            texto = servidor.jsonify(g.rasgos_disponibles()).get_data(as_text=True)
+        self.assertLess(texto.index("Tono 1"), texto.index("Tono 2"))
+        self.assertLess(texto.index("Tono 2"), texto.index("Tono 8"))
+        self.assertLess(texto.index("Corto"), texto.index("De puntas"))
+
     def test_lo_puesto_aparece_en_persona_y_en_objetos(self):
         p = progreso_con(config.NIVELES[-1], HOY, ropa_id="overol", accesorio_id="gafas_sol")
         estado = g.estado_avatar_capas(p)

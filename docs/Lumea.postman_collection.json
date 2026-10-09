@@ -53,10 +53,10 @@
                 "perfil"
               ]
             },
-            "description": "Crea la cuenta. \"contraseña\" es obligatoria para una cuenta nueva (mínimo 6 caracteres); el backend guarda solo su hash de bcrypt. 409 si el correo ya tiene cuenta. Mandar el perfil SIN contraseña sirve para editar los datos de una cuenta que ya existe (nunca cambia la contraseña).",
+            "description": "Crea la cuenta. \"contraseña\" es obligatoria para una cuenta nueva (mínimo 6 caracteres); el backend guarda solo su hash de bcrypt. Desde el 9 oct NO se piden peso ni altura (si llegan, se ignoran). \"edad\" debe ser un entero entre 11 y 120 (400 si no); si es menor de 18, \"acudiente_sabe\" debe ser true (400 con «Para menores de 18 años, tu madre, padre o acudiente debe saber que usas Lumea.»). \"objetivo\": comer_balanceado o conocer_lo_que_como. 409 si el correo ya tiene cuenta. Mandar el perfil SIN contraseña sirve para editar los datos de una cuenta que ya existe (nunca cambia la contraseña).",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"nombre\": \"Ana\",\n  \"email\": \"{{email}}\",\n  \"edad\": 15,\n  \"genero\": \"femenino\",\n  \"peso\": 50,\n  \"altura\": 158,\n  \"objetivo\": \"comer_balanceado\",\n  \"contraseña\": \"{{contrasena}}\"\n}",
+              "raw": "{\n  \"nombre\": \"Ana\",\n  \"email\": \"{{email}}\",\n  \"edad\": 15,\n  \"genero\": \"femenino\",\n  \"acudiente_sabe\": true,\n  \"objetivo\": \"comer_balanceado\",\n  \"contraseña\": \"{{contrasena}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -84,10 +84,10 @@
                     "perfil"
                   ]
                 },
-                "description": "Crea la cuenta. \"contraseña\" es obligatoria para una cuenta nueva (mínimo 6 caracteres); el backend guarda solo su hash de bcrypt. 409 si el correo ya tiene cuenta. Mandar el perfil SIN contraseña sirve para editar los datos de una cuenta que ya existe (nunca cambia la contraseña).",
+                "description": "Crea la cuenta. \"contraseña\" es obligatoria para una cuenta nueva (mínimo 6 caracteres); el backend guarda solo su hash de bcrypt. Desde el 9 oct NO se piden peso ni altura (si llegan, se ignoran). \"edad\" debe ser un entero entre 11 y 120 (400 si no); si es menor de 18, \"acudiente_sabe\" debe ser true (400 con «Para menores de 18 años, tu madre, padre o acudiente debe saber que usas Lumea.»). \"objetivo\": comer_balanceado o conocer_lo_que_como. 409 si el correo ya tiene cuenta. Mandar el perfil SIN contraseña sirve para editar los datos de una cuenta que ya existe (nunca cambia la contraseña).",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"nombre\": \"Ana\",\n  \"email\": \"{{email}}\",\n  \"edad\": 15,\n  \"genero\": \"femenino\",\n  \"peso\": 50,\n  \"altura\": 158,\n  \"objetivo\": \"comer_balanceado\",\n  \"contraseña\": \"{{contrasena}}\"\n}",
+                  "raw": "{\n  \"nombre\": \"Ana\",\n  \"email\": \"{{email}}\",\n  \"edad\": 15,\n  \"genero\": \"femenino\",\n  \"acudiente_sabe\": true,\n  \"objetivo\": \"comer_balanceado\",\n  \"contraseña\": \"{{contrasena}}\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -125,10 +125,10 @@
                     "perfil"
                   ]
                 },
-                "description": "Crea la cuenta. \"contraseña\" es obligatoria para una cuenta nueva (mínimo 6 caracteres); el backend guarda solo su hash de bcrypt. 409 si el correo ya tiene cuenta. Mandar el perfil SIN contraseña sirve para editar los datos de una cuenta que ya existe (nunca cambia la contraseña).",
+                "description": "Crea la cuenta. \"contraseña\" es obligatoria para una cuenta nueva (mínimo 6 caracteres); el backend guarda solo su hash de bcrypt. Desde el 9 oct NO se piden peso ni altura (si llegan, se ignoran). \"edad\" debe ser un entero entre 11 y 120 (400 si no); si es menor de 18, \"acudiente_sabe\" debe ser true (400 con «Para menores de 18 años, tu madre, padre o acudiente debe saber que usas Lumea.»). \"objetivo\": comer_balanceado o conocer_lo_que_como. 409 si el correo ya tiene cuenta. Mandar el perfil SIN contraseña sirve para editar los datos de una cuenta que ya existe (nunca cambia la contraseña).",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"nombre\": \"Ana\",\n  \"email\": \"{{email}}\",\n  \"edad\": 15,\n  \"genero\": \"femenino\",\n  \"peso\": 50,\n  \"altura\": 158,\n  \"objetivo\": \"comer_balanceado\",\n  \"contraseña\": \"{{contrasena}}\"\n}",
+                  "raw": "{\n  \"nombre\": \"Ana\",\n  \"email\": \"{{email}}\",\n  \"edad\": 15,\n  \"genero\": \"femenino\",\n  \"acudiente_sabe\": true,\n  \"objetivo\": \"comer_balanceado\",\n  \"contraseña\": \"{{contrasena}}\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -166,10 +166,10 @@
                     "perfil"
                   ]
                 },
-                "description": "Crea la cuenta. \"contraseña\" es obligatoria para una cuenta nueva (mínimo 6 caracteres); el backend guarda solo su hash de bcrypt. 409 si el correo ya tiene cuenta. Mandar el perfil SIN contraseña sirve para editar los datos de una cuenta que ya existe (nunca cambia la contraseña).",
+                "description": "Crea la cuenta. \"contraseña\" es obligatoria para una cuenta nueva (mínimo 6 caracteres); el backend guarda solo su hash de bcrypt. Desde el 9 oct NO se piden peso ni altura (si llegan, se ignoran). \"edad\" debe ser un entero entre 11 y 120 (400 si no); si es menor de 18, \"acudiente_sabe\" debe ser true (400 con «Para menores de 18 años, tu madre, padre o acudiente debe saber que usas Lumea.»). \"objetivo\": comer_balanceado o conocer_lo_que_como. 409 si el correo ya tiene cuenta. Mandar el perfil SIN contraseña sirve para editar los datos de una cuenta que ya existe (nunca cambia la contraseña).",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"nombre\": \"Ana\",\n  \"email\": \"{{email}}\",\n  \"edad\": 15,\n  \"genero\": \"femenino\",\n  \"peso\": 50,\n  \"altura\": 158,\n  \"objetivo\": \"comer_balanceado\",\n  \"contraseña\": \"{{contrasena}}\"\n}",
+                  "raw": "{\n  \"nombre\": \"Ana\",\n  \"email\": \"{{email}}\",\n  \"edad\": 15,\n  \"genero\": \"femenino\",\n  \"acudiente_sabe\": true,\n  \"objetivo\": \"comer_balanceado\",\n  \"contraseña\": \"{{contrasena}}\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -432,7 +432,7 @@
                 }
               ]
             },
-            "description": "404 si el correo no tiene perfil."
+            "description": "404 sin perfil. Ya no devuelve peso ni altura; sí acudiente_sabe y acudiente_fecha."
           },
           "response": [
             {
@@ -466,7 +466,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"perfil\": {\n    \"altura\": 158,\n    \"edad\": 15,\n    \"email\": \"demo.postman@lumea.test\",\n    \"genero\": \"femenino\",\n    \"id\": 21,\n    \"nombre\": \"Ana\",\n    \"objetivo\": \"comer_balanceado\",\n    \"peso\": 52.0\n  },\n  \"success\": true\n}"
+              "body": "{\n  \"success\": true,\n  \"perfil\": {\n    \"id\": 237,\n    \"nombre\": \"Ana\",\n    \"email\": \"demo.postman@lumea.test\",\n    \"edad\": 15,\n    \"genero\": \"femenino\",\n    \"objetivo\": \"comer_balanceado\",\n    \"acudiente_sabe\": 1,\n    \"acudiente_fecha\": \"Fri, 09 Oct 2026 09:48:57 GMT\"\n  }\n}"
             }
           ]
         }
@@ -1238,7 +1238,7 @@
                 }
               ]
             },
-            "description": "404 sin perfil. Desde el 5 oct cada registro trae es_fruta (booleano)."
+            "description": "404 sin perfil. Cada registro trae es_fruta (5 oct) y, desde el 9 oct, grupo (clave del grupo del plato o null) y sellos ([{sello, dato, idea}] o [])."
           },
           "response": [
             {
@@ -1275,7 +1275,7 @@
               "body": "{\n  \"cantidad_registros\": 0,\n  \"historial\": [],\n  \"success\": true\n}"
             },
             {
-              "name": "Con registros (cada uno con sellos_advertencia)",
+              "name": "Con registros (cada uno con sellos_advertencia, grupo y sellos)",
               "originalRequest": {
                 "method": "GET",
                 "header": [],
@@ -1294,7 +1294,7 @@
                     }
                   ]
                 },
-                "description": "404 sin perfil."
+                "description": "404 sin perfil. Cada registro trae es_fruta (5 oct) y, desde el 9 oct, grupo (clave del grupo del plato o null) y sellos ([{sello, dato, idea}] o [])."
               },
               "status": "OK",
               "code": 200,
@@ -1305,7 +1305,64 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"cantidad_registros\": 3,\n  \"historial\": [\n    {\n      \"alimento_codigo\": \"cocacola_original\",\n      \"alimento_detectado\": \"Coca-Cola Original\",\n      \"balanceado\": 0,\n      \"calorias_aprox\": 30,\n      \"certeza_ia\": 100.0,\n      \"fecha\": \"Sun, 27 Sep 2026 00:00:00 GMT\",\n      \"id\": 59,\n      \"sellos_advertencia\": [\n        \"azucares\",\n        \"edulcorantes\"\n      ],\n      \"usuario_id\": 21\n    },\n    {\n      \"alimento_codigo\": \"banano\",\n      \"alimento_detectado\": \"Banano\",\n      \"balanceado\": 1,\n      \"calorias_aprox\": 97,\n      \"certeza_ia\": 100.0,\n      \"fecha\": \"Sun, 27 Sep 2026 00:00:00 GMT\",\n      \"id\": 58,\n      \"sellos_advertencia\": [],\n      \"usuario_id\": 21\n    },\n    {\n      \"alimento_codigo\": \"arepa\",\n      \"alimento_detectado\": \"Arepa paisa (de maíz precocido, con sal)\",\n      \"balanceado\": 1,\n      \"calorias_aprox\": 163,\n      \"certeza_ia\": 99.01,\n      \"fecha\": \"Sun, 27 Sep 2026 00:00:00 GMT\",\n      \"id\": 57,\n      \"sellos_advertencia\": [],\n      \"usuario_id\": 21\n    }\n  ],\n  \"success\": true\n}"
+              "body": "{\n  \"success\": true,\n  \"cantidad_registros\": 2,\n  \"historial\": [\n    {\n      \"id\": 68,\n      \"usuario_id\": 1,\n      \"fecha\": \"Fri, 09 Oct 2026 00:00:00 GMT\",\n      \"alimento_codigo\": \"cocacola_original\",\n      \"alimento_detectado\": \"Coca-Cola\",\n      \"certeza_ia\": 90.0,\n      \"calorias_aprox\": 100,\n      \"balanceado\": 0,\n      \"sellos_advertencia\": [\n        \"azucares\",\n        \"edulcorantes\"\n      ],\n      \"es_fruta\": false,\n      \"grupo\": \"azucares\",\n      \"sellos\": [\n        {\n          \"sello\": \"azucares\",\n          \"dato\": \"Tiene azúcar añadida alta. La OMS sugiere que los azúcares libres sean menos del 10 % de la energía del día: unos 50 g para alguien que come 2.000 kcal.\",\n          \"idea\": \"Si otro día quieres algo dulce, una fruta entera trae su propio azúcar junto con fibra y agua.\"\n        },\n        {\n          \"sello\": \"edulcorantes\",\n          \"dato\": \"Contiene edulcorantes. En Colombia el empaque debe advertirlo, y no se recomienda para niños.\",\n          \"idea\": \"Si quieres algo para tomar, el agua con fruta picada es otra opción.\"\n        }\n      ]\n    },\n    {\n      \"id\": 67,\n      \"usuario_id\": 1,\n      \"fecha\": \"Fri, 09 Oct 2026 00:00:00 GMT\",\n      \"alimento_codigo\": \"arepa\",\n      \"alimento_detectado\": \"Arepa\",\n      \"certeza_ia\": 90.0,\n      \"calorias_aprox\": 100,\n      \"balanceado\": 1,\n      \"sellos_advertencia\": [],\n      \"es_fruta\": false,\n      \"grupo\": \"cereales\",\n      \"sellos\": []\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Dato del día",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/dato-del-dia",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "dato-del-dia"
+              ]
+            },
+            "description": "El mismo dato curioso para todas las personas durante un día de Bogotá. Sin parámetros ni datos personales. 404 sin datos; 503 sin base de datos."
+          },
+          "response": [
+            {
+              "name": "Dato del día",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/dato-del-dia",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "dato-del-dia"
+                  ]
+                },
+                "description": "El mismo dato curioso para todas las personas durante un día de Bogotá. Sin parámetros ni datos personales. 404 sin datos; 503 sin base de datos."
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"fecha\": \"2026-10-09\",\n  \"alimento_codigo\": \"lobster_roll_sandwich\",\n  \"nombre\": \"Sándwich de langosta\",\n  \"dato_curioso\": \"El sándwich de langosta es un plato típico de Nueva Inglaterra (EE.UU.) que se sirve tradicionalmente en un pan alargado tostado por los lados, no por arriba.\"\n}"
             }
           ]
         },
@@ -1653,7 +1710,7 @@
           ]
         },
         {
-          "name": "Avatar por capas (ver)",
+          "name": "Avatar (ver)",
           "event": [
             {
               "listen": "test",
@@ -1683,11 +1740,11 @@
                 }
               ]
             },
-            "description": "Avatar por capas de Figma: base, lo que tiene puesto, capas en orden de apilado (la primera abajo) y cada prenda/accesorio con desbloqueado, nivel_requerido y niveles_faltantes. Sin imágenes responde igual (imagen_lista: false). Ver GUIA_FRONTEND_SARA.md, pantalla 8."
+            "description": "La persona voxel-art: persona.rasgos y persona.puesto (lo que lleva puesto, con sus parametros), rasgos_disponibles (nombres en español, en orden), y objetos (el armario: parametros, nivel_requerido, desbloqueado, niveles_faltantes y puesto). base, bases, capas, imagenes_listas e imagen_lista están EN DESUSO. Ver CONTRATO_GAMIFICACION.md."
           },
           "response": [
             {
-              "name": "Nivel 2, sin imágenes todavía",
+              "name": "Etapa 4, con el overol puesto",
               "originalRequest": {
                 "method": "GET",
                 "header": [],
@@ -1706,7 +1763,7 @@
                     }
                   ]
                 },
-                "description": "Avatar por capas de Figma: base, lo que tiene puesto, capas en orden de apilado (la primera abajo) y cada prenda/accesorio con desbloqueado, nivel_requerido y niveles_faltantes. Sin imágenes responde igual (imagen_lista: false). Ver GUIA_FRONTEND_SARA.md, pantalla 8."
+                "description": "La persona voxel-art: persona.rasgos y persona.puesto (lo que lleva puesto, con sus parametros), rasgos_disponibles (nombres en español, en orden), y objetos (el armario: parametros, nivel_requerido, desbloqueado, niveles_faltantes y puesto). base, bases, capas, imagenes_listas e imagen_lista están EN DESUSO. Ver CONTRATO_GAMIFICACION.md."
               },
               "status": "OK",
               "code": 200,
@@ -1717,12 +1774,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"base\": {\n    \"archivo\": \"base_1.png\",\n    \"id\": \"base_1\",\n    \"imagen_lista\": false,\n    \"nombre\": \"Base 1\",\n    \"url\": \"http://127.0.0.1:5002/static/avatar/base_1.png\"\n  },\n  \"bases\": [\n    {\n      \"archivo\": \"base_1.png\",\n      \"id\": \"base_1\",\n      \"imagen_lista\": false,\n      \"nombre\": \"Base 1\",\n      \"seleccionada\": true,\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_1.png\"\n    },\n    {\n      \"archivo\": \"base_2.png\",\n      \"id\": \"base_2\",\n      \"imagen_lista\": false,\n      \"nombre\": \"Base 2\",\n      \"seleccionada\": false,\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_2.png\"\n    }\n  ],\n  \"capas\": [\n    {\n      \"archivo\": \"base_1.png\",\n      \"id\": \"base_1\",\n      \"imagen_lista\": false,\n      \"tipo\": \"base\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_1.png\"\n    }\n  ],\n  \"imagenes_listas\": false,\n  \"nivel_maximo\": 2,\n  \"objetos\": {\n    \"accesorio\": [\n      {\n        \"archivo\": \"accesorio_gafas.png\",\n        \"desbloqueado\": true,\n        \"id\": \"gafas\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 2,\n        \"niveles_faltantes\": 0,\n        \"nombre\": \"Gafas\",\n        \"puesto\": false,\n        \"tipo\": \"accesorio\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_gafas.png\"\n      },\n      {\n        \"archivo\": \"accesorio_audifonos.png\",\n        \"desbloqueado\": false,\n        \"id\": \"audifonos\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 4,\n        \"niveles_faltantes\": 2,\n        \"nombre\": \"Audífonos\",\n        \"puesto\": false,\n        \"tipo\": \"accesorio\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_audifonos.png\"\n      },\n      {\n        \"archivo\": \"accesorio_sombrero_vueltiao.png\",\n        \"desbloqueado\": false,\n        \"id\": \"sombrero_vueltiao\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 8,\n        \"niveles_faltantes\": 6,\n        \"nombre\": \"Sombrero vueltiao\",\n        \"puesto\": false,\n        \"tipo\": \"accesorio\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_sombrero_vueltiao.png\"\n      }\n    ],\n    \"ropa\": [\n      {\n        \"archivo\": \"ropa_buzo_verde.png\",\n        \"desbloqueado\": true,\n        \"id\": \"buzo_verde\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 1,\n        \"niveles_faltantes\": 0,\n        \"nombre\": \"Buzo verde\",\n        \"puesto\": false,\n        \"tipo\": \"ropa\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_buzo_verde.png\"\n      },\n      {\n        \"archivo\": \"ropa_camiseta_lumea.png\",\n        \"desbloqueado\": false,\n        \"id\": \"camiseta_lumea\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 3,\n        \"niveles_faltantes\": 1,\n        \"nombre\": \"Camiseta Lumea\",\n        \"puesto\": false,\n        \"tipo\": \"ropa\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_camiseta_lumea.png\"\n      },\n      {\n        \"archivo\": \"ropa_ruana.png\",\n        \"desbloqueado\": false,\n        \"id\": \"ruana\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 6,\n        \"niveles_faltantes\": 4,\n        \"nombre\": \"Ruana\",\n        \"puesto\": false,\n        \"tipo\": \"ropa\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_ruana.png\"\n      }\n    ]\n  },\n  \"puesto\": {\n    \"accesorio\": null,\n    \"ropa\": null\n  },\n  \"respaldo_dicebear\": {\n    \"id\": \"sol\",\n    \"nombre\": \"Sol\",\n    \"url\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural\"\n  },\n  \"success\": true\n}"
+              "body": "{\n  \"success\": true,\n  \"nivel_maximo\": 4,\n  \"persona\": {\n    \"estilo\": \"voxel-art\",\n    \"rasgos\": {\n      \"skinColor\": \"b07347\",\n      \"topVariant\": \"braids\",\n      \"hairColor\": \"3b2f2f\",\n      \"eyesVariant\": \"open\",\n      \"mouthVariant\": \"smile\",\n      \"cheeksVariant\": \"freckles\",\n      \"beardVariant\": null,\n      \"shirtColor\": \"40c057\"\n    },\n    \"puesto\": {\n      \"ropa\": {\n        \"id\": \"overol\",\n        \"nombre\": \"Overol de jardín\",\n        \"parametros\": {\n          \"outfitVariant\": \"overalls\"\n        }\n      },\n      \"accesorio\": null\n    }\n  },\n  \"rasgos_disponibles\": {\n    \"skinColor\": {\n      \"nombre\": \"Tono de piel\",\n      \"opciones\": {\n        \"f5d0b0\": \"Tono 1\",\n        \"eab890\": \"Tono 2\",\n        \"dda878\": \"Tono 3\",\n        \"c99062\": \"Tono 4\",\n        \"b07347\": \"Tono 5\",\n        \"95562f\": \"Tono 6\",\n        \"7d4a26\": \"Tono 7\",\n        \"6a3d1f\": \"Tono 8\"\n      }\n    },\n    \"topVariant\": {\n      \"nombre\": \"Peinado\",\n      \"opciones\": {\n        \"short\": \"Corto\",\n        \"spiky\": \"De puntas\",\n        \"bowl\": \"Corte totuma\",\n        \"sideSwept\": \"De lado\",\n        \"curly\": \"Crespo\",\n        \"mohawk\": \"Mohicano\",\n        \"buns\": \"Moños\",\n        \"ponytail\": \"Cola de caballo\",\n        \"bob\": \"Melena corta\",\n        \"shoulderLength\": \"A los hombros\",\n        \"longStraight\": \"Largo liso\",\n        \"longWavy\": \"Largo ondulado\",\n        \"partedLong\": \"Largo con partidura\",\n        \"braids\": \"Trenzas\",\n        \"twinTails\": \"Dos colitas\",\n        \"afro\": \"Afro\",\n        \"halfShaved\": \"Medio rapado\"\n      }\n    },\n    \"hairColor\": {\n      \"nombre\": \"Color de pelo\",\n      \"opciones\": {\n        \"2c222b\": \"Negro\",\n        \"3b2f2f\": \"Café muy oscuro\",\n        \"5a3825\": \"Café oscuro\",\n        \"7b4a2d\": \"Café\",\n        \"a56b46\": \"Café claro\",\n        \"c98850\": \"Miel\",\n        \"d9b380\": \"Rubio oscuro\",\n        \"e8d4a8\": \"Rubio\",\n        \"b55239\": \"Cobrizo\",\n        \"d6455d\": \"Rosado\",\n        \"6d5acf\": \"Morado\",\n        \"3fb27f\": \"Verde\"\n      }\n    },\n    \"eyesVariant\": {\n      \"nombre\": \"Ojos\",\n      \"opciones\": {\n        \"open\": \"Abiertos\",\n        \"soft\": \"Suaves\",\n        \"happy\": \"Contentos\",\n        \"sleepy\": \"Soñolientos\",\n        \"side\": \"Mirando de lado\",\n        \"closed\": \"Cerrados\",\n        \"wide\": \"Muy abiertos\",\n        \"star\": \"De estrella\"\n      }\n    },\n    \"mouthVariant\": {\n      \"nombre\": \"Boca\",\n      \"opciones\": {\n        \"smile\": \"Sonrisa\",\n        \"bigSmile\": \"Sonrisa grande\",\n        \"flat\": \"Recta\",\n        \"ooh\": \"Sorprendida\",\n        \"tongue\": \"Lengua afuera\",\n        \"smirk\": \"Sonrisa de lado\",\n        \"laugh\": \"Risa\",\n        \"wideSmile\": \"Sonrisa ancha\",\n        \"frown\": \"Boca hacia abajo\",\n        \"grin\": \"Dientes\"\n      }\n    },\n    \"cheeksVariant\": {\n      \"nombre\": \"Mejillas\",\n      \"ninguno\": \"Ninguno\",\n      \"opciones\": {\n        \"blush\": \"Rubor\",\n        \"pixel\": \"Cuadritos\",\n        \"freckles\": \"Pecas\"\n      }\n    },\n    \"beardVariant\": {\n      \"nombre\": \"Barba\",\n      \"ninguno\": \"Ninguna\",\n      \"opciones\": {\n        \"full\": \"Barba completa\",\n        \"mustache\": \"Bigote\",\n        \"goatee\": \"Perilla\",\n        \"stubble\": \"Barba corta\"\n      }\n    },\n    \"shirtColor\": {\n      \"nombre\": \"Color de la camiseta\",\n      \"opciones\": {\n        \"e64980\": \"Rosado\",\n        \"f76707\": \"Naranja\",\n        \"fab005\": \"Amarillo\",\n        \"40c057\": \"Verde\",\n        \"12b886\": \"Turquesa\",\n        \"228be6\": \"Azul\",\n        \"4c6ef5\": \"Añil\",\n        \"7950f2\": \"Morado\",\n        \"e8590c\": \"Mandarina\",\n        \"495057\": \"Gris\"\n      }\n    }\n  },\n  \"puesto\": {\n    \"ropa\": {\n      \"id\": \"overol\",\n      \"nombre\": \"Overol de jardín\",\n      \"parametros\": {\n        \"outfitVariant\": \"overalls\"\n      }\n    },\n    \"accesorio\": null\n  },\n  \"objetos\": {\n    \"ropa\": [\n      {\n        \"id\": \"camiseta_lisa\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Camiseta lisa\",\n        \"parametros\": {\n          \"outfitVariant\": \"plain\"\n        },\n        \"nivel_requerido\": 1,\n        \"desbloqueado\": true,\n        \"niveles_faltantes\": 0,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"camiseta_rayas\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Camiseta de rayas\",\n        \"parametros\": {\n          \"outfitVariant\": \"stripes\"\n        },\n        \"nivel_requerido\": 2,\n        \"desbloqueado\": true,\n        \"niveles_faltantes\": 0,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"overol\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Overol de jardín\",\n        \"parametros\": {\n          \"outfitVariant\": \"overalls\"\n        },\n        \"nivel_requerido\": 4,\n        \"desbloqueado\": true,\n        \"niveles_faltantes\": 0,\n        \"puesto\": true\n      },\n      {\n        \"id\": \"camisa_cuadros\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Camisa de cuadros\",\n        \"parametros\": {\n          \"outfitVariant\": \"checker\"\n        },\n        \"nivel_requerido\": 5,\n        \"desbloqueado\": false,\n        \"niveles_faltantes\": 1,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"buzo_capota\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Buzo con capota\",\n        \"parametros\": {\n          \"outfitVariant\": \"hoodie\"\n        },\n        \"nivel_requerido\": 6,\n        \"desbloqueado\": false,\n        \"niveles_faltantes\": 2,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"chaqueta\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Chaqueta\",\n        \"parametros\": {\n          \"outfitVariant\": \"jacket\"\n        },\n        \"nivel_requerido\": 8,\n        \"desbloqueado\": false,\n        \"niveles_faltantes\": 4,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"vestido\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Vestido\",\n        \"parametros\": {\n          \"outfitVariant\": \"dress\"\n        },\n        \"nivel_requerido\": 9,\n        \"desbloqueado\": false,\n        \"niveles_faltantes\": 5,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"traje\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Traje\",\n        \"parametros\": {\n          \"outfitVariant\": \"suit\"\n        },\n        \"nivel_requerido\": 10,\n        \"desbloqueado\": false,\n        \"niveles_faltantes\": 6,\n        \"puesto\": false\n      }\n    ],\n    \"accesorio\": [\n      {\n        \"id\": \"gafas_redondas\",\n        \"tipo\": \"accesorio\",\n        \"nombre\": \"Gafas redondas\",\n        \"parametros\": {\n          \"glassesVariant\": \"round\"\n        },\n        \"nivel_requerido\": 3,\n        \"desbloqueado\": true,\n        \"niveles_faltantes\": 0,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"gafas_sol\",\n        \"tipo\": \"accesorio\",\n        \"nombre\": \"Gafas de sol\",\n        \"parametros\": {\n          \"glassesVariant\": \"shades\"\n        },\n        \"nivel_requerido\": 7,\n        \"desbloqueado\": false,\n        \"niveles_faltantes\": 3,\n        \"puesto\": false\n      }\n    ]\n  },\n  \"imagenes_listas\": false,\n  \"base\": {\n    \"id\": \"base_1\",\n    \"nombre\": \"Base 1\",\n    \"archivo\": \"base_1.png\",\n    \"url\": \"http://127.0.0.1:5002/static/avatar/base_1.png\",\n    \"imagen_lista\": false\n  },\n  \"bases\": [\n    {\n      \"id\": \"base_1\",\n      \"nombre\": \"Base 1\",\n      \"archivo\": \"base_1.png\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_1.png\",\n      \"imagen_lista\": false,\n      \"seleccionada\": true\n    },\n    {\n      \"id\": \"base_2\",\n      \"nombre\": \"Base 2\",\n      \"archivo\": \"base_2.png\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_2.png\",\n      \"imagen_lista\": false,\n      \"seleccionada\": false\n    }\n  ],\n  \"capas\": [\n    {\n      \"tipo\": \"base\",\n      \"id\": \"base_1\",\n      \"archivo\": \"base_1.png\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_1.png\",\n      \"imagen_lista\": false\n    }\n  ],\n  \"respaldo_dicebear\": {\n    \"id\": \"sol\",\n    \"nombre\": \"Sol\",\n    \"forma\": \"circle\",\n    \"color\": \"F6B73C\",\n    \"url\": \"https://api.dicebear.com/10.x/gaze/svg?seed=lumea-sol&shapeVariant=circle&bodyColor=F6B73C&eyesVariant=dots\"\n  }\n}"
             }
           ]
         },
         {
-          "name": "Avatar por capas: elegir base",
+          "name": "Avatar: guardar rasgos (libres)",
           "event": [
             {
               "listen": "test",
@@ -1743,19 +1800,19 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/avatar/base",
+              "raw": "{{base_url}}/avatar/rasgos",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "avatar",
-                "base"
+                "rasgos"
               ]
             },
-            "description": "base_1 o base_2 (las dos disponibles desde el inicio). Responde lo mismo que GET /avatar. 400 si la base no existe.",
+            "description": "Cada clave debe estar en rasgos_disponibles y cada valor en sus opciones; null solo en cheeksVariant y beardVariant; colores sin #. Lo nuevo se mezcla con lo guardado. NO se verifica la etapa. 400 si algo no vale (no se guarda nada); 404 sin perfil. Responde lo mismo que GET /avatar.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{email}}\",\n  \"base_id\": \"base_2\"\n}",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"rasgos\": {\n    \"topVariant\": \"braids\",\n    \"skinColor\": \"b07347\",\n    \"cheeksVariant\": \"freckles\",\n    \"beardVariant\": null\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1765,7 +1822,7 @@
           },
           "response": [
             {
-              "name": "Base 2",
+              "name": "Rasgos guardados",
               "originalRequest": {
                 "method": "POST",
                 "header": [
@@ -1775,19 +1832,19 @@
                   }
                 ],
                 "url": {
-                  "raw": "{{base_url}}/avatar/base",
+                  "raw": "{{base_url}}/avatar/rasgos",
                   "host": [
                     "{{base_url}}"
                   ],
                   "path": [
                     "avatar",
-                    "base"
+                    "rasgos"
                   ]
                 },
-                "description": "base_1 o base_2 (las dos disponibles desde el inicio). Responde lo mismo que GET /avatar. 400 si la base no existe.",
+                "description": "Cada clave debe estar en rasgos_disponibles y cada valor en sus opciones; null solo en cheeksVariant y beardVariant; colores sin #. Lo nuevo se mezcla con lo guardado. NO se verifica la etapa. 400 si algo no vale (no se guarda nada); 404 sin perfil. Responde lo mismo que GET /avatar.",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"email\": \"{{email}}\",\n  \"base_id\": \"base_2\"\n}",
+                  "raw": "{\n  \"email\": \"{{email}}\",\n  \"rasgos\": {\n    \"topVariant\": \"braids\",\n    \"skinColor\": \"b07347\",\n    \"cheeksVariant\": \"freckles\",\n    \"beardVariant\": null\n  }\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -1804,12 +1861,99 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"base\": {\n    \"archivo\": \"base_2.png\",\n    \"id\": \"base_2\",\n    \"imagen_lista\": false,\n    \"nombre\": \"Base 2\",\n    \"url\": \"http://127.0.0.1:5002/static/avatar/base_2.png\"\n  },\n  \"bases\": [\n    {\n      \"archivo\": \"base_1.png\",\n      \"id\": \"base_1\",\n      \"imagen_lista\": false,\n      \"nombre\": \"Base 1\",\n      \"seleccionada\": false,\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_1.png\"\n    },\n    {\n      \"archivo\": \"base_2.png\",\n      \"id\": \"base_2\",\n      \"imagen_lista\": false,\n      \"nombre\": \"Base 2\",\n      \"seleccionada\": true,\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_2.png\"\n    }\n  ],\n  \"capas\": [\n    {\n      \"archivo\": \"base_2.png\",\n      \"id\": \"base_2\",\n      \"imagen_lista\": false,\n      \"tipo\": \"base\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_2.png\"\n    }\n  ],\n  \"imagenes_listas\": false,\n  \"nivel_maximo\": 2,\n  \"objetos\": {\n    \"accesorio\": [\n      {\n        \"archivo\": \"accesorio_gafas.png\",\n        \"desbloqueado\": true,\n        \"id\": \"gafas\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 2,\n        \"niveles_faltantes\": 0,\n        \"nombre\": \"Gafas\",\n        \"puesto\": false,\n        \"tipo\": \"accesorio\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_gafas.png\"\n      },\n      {\n        \"archivo\": \"accesorio_audifonos.png\",\n        \"desbloqueado\": false,\n        \"id\": \"audifonos\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 4,\n        \"niveles_faltantes\": 2,\n        \"nombre\": \"Audífonos\",\n        \"puesto\": false,\n        \"tipo\": \"accesorio\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_audifonos.png\"\n      },\n      {\n        \"archivo\": \"accesorio_sombrero_vueltiao.png\",\n        \"desbloqueado\": false,\n        \"id\": \"sombrero_vueltiao\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 8,\n        \"niveles_faltantes\": 6,\n        \"nombre\": \"Sombrero vueltiao\",\n        \"puesto\": false,\n        \"tipo\": \"accesorio\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_sombrero_vueltiao.png\"\n      }\n    ],\n    \"ropa\": [\n      {\n        \"archivo\": \"ropa_buzo_verde.png\",\n        \"desbloqueado\": true,\n        \"id\": \"buzo_verde\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 1,\n        \"niveles_faltantes\": 0,\n        \"nombre\": \"Buzo verde\",\n        \"puesto\": false,\n        \"tipo\": \"ropa\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_buzo_verde.png\"\n      },\n      {\n        \"archivo\": \"ropa_camiseta_lumea.png\",\n        \"desbloqueado\": false,\n        \"id\": \"camiseta_lumea\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 3,\n        \"niveles_faltantes\": 1,\n        \"nombre\": \"Camiseta Lumea\",\n        \"puesto\": false,\n        \"tipo\": \"ropa\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_camiseta_lumea.png\"\n      },\n      {\n        \"archivo\": \"ropa_ruana.png\",\n        \"desbloqueado\": false,\n        \"id\": \"ruana\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 6,\n        \"niveles_faltantes\": 4,\n        \"nombre\": \"Ruana\",\n        \"puesto\": false,\n        \"tipo\": \"ropa\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_ruana.png\"\n      }\n    ]\n  },\n  \"puesto\": {\n    \"accesorio\": null,\n    \"ropa\": null\n  },\n  \"respaldo_dicebear\": {\n    \"id\": \"sol\",\n    \"nombre\": \"Sol\",\n    \"url\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural\"\n  },\n  \"success\": true\n}"
+              "body": "{\n  \"success\": true,\n  \"nivel_maximo\": 4,\n  \"persona\": {\n    \"estilo\": \"voxel-art\",\n    \"rasgos\": {\n      \"skinColor\": \"b07347\",\n      \"topVariant\": \"braids\",\n      \"hairColor\": \"3b2f2f\",\n      \"eyesVariant\": \"open\",\n      \"mouthVariant\": \"smile\",\n      \"cheeksVariant\": \"freckles\",\n      \"beardVariant\": null,\n      \"shirtColor\": \"40c057\"\n    },\n    \"puesto\": {\n      \"ropa\": {\n        \"id\": \"camiseta_lisa\",\n        \"nombre\": \"Camiseta lisa\",\n        \"parametros\": {\n          \"outfitVariant\": \"plain\"\n        }\n      },\n      \"accesorio\": null\n    }\n  },\n  \"rasgos_disponibles\": {\n    \"skinColor\": {\n      \"nombre\": \"Tono de piel\",\n      \"opciones\": {\n        \"f5d0b0\": \"Tono 1\",\n        \"eab890\": \"Tono 2\",\n        \"dda878\": \"Tono 3\",\n        \"c99062\": \"Tono 4\",\n        \"b07347\": \"Tono 5\",\n        \"95562f\": \"Tono 6\",\n        \"7d4a26\": \"Tono 7\",\n        \"6a3d1f\": \"Tono 8\"\n      }\n    },\n    \"topVariant\": {\n      \"nombre\": \"Peinado\",\n      \"opciones\": {\n        \"short\": \"Corto\",\n        \"spiky\": \"De puntas\",\n        \"bowl\": \"Corte totuma\",\n        \"sideSwept\": \"De lado\",\n        \"curly\": \"Crespo\",\n        \"mohawk\": \"Mohicano\",\n        \"buns\": \"Moños\",\n        \"ponytail\": \"Cola de caballo\",\n        \"bob\": \"Melena corta\",\n        \"shoulderLength\": \"A los hombros\",\n        \"longStraight\": \"Largo liso\",\n        \"longWavy\": \"Largo ondulado\",\n        \"partedLong\": \"Largo con partidura\",\n        \"braids\": \"Trenzas\",\n        \"twinTails\": \"Dos colitas\",\n        \"afro\": \"Afro\",\n        \"halfShaved\": \"Medio rapado\"\n      }\n    },\n    \"hairColor\": {\n      \"nombre\": \"Color de pelo\",\n      \"opciones\": {\n        \"2c222b\": \"Negro\",\n        \"3b2f2f\": \"Café muy oscuro\",\n        \"5a3825\": \"Café oscuro\",\n        \"7b4a2d\": \"Café\",\n        \"a56b46\": \"Café claro\",\n        \"c98850\": \"Miel\",\n        \"d9b380\": \"Rubio oscuro\",\n        \"e8d4a8\": \"Rubio\",\n        \"b55239\": \"Cobrizo\",\n        \"d6455d\": \"Rosado\",\n        \"6d5acf\": \"Morado\",\n        \"3fb27f\": \"Verde\"\n      }\n    },\n    \"eyesVariant\": {\n      \"nombre\": \"Ojos\",\n      \"opciones\": {\n        \"open\": \"Abiertos\",\n        \"soft\": \"Suaves\",\n        \"happy\": \"Contentos\",\n        \"sleepy\": \"Soñolientos\",\n        \"side\": \"Mirando de lado\",\n        \"closed\": \"Cerrados\",\n        \"wide\": \"Muy abiertos\",\n        \"star\": \"De estrella\"\n      }\n    },\n    \"mouthVariant\": {\n      \"nombre\": \"Boca\",\n      \"opciones\": {\n        \"smile\": \"Sonrisa\",\n        \"bigSmile\": \"Sonrisa grande\",\n        \"flat\": \"Recta\",\n        \"ooh\": \"Sorprendida\",\n        \"tongue\": \"Lengua afuera\",\n        \"smirk\": \"Sonrisa de lado\",\n        \"laugh\": \"Risa\",\n        \"wideSmile\": \"Sonrisa ancha\",\n        \"frown\": \"Boca hacia abajo\",\n        \"grin\": \"Dientes\"\n      }\n    },\n    \"cheeksVariant\": {\n      \"nombre\": \"Mejillas\",\n      \"ninguno\": \"Ninguno\",\n      \"opciones\": {\n        \"blush\": \"Rubor\",\n        \"pixel\": \"Cuadritos\",\n        \"freckles\": \"Pecas\"\n      }\n    },\n    \"beardVariant\": {\n      \"nombre\": \"Barba\",\n      \"ninguno\": \"Ninguna\",\n      \"opciones\": {\n        \"full\": \"Barba completa\",\n        \"mustache\": \"Bigote\",\n        \"goatee\": \"Perilla\",\n        \"stubble\": \"Barba corta\"\n      }\n    },\n    \"shirtColor\": {\n      \"nombre\": \"Color de la camiseta\",\n      \"opciones\": {\n        \"e64980\": \"Rosado\",\n        \"f76707\": \"Naranja\",\n        \"fab005\": \"Amarillo\",\n        \"40c057\": \"Verde\",\n        \"12b886\": \"Turquesa\",\n        \"228be6\": \"Azul\",\n        \"4c6ef5\": \"Añil\",\n        \"7950f2\": \"Morado\",\n        \"e8590c\": \"Mandarina\",\n        \"495057\": \"Gris\"\n      }\n    }\n  },\n  \"puesto\": {\n    \"ropa\": {\n      \"id\": \"camiseta_lisa\",\n      \"nombre\": \"Camiseta lisa\",\n      \"parametros\": {\n        \"outfitVariant\": \"plain\"\n      }\n    },\n    \"accesorio\": null\n  },\n  \"objetos\": {\n    \"ropa\": [\n      {\n        \"id\": \"camiseta_lisa\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Camiseta lisa\",\n        \"parametros\": {\n          \"outfitVariant\": \"plain\"\n        },\n        \"nivel_requerido\": 1,\n        \"desbloqueado\": true,\n        \"niveles_faltantes\": 0,\n        \"puesto\": true\n      },\n      {\n        \"id\": \"camiseta_rayas\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Camiseta de rayas\",\n        \"parametros\": {\n          \"outfitVariant\": \"stripes\"\n        },\n        \"nivel_requerido\": 2,\n        \"desbloqueado\": true,\n        \"niveles_faltantes\": 0,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"overol\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Overol de jardín\",\n        \"parametros\": {\n          \"outfitVariant\": \"overalls\"\n        },\n        \"nivel_requerido\": 4,\n        \"desbloqueado\": true,\n        \"niveles_faltantes\": 0,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"camisa_cuadros\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Camisa de cuadros\",\n        \"parametros\": {\n          \"outfitVariant\": \"checker\"\n        },\n        \"nivel_requerido\": 5,\n        \"desbloqueado\": false,\n        \"niveles_faltantes\": 1,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"buzo_capota\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Buzo con capota\",\n        \"parametros\": {\n          \"outfitVariant\": \"hoodie\"\n        },\n        \"nivel_requerido\": 6,\n        \"desbloqueado\": false,\n        \"niveles_faltantes\": 2,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"chaqueta\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Chaqueta\",\n        \"parametros\": {\n          \"outfitVariant\": \"jacket\"\n        },\n        \"nivel_requerido\": 8,\n        \"desbloqueado\": false,\n        \"niveles_faltantes\": 4,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"vestido\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Vestido\",\n        \"parametros\": {\n          \"outfitVariant\": \"dress\"\n        },\n        \"nivel_requerido\": 9,\n        \"desbloqueado\": false,\n        \"niveles_faltantes\": 5,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"traje\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Traje\",\n        \"parametros\": {\n          \"outfitVariant\": \"suit\"\n        },\n        \"nivel_requerido\": 10,\n        \"desbloqueado\": false,\n        \"niveles_faltantes\": 6,\n        \"puesto\": false\n      }\n    ],\n    \"accesorio\": [\n      {\n        \"id\": \"gafas_redondas\",\n        \"tipo\": \"accesorio\",\n        \"nombre\": \"Gafas redondas\",\n        \"parametros\": {\n          \"glassesVariant\": \"round\"\n        },\n        \"nivel_requerido\": 3,\n        \"desbloqueado\": true,\n        \"niveles_faltantes\": 0,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"gafas_sol\",\n        \"tipo\": \"accesorio\",\n        \"nombre\": \"Gafas de sol\",\n        \"parametros\": {\n          \"glassesVariant\": \"shades\"\n        },\n        \"nivel_requerido\": 7,\n        \"desbloqueado\": false,\n        \"niveles_faltantes\": 3,\n        \"puesto\": false\n      }\n    ]\n  },\n  \"imagenes_listas\": false,\n  \"base\": {\n    \"id\": \"base_1\",\n    \"nombre\": \"Base 1\",\n    \"archivo\": \"base_1.png\",\n    \"url\": \"http://127.0.0.1:5002/static/avatar/base_1.png\",\n    \"imagen_lista\": false\n  },\n  \"bases\": [\n    {\n      \"id\": \"base_1\",\n      \"nombre\": \"Base 1\",\n      \"archivo\": \"base_1.png\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_1.png\",\n      \"imagen_lista\": false,\n      \"seleccionada\": true\n    },\n    {\n      \"id\": \"base_2\",\n      \"nombre\": \"Base 2\",\n      \"archivo\": \"base_2.png\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_2.png\",\n      \"imagen_lista\": false,\n      \"seleccionada\": false\n    }\n  ],\n  \"capas\": [\n    {\n      \"tipo\": \"base\",\n      \"id\": \"base_1\",\n      \"archivo\": \"base_1.png\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_1.png\",\n      \"imagen_lista\": false\n    }\n  ],\n  \"respaldo_dicebear\": {\n    \"id\": \"sol\",\n    \"nombre\": \"Sol\",\n    \"forma\": \"circle\",\n    \"color\": \"F6B73C\",\n    \"url\": \"https://api.dicebear.com/10.x/gaze/svg?seed=lumea-sol&shapeVariant=circle&bodyColor=F6B73C&eyesVariant=dots\"\n  }\n}"
             }
           ]
         },
         {
-          "name": "Avatar por capas: ponerse un objeto",
+          "name": "Avatar: rasgo inválido (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 400\", function () { pm.response.to.have.status(400); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/avatar/rasgos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "avatar",
+                "rasgos"
+              ]
+            },
+            "description": "Una gorra no es un peinado: 400 y no se guarda nada.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"rasgos\": {\n    \"topVariant\": \"cap\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "Gorra como peinado",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": {
+                  "raw": "{{base_url}}/avatar/rasgos",
+                  "host": [
+                    "{{base_url}}"
+                  ],
+                  "path": [
+                    "avatar",
+                    "rasgos"
+                  ]
+                },
+                "description": "Una gorra no es un peinado: 400 y no se guarda nada.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{email}}\",\n  \"rasgos\": {\n    \"topVariant\": \"cap\"\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"error\": \"El valor de \\\"topVariant\\\" no es válido.\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Avatar: ponerse una prenda",
           "event": [
             {
               "listen": "test",
@@ -1839,10 +1983,10 @@
                 "equipar"
               ]
             },
-            "description": "tipo: ropa o accesorio. Uno por tipo: ponerse otro reemplaza el anterior. Responde lo mismo que GET /avatar. 400 si falta algo o el objeto no existe o es de otro tipo; 403 si está bloqueado; 404 sin perfil.",
+            "description": "tipo: ropa o accesorio. Uno por tipo: ponerse otro reemplaza el anterior. Verifica la etapa en el servidor. Responde lo mismo que GET /avatar. 400 si falta algo, el objeto no existe (incluidos los ids viejos como buzo_verde) o es de otro tipo; 403 si está bloqueado; 404 sin perfil.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{email}}\",\n  \"tipo\": \"ropa\",\n  \"item_id\": \"buzo_verde\"\n}",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"tipo\": \"ropa\",\n  \"item_id\": \"overol\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1852,7 +1996,7 @@
           },
           "response": [
             {
-              "name": "Buzo verde puesto",
+              "name": "Overol puesto",
               "originalRequest": {
                 "method": "POST",
                 "header": [
@@ -1871,10 +2015,10 @@
                     "equipar"
                   ]
                 },
-                "description": "tipo: ropa o accesorio. Uno por tipo: ponerse otro reemplaza el anterior. Responde lo mismo que GET /avatar. 400 si falta algo o el objeto no existe o es de otro tipo; 403 si está bloqueado; 404 sin perfil.",
+                "description": "tipo: ropa o accesorio. Uno por tipo: ponerse otro reemplaza el anterior. Verifica la etapa en el servidor. Responde lo mismo que GET /avatar. 400 si falta algo, el objeto no existe (incluidos los ids viejos como buzo_verde) o es de otro tipo; 403 si está bloqueado; 404 sin perfil.",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"email\": \"{{email}}\",\n  \"tipo\": \"ropa\",\n  \"item_id\": \"buzo_verde\"\n}",
+                  "raw": "{\n  \"email\": \"{{email}}\",\n  \"tipo\": \"ropa\",\n  \"item_id\": \"overol\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -1891,12 +2035,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"base\": {\n    \"archivo\": \"base_2.png\",\n    \"id\": \"base_2\",\n    \"imagen_lista\": false,\n    \"nombre\": \"Base 2\",\n    \"url\": \"http://127.0.0.1:5002/static/avatar/base_2.png\"\n  },\n  \"bases\": [\n    {\n      \"archivo\": \"base_1.png\",\n      \"id\": \"base_1\",\n      \"imagen_lista\": false,\n      \"nombre\": \"Base 1\",\n      \"seleccionada\": false,\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_1.png\"\n    },\n    {\n      \"archivo\": \"base_2.png\",\n      \"id\": \"base_2\",\n      \"imagen_lista\": false,\n      \"nombre\": \"Base 2\",\n      \"seleccionada\": true,\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_2.png\"\n    }\n  ],\n  \"capas\": [\n    {\n      \"archivo\": \"base_2.png\",\n      \"id\": \"base_2\",\n      \"imagen_lista\": false,\n      \"tipo\": \"base\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_2.png\"\n    },\n    {\n      \"archivo\": \"ropa_buzo_verde.png\",\n      \"id\": \"buzo_verde\",\n      \"imagen_lista\": false,\n      \"tipo\": \"ropa\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_buzo_verde.png\"\n    }\n  ],\n  \"imagenes_listas\": false,\n  \"nivel_maximo\": 2,\n  \"objetos\": {\n    \"accesorio\": [\n      {\n        \"archivo\": \"accesorio_gafas.png\",\n        \"desbloqueado\": true,\n        \"id\": \"gafas\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 2,\n        \"niveles_faltantes\": 0,\n        \"nombre\": \"Gafas\",\n        \"puesto\": false,\n        \"tipo\": \"accesorio\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_gafas.png\"\n      },\n      {\n        \"archivo\": \"accesorio_audifonos.png\",\n        \"desbloqueado\": false,\n        \"id\": \"audifonos\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 4,\n        \"niveles_faltantes\": 2,\n        \"nombre\": \"Audífonos\",\n        \"puesto\": false,\n        \"tipo\": \"accesorio\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_audifonos.png\"\n      },\n      {\n        \"archivo\": \"accesorio_sombrero_vueltiao.png\",\n        \"desbloqueado\": false,\n        \"id\": \"sombrero_vueltiao\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 8,\n        \"niveles_faltantes\": 6,\n        \"nombre\": \"Sombrero vueltiao\",\n        \"puesto\": false,\n        \"tipo\": \"accesorio\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_sombrero_vueltiao.png\"\n      }\n    ],\n    \"ropa\": [\n      {\n        \"archivo\": \"ropa_buzo_verde.png\",\n        \"desbloqueado\": true,\n        \"id\": \"buzo_verde\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 1,\n        \"niveles_faltantes\": 0,\n        \"nombre\": \"Buzo verde\",\n        \"puesto\": true,\n        \"tipo\": \"ropa\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_buzo_verde.png\"\n      },\n      {\n        \"archivo\": \"ropa_camiseta_lumea.png\",\n        \"desbloqueado\": false,\n        \"id\": \"camiseta_lumea\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 3,\n        \"niveles_faltantes\": 1,\n        \"nombre\": \"Camiseta Lumea\",\n        \"puesto\": false,\n        \"tipo\": \"ropa\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_camiseta_lumea.png\"\n      },\n      {\n        \"archivo\": \"ropa_ruana.png\",\n        \"desbloqueado\": false,\n        \"id\": \"ruana\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 6,\n        \"niveles_faltantes\": 4,\n        \"nombre\": \"Ruana\",\n        \"puesto\": false,\n        \"tipo\": \"ropa\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_ruana.png\"\n      }\n    ]\n  },\n  \"puesto\": {\n    \"accesorio\": null,\n    \"ropa\": {\n      \"archivo\": \"ropa_buzo_verde.png\",\n      \"id\": \"buzo_verde\",\n      \"imagen_lista\": false,\n      \"nombre\": \"Buzo verde\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_buzo_verde.png\"\n    }\n  },\n  \"respaldo_dicebear\": {\n    \"id\": \"sol\",\n    \"nombre\": \"Sol\",\n    \"url\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural\"\n  },\n  \"success\": true\n}"
+              "body": "{\n  \"success\": true,\n  \"nivel_maximo\": 4,\n  \"persona\": {\n    \"estilo\": \"voxel-art\",\n    \"rasgos\": {\n      \"skinColor\": \"b07347\",\n      \"topVariant\": \"braids\",\n      \"hairColor\": \"3b2f2f\",\n      \"eyesVariant\": \"open\",\n      \"mouthVariant\": \"smile\",\n      \"cheeksVariant\": \"freckles\",\n      \"beardVariant\": null,\n      \"shirtColor\": \"40c057\"\n    },\n    \"puesto\": {\n      \"ropa\": {\n        \"id\": \"overol\",\n        \"nombre\": \"Overol de jardín\",\n        \"parametros\": {\n          \"outfitVariant\": \"overalls\"\n        }\n      },\n      \"accesorio\": null\n    }\n  },\n  \"rasgos_disponibles\": {\n    \"skinColor\": {\n      \"nombre\": \"Tono de piel\",\n      \"opciones\": {\n        \"f5d0b0\": \"Tono 1\",\n        \"eab890\": \"Tono 2\",\n        \"dda878\": \"Tono 3\",\n        \"c99062\": \"Tono 4\",\n        \"b07347\": \"Tono 5\",\n        \"95562f\": \"Tono 6\",\n        \"7d4a26\": \"Tono 7\",\n        \"6a3d1f\": \"Tono 8\"\n      }\n    },\n    \"topVariant\": {\n      \"nombre\": \"Peinado\",\n      \"opciones\": {\n        \"short\": \"Corto\",\n        \"spiky\": \"De puntas\",\n        \"bowl\": \"Corte totuma\",\n        \"sideSwept\": \"De lado\",\n        \"curly\": \"Crespo\",\n        \"mohawk\": \"Mohicano\",\n        \"buns\": \"Moños\",\n        \"ponytail\": \"Cola de caballo\",\n        \"bob\": \"Melena corta\",\n        \"shoulderLength\": \"A los hombros\",\n        \"longStraight\": \"Largo liso\",\n        \"longWavy\": \"Largo ondulado\",\n        \"partedLong\": \"Largo con partidura\",\n        \"braids\": \"Trenzas\",\n        \"twinTails\": \"Dos colitas\",\n        \"afro\": \"Afro\",\n        \"halfShaved\": \"Medio rapado\"\n      }\n    },\n    \"hairColor\": {\n      \"nombre\": \"Color de pelo\",\n      \"opciones\": {\n        \"2c222b\": \"Negro\",\n        \"3b2f2f\": \"Café muy oscuro\",\n        \"5a3825\": \"Café oscuro\",\n        \"7b4a2d\": \"Café\",\n        \"a56b46\": \"Café claro\",\n        \"c98850\": \"Miel\",\n        \"d9b380\": \"Rubio oscuro\",\n        \"e8d4a8\": \"Rubio\",\n        \"b55239\": \"Cobrizo\",\n        \"d6455d\": \"Rosado\",\n        \"6d5acf\": \"Morado\",\n        \"3fb27f\": \"Verde\"\n      }\n    },\n    \"eyesVariant\": {\n      \"nombre\": \"Ojos\",\n      \"opciones\": {\n        \"open\": \"Abiertos\",\n        \"soft\": \"Suaves\",\n        \"happy\": \"Contentos\",\n        \"sleepy\": \"Soñolientos\",\n        \"side\": \"Mirando de lado\",\n        \"closed\": \"Cerrados\",\n        \"wide\": \"Muy abiertos\",\n        \"star\": \"De estrella\"\n      }\n    },\n    \"mouthVariant\": {\n      \"nombre\": \"Boca\",\n      \"opciones\": {\n        \"smile\": \"Sonrisa\",\n        \"bigSmile\": \"Sonrisa grande\",\n        \"flat\": \"Recta\",\n        \"ooh\": \"Sorprendida\",\n        \"tongue\": \"Lengua afuera\",\n        \"smirk\": \"Sonrisa de lado\",\n        \"laugh\": \"Risa\",\n        \"wideSmile\": \"Sonrisa ancha\",\n        \"frown\": \"Boca hacia abajo\",\n        \"grin\": \"Dientes\"\n      }\n    },\n    \"cheeksVariant\": {\n      \"nombre\": \"Mejillas\",\n      \"ninguno\": \"Ninguno\",\n      \"opciones\": {\n        \"blush\": \"Rubor\",\n        \"pixel\": \"Cuadritos\",\n        \"freckles\": \"Pecas\"\n      }\n    },\n    \"beardVariant\": {\n      \"nombre\": \"Barba\",\n      \"ninguno\": \"Ninguna\",\n      \"opciones\": {\n        \"full\": \"Barba completa\",\n        \"mustache\": \"Bigote\",\n        \"goatee\": \"Perilla\",\n        \"stubble\": \"Barba corta\"\n      }\n    },\n    \"shirtColor\": {\n      \"nombre\": \"Color de la camiseta\",\n      \"opciones\": {\n        \"e64980\": \"Rosado\",\n        \"f76707\": \"Naranja\",\n        \"fab005\": \"Amarillo\",\n        \"40c057\": \"Verde\",\n        \"12b886\": \"Turquesa\",\n        \"228be6\": \"Azul\",\n        \"4c6ef5\": \"Añil\",\n        \"7950f2\": \"Morado\",\n        \"e8590c\": \"Mandarina\",\n        \"495057\": \"Gris\"\n      }\n    }\n  },\n  \"puesto\": {\n    \"ropa\": {\n      \"id\": \"overol\",\n      \"nombre\": \"Overol de jardín\",\n      \"parametros\": {\n        \"outfitVariant\": \"overalls\"\n      }\n    },\n    \"accesorio\": null\n  },\n  \"objetos\": {\n    \"ropa\": [\n      {\n        \"id\": \"camiseta_lisa\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Camiseta lisa\",\n        \"parametros\": {\n          \"outfitVariant\": \"plain\"\n        },\n        \"nivel_requerido\": 1,\n        \"desbloqueado\": true,\n        \"niveles_faltantes\": 0,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"camiseta_rayas\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Camiseta de rayas\",\n        \"parametros\": {\n          \"outfitVariant\": \"stripes\"\n        },\n        \"nivel_requerido\": 2,\n        \"desbloqueado\": true,\n        \"niveles_faltantes\": 0,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"overol\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Overol de jardín\",\n        \"parametros\": {\n          \"outfitVariant\": \"overalls\"\n        },\n        \"nivel_requerido\": 4,\n        \"desbloqueado\": true,\n        \"niveles_faltantes\": 0,\n        \"puesto\": true\n      },\n      {\n        \"id\": \"camisa_cuadros\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Camisa de cuadros\",\n        \"parametros\": {\n          \"outfitVariant\": \"checker\"\n        },\n        \"nivel_requerido\": 5,\n        \"desbloqueado\": false,\n        \"niveles_faltantes\": 1,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"buzo_capota\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Buzo con capota\",\n        \"parametros\": {\n          \"outfitVariant\": \"hoodie\"\n        },\n        \"nivel_requerido\": 6,\n        \"desbloqueado\": false,\n        \"niveles_faltantes\": 2,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"chaqueta\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Chaqueta\",\n        \"parametros\": {\n          \"outfitVariant\": \"jacket\"\n        },\n        \"nivel_requerido\": 8,\n        \"desbloqueado\": false,\n        \"niveles_faltantes\": 4,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"vestido\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Vestido\",\n        \"parametros\": {\n          \"outfitVariant\": \"dress\"\n        },\n        \"nivel_requerido\": 9,\n        \"desbloqueado\": false,\n        \"niveles_faltantes\": 5,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"traje\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Traje\",\n        \"parametros\": {\n          \"outfitVariant\": \"suit\"\n        },\n        \"nivel_requerido\": 10,\n        \"desbloqueado\": false,\n        \"niveles_faltantes\": 6,\n        \"puesto\": false\n      }\n    ],\n    \"accesorio\": [\n      {\n        \"id\": \"gafas_redondas\",\n        \"tipo\": \"accesorio\",\n        \"nombre\": \"Gafas redondas\",\n        \"parametros\": {\n          \"glassesVariant\": \"round\"\n        },\n        \"nivel_requerido\": 3,\n        \"desbloqueado\": true,\n        \"niveles_faltantes\": 0,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"gafas_sol\",\n        \"tipo\": \"accesorio\",\n        \"nombre\": \"Gafas de sol\",\n        \"parametros\": {\n          \"glassesVariant\": \"shades\"\n        },\n        \"nivel_requerido\": 7,\n        \"desbloqueado\": false,\n        \"niveles_faltantes\": 3,\n        \"puesto\": false\n      }\n    ]\n  },\n  \"imagenes_listas\": false,\n  \"base\": {\n    \"id\": \"base_1\",\n    \"nombre\": \"Base 1\",\n    \"archivo\": \"base_1.png\",\n    \"url\": \"http://127.0.0.1:5002/static/avatar/base_1.png\",\n    \"imagen_lista\": false\n  },\n  \"bases\": [\n    {\n      \"id\": \"base_1\",\n      \"nombre\": \"Base 1\",\n      \"archivo\": \"base_1.png\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_1.png\",\n      \"imagen_lista\": false,\n      \"seleccionada\": true\n    },\n    {\n      \"id\": \"base_2\",\n      \"nombre\": \"Base 2\",\n      \"archivo\": \"base_2.png\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_2.png\",\n      \"imagen_lista\": false,\n      \"seleccionada\": false\n    }\n  ],\n  \"capas\": [\n    {\n      \"tipo\": \"base\",\n      \"id\": \"base_1\",\n      \"archivo\": \"base_1.png\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_1.png\",\n      \"imagen_lista\": false\n    }\n  ],\n  \"respaldo_dicebear\": {\n    \"id\": \"sol\",\n    \"nombre\": \"Sol\",\n    \"forma\": \"circle\",\n    \"color\": \"F6B73C\",\n    \"url\": \"https://api.dicebear.com/10.x/gaze/svg?seed=lumea-sol&shapeVariant=circle&bodyColor=F6B73C&eyesVariant=dots\"\n  }\n}"
             }
           ]
         },
         {
-          "name": "Avatar por capas: objeto bloqueado (403)",
+          "name": "Avatar: prenda bloqueada (403)",
           "event": [
             {
               "listen": "test",
@@ -1926,10 +2070,10 @@
                 "equipar"
               ]
             },
-            "description": "Los audífonos piden nivel 4: con un perfil nuevo (nivel 1) responde 403 con niveles_faltantes.",
+            "description": "El traje pide la etapa 10: con una etapa menor responde 403 con niveles_faltantes.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"{{email}}\",\n  \"tipo\": \"accesorio\",\n  \"item_id\": \"audifonos\"\n}",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"tipo\": \"ropa\",\n  \"item_id\": \"traje\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -1958,10 +2102,10 @@
                     "equipar"
                   ]
                 },
-                "description": "El sombrero vueltiao pide nivel 8: con un perfil nuevo responde 403 con niveles_faltantes.",
+                "description": "El traje pide la etapa 10: con una etapa menor responde 403 con niveles_faltantes.",
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"email\": \"{{email}}\",\n  \"tipo\": \"accesorio\",\n  \"item_id\": \"audifonos\"\n}",
+                  "raw": "{\n  \"email\": \"{{email}}\",\n  \"tipo\": \"ropa\",\n  \"item_id\": \"traje\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -1969,7 +2113,7 @@
                   }
                 }
               },
-              "status": "FORBIDDEN",
+              "status": "Forbidden",
               "code": 403,
               "_postman_previewlanguage": "json",
               "header": [
@@ -1978,12 +2122,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"error\": \"El objeto \\\"audifonos\\\" todavía está bloqueado.\",\n  \"nivel_maximo\": 1,\n  \"nivel_requerido\": 4,\n  \"niveles_faltantes\": 3\n}"
+              "body": "{\n  \"error\": \"El objeto \\\"traje\\\" todavía está bloqueado.\",\n  \"nivel_requerido\": 10,\n  \"nivel_maximo\": 4,\n  \"niveles_faltantes\": 6\n}"
             }
           ]
         },
         {
-          "name": "Avatar por capas: quitarse un objeto",
+          "name": "Avatar: quitarse una prenda",
           "event": [
             {
               "listen": "test",
@@ -2013,7 +2157,7 @@
                 "quitar"
               ]
             },
-            "description": "Quita lo que tenga puesto de ese tipo (si no tiene nada, no es error). Responde lo mismo que GET /avatar.",
+            "description": "Quita lo que tenga puesto de ese tipo (no es error si no tiene nada). Quitar la ropa vuelve a camiseta_lisa; el accesorio queda en null. Responde lo mismo que GET /avatar.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{email}}\",\n  \"tipo\": \"ropa\"\n}",
@@ -2026,7 +2170,7 @@
           },
           "response": [
             {
-              "name": "Ropa quitada (queda el accesorio)",
+              "name": "Ropa quitada (vuelve a la camiseta lisa)",
               "originalRequest": {
                 "method": "POST",
                 "header": [
@@ -2045,7 +2189,7 @@
                     "quitar"
                   ]
                 },
-                "description": "Quita lo que tenga puesto de ese tipo (si no tiene nada, no es error). Responde lo mismo que GET /avatar.",
+                "description": "Quita lo que tenga puesto de ese tipo (no es error si no tiene nada). Quitar la ropa vuelve a camiseta_lisa; el accesorio queda en null. Responde lo mismo que GET /avatar.",
                 "body": {
                   "mode": "raw",
                   "raw": "{\n  \"email\": \"{{email}}\",\n  \"tipo\": \"ropa\"\n}",
@@ -2065,9 +2209,53 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"base\": {\n    \"archivo\": \"base_2.png\",\n    \"id\": \"base_2\",\n    \"imagen_lista\": false,\n    \"nombre\": \"Base 2\",\n    \"url\": \"http://127.0.0.1:5002/static/avatar/base_2.png\"\n  },\n  \"bases\": [\n    {\n      \"archivo\": \"base_1.png\",\n      \"id\": \"base_1\",\n      \"imagen_lista\": false,\n      \"nombre\": \"Base 1\",\n      \"seleccionada\": false,\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_1.png\"\n    },\n    {\n      \"archivo\": \"base_2.png\",\n      \"id\": \"base_2\",\n      \"imagen_lista\": false,\n      \"nombre\": \"Base 2\",\n      \"seleccionada\": true,\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_2.png\"\n    }\n  ],\n  \"capas\": [\n    {\n      \"archivo\": \"base_2.png\",\n      \"id\": \"base_2\",\n      \"imagen_lista\": false,\n      \"tipo\": \"base\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_2.png\"\n    },\n    {\n      \"archivo\": \"accesorio_gafas.png\",\n      \"id\": \"gafas\",\n      \"imagen_lista\": false,\n      \"tipo\": \"accesorio\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_gafas.png\"\n    }\n  ],\n  \"imagenes_listas\": false,\n  \"nivel_maximo\": 2,\n  \"objetos\": {\n    \"accesorio\": [\n      {\n        \"archivo\": \"accesorio_gafas.png\",\n        \"desbloqueado\": true,\n        \"id\": \"gafas\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 2,\n        \"niveles_faltantes\": 0,\n        \"nombre\": \"Gafas\",\n        \"puesto\": true,\n        \"tipo\": \"accesorio\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_gafas.png\"\n      },\n      {\n        \"archivo\": \"accesorio_audifonos.png\",\n        \"desbloqueado\": false,\n        \"id\": \"audifonos\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 4,\n        \"niveles_faltantes\": 2,\n        \"nombre\": \"Audífonos\",\n        \"puesto\": false,\n        \"tipo\": \"accesorio\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_audifonos.png\"\n      },\n      {\n        \"archivo\": \"accesorio_sombrero_vueltiao.png\",\n        \"desbloqueado\": false,\n        \"id\": \"sombrero_vueltiao\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 8,\n        \"niveles_faltantes\": 6,\n        \"nombre\": \"Sombrero vueltiao\",\n        \"puesto\": false,\n        \"tipo\": \"accesorio\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_sombrero_vueltiao.png\"\n      }\n    ],\n    \"ropa\": [\n      {\n        \"archivo\": \"ropa_buzo_verde.png\",\n        \"desbloqueado\": true,\n        \"id\": \"buzo_verde\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 1,\n        \"niveles_faltantes\": 0,\n        \"nombre\": \"Buzo verde\",\n        \"puesto\": false,\n        \"tipo\": \"ropa\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_buzo_verde.png\"\n      },\n      {\n        \"archivo\": \"ropa_camiseta_lumea.png\",\n        \"desbloqueado\": false,\n        \"id\": \"camiseta_lumea\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 3,\n        \"niveles_faltantes\": 1,\n        \"nombre\": \"Camiseta Lumea\",\n        \"puesto\": false,\n        \"tipo\": \"ropa\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_camiseta_lumea.png\"\n      },\n      {\n        \"archivo\": \"ropa_ruana.png\",\n        \"desbloqueado\": false,\n        \"id\": \"ruana\",\n        \"imagen_lista\": false,\n        \"nivel_requerido\": 6,\n        \"niveles_faltantes\": 4,\n        \"nombre\": \"Ruana\",\n        \"puesto\": false,\n        \"tipo\": \"ropa\",\n        \"url\": \"http://127.0.0.1:5002/static/avatar/ropa_ruana.png\"\n      }\n    ]\n  },\n  \"puesto\": {\n    \"accesorio\": {\n      \"archivo\": \"accesorio_gafas.png\",\n      \"id\": \"gafas\",\n      \"imagen_lista\": false,\n      \"nombre\": \"Gafas\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/accesorio_gafas.png\"\n    },\n    \"ropa\": null\n  },\n  \"respaldo_dicebear\": {\n    \"id\": \"sol\",\n    \"nombre\": \"Sol\",\n    \"url\": \"https://api.dicebear.com/9.x/avataaars/svg?seed=lumea-sol&facialHairProbability=0&mouth=default&eyes=default&eyebrows=defaultNatural\"\n  },\n  \"success\": true\n}"
+              "body": "{\n  \"success\": true,\n  \"nivel_maximo\": 4,\n  \"persona\": {\n    \"estilo\": \"voxel-art\",\n    \"rasgos\": {\n      \"skinColor\": \"b07347\",\n      \"topVariant\": \"braids\",\n      \"hairColor\": \"3b2f2f\",\n      \"eyesVariant\": \"open\",\n      \"mouthVariant\": \"smile\",\n      \"cheeksVariant\": \"freckles\",\n      \"beardVariant\": null,\n      \"shirtColor\": \"40c057\"\n    },\n    \"puesto\": {\n      \"ropa\": {\n        \"id\": \"camiseta_lisa\",\n        \"nombre\": \"Camiseta lisa\",\n        \"parametros\": {\n          \"outfitVariant\": \"plain\"\n        }\n      },\n      \"accesorio\": {\n        \"id\": \"gafas_redondas\",\n        \"nombre\": \"Gafas redondas\",\n        \"parametros\": {\n          \"glassesVariant\": \"round\"\n        }\n      }\n    }\n  },\n  \"rasgos_disponibles\": {\n    \"skinColor\": {\n      \"nombre\": \"Tono de piel\",\n      \"opciones\": {\n        \"f5d0b0\": \"Tono 1\",\n        \"eab890\": \"Tono 2\",\n        \"dda878\": \"Tono 3\",\n        \"c99062\": \"Tono 4\",\n        \"b07347\": \"Tono 5\",\n        \"95562f\": \"Tono 6\",\n        \"7d4a26\": \"Tono 7\",\n        \"6a3d1f\": \"Tono 8\"\n      }\n    },\n    \"topVariant\": {\n      \"nombre\": \"Peinado\",\n      \"opciones\": {\n        \"short\": \"Corto\",\n        \"spiky\": \"De puntas\",\n        \"bowl\": \"Corte totuma\",\n        \"sideSwept\": \"De lado\",\n        \"curly\": \"Crespo\",\n        \"mohawk\": \"Mohicano\",\n        \"buns\": \"Moños\",\n        \"ponytail\": \"Cola de caballo\",\n        \"bob\": \"Melena corta\",\n        \"shoulderLength\": \"A los hombros\",\n        \"longStraight\": \"Largo liso\",\n        \"longWavy\": \"Largo ondulado\",\n        \"partedLong\": \"Largo con partidura\",\n        \"braids\": \"Trenzas\",\n        \"twinTails\": \"Dos colitas\",\n        \"afro\": \"Afro\",\n        \"halfShaved\": \"Medio rapado\"\n      }\n    },\n    \"hairColor\": {\n      \"nombre\": \"Color de pelo\",\n      \"opciones\": {\n        \"2c222b\": \"Negro\",\n        \"3b2f2f\": \"Café muy oscuro\",\n        \"5a3825\": \"Café oscuro\",\n        \"7b4a2d\": \"Café\",\n        \"a56b46\": \"Café claro\",\n        \"c98850\": \"Miel\",\n        \"d9b380\": \"Rubio oscuro\",\n        \"e8d4a8\": \"Rubio\",\n        \"b55239\": \"Cobrizo\",\n        \"d6455d\": \"Rosado\",\n        \"6d5acf\": \"Morado\",\n        \"3fb27f\": \"Verde\"\n      }\n    },\n    \"eyesVariant\": {\n      \"nombre\": \"Ojos\",\n      \"opciones\": {\n        \"open\": \"Abiertos\",\n        \"soft\": \"Suaves\",\n        \"happy\": \"Contentos\",\n        \"sleepy\": \"Soñolientos\",\n        \"side\": \"Mirando de lado\",\n        \"closed\": \"Cerrados\",\n        \"wide\": \"Muy abiertos\",\n        \"star\": \"De estrella\"\n      }\n    },\n    \"mouthVariant\": {\n      \"nombre\": \"Boca\",\n      \"opciones\": {\n        \"smile\": \"Sonrisa\",\n        \"bigSmile\": \"Sonrisa grande\",\n        \"flat\": \"Recta\",\n        \"ooh\": \"Sorprendida\",\n        \"tongue\": \"Lengua afuera\",\n        \"smirk\": \"Sonrisa de lado\",\n        \"laugh\": \"Risa\",\n        \"wideSmile\": \"Sonrisa ancha\",\n        \"frown\": \"Boca hacia abajo\",\n        \"grin\": \"Dientes\"\n      }\n    },\n    \"cheeksVariant\": {\n      \"nombre\": \"Mejillas\",\n      \"ninguno\": \"Ninguno\",\n      \"opciones\": {\n        \"blush\": \"Rubor\",\n        \"pixel\": \"Cuadritos\",\n        \"freckles\": \"Pecas\"\n      }\n    },\n    \"beardVariant\": {\n      \"nombre\": \"Barba\",\n      \"ninguno\": \"Ninguna\",\n      \"opciones\": {\n        \"full\": \"Barba completa\",\n        \"mustache\": \"Bigote\",\n        \"goatee\": \"Perilla\",\n        \"stubble\": \"Barba corta\"\n      }\n    },\n    \"shirtColor\": {\n      \"nombre\": \"Color de la camiseta\",\n      \"opciones\": {\n        \"e64980\": \"Rosado\",\n        \"f76707\": \"Naranja\",\n        \"fab005\": \"Amarillo\",\n        \"40c057\": \"Verde\",\n        \"12b886\": \"Turquesa\",\n        \"228be6\": \"Azul\",\n        \"4c6ef5\": \"Añil\",\n        \"7950f2\": \"Morado\",\n        \"e8590c\": \"Mandarina\",\n        \"495057\": \"Gris\"\n      }\n    }\n  },\n  \"puesto\": {\n    \"ropa\": {\n      \"id\": \"camiseta_lisa\",\n      \"nombre\": \"Camiseta lisa\",\n      \"parametros\": {\n        \"outfitVariant\": \"plain\"\n      }\n    },\n    \"accesorio\": {\n      \"id\": \"gafas_redondas\",\n      \"nombre\": \"Gafas redondas\",\n      \"parametros\": {\n        \"glassesVariant\": \"round\"\n      }\n    }\n  },\n  \"objetos\": {\n    \"ropa\": [\n      {\n        \"id\": \"camiseta_lisa\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Camiseta lisa\",\n        \"parametros\": {\n          \"outfitVariant\": \"plain\"\n        },\n        \"nivel_requerido\": 1,\n        \"desbloqueado\": true,\n        \"niveles_faltantes\": 0,\n        \"puesto\": true\n      },\n      {\n        \"id\": \"camiseta_rayas\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Camiseta de rayas\",\n        \"parametros\": {\n          \"outfitVariant\": \"stripes\"\n        },\n        \"nivel_requerido\": 2,\n        \"desbloqueado\": true,\n        \"niveles_faltantes\": 0,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"overol\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Overol de jardín\",\n        \"parametros\": {\n          \"outfitVariant\": \"overalls\"\n        },\n        \"nivel_requerido\": 4,\n        \"desbloqueado\": true,\n        \"niveles_faltantes\": 0,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"camisa_cuadros\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Camisa de cuadros\",\n        \"parametros\": {\n          \"outfitVariant\": \"checker\"\n        },\n        \"nivel_requerido\": 5,\n        \"desbloqueado\": false,\n        \"niveles_faltantes\": 1,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"buzo_capota\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Buzo con capota\",\n        \"parametros\": {\n          \"outfitVariant\": \"hoodie\"\n        },\n        \"nivel_requerido\": 6,\n        \"desbloqueado\": false,\n        \"niveles_faltantes\": 2,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"chaqueta\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Chaqueta\",\n        \"parametros\": {\n          \"outfitVariant\": \"jacket\"\n        },\n        \"nivel_requerido\": 8,\n        \"desbloqueado\": false,\n        \"niveles_faltantes\": 4,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"vestido\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Vestido\",\n        \"parametros\": {\n          \"outfitVariant\": \"dress\"\n        },\n        \"nivel_requerido\": 9,\n        \"desbloqueado\": false,\n        \"niveles_faltantes\": 5,\n        \"puesto\": false\n      },\n      {\n        \"id\": \"traje\",\n        \"tipo\": \"ropa\",\n        \"nombre\": \"Traje\",\n        \"parametros\": {\n          \"outfitVariant\": \"suit\"\n        },\n        \"nivel_requerido\": 10,\n        \"desbloqueado\": false,\n        \"niveles_faltantes\": 6,\n        \"puesto\": false\n      }\n    ],\n    \"accesorio\": [\n      {\n        \"id\": \"gafas_redondas\",\n        \"tipo\": \"accesorio\",\n        \"nombre\": \"Gafas redondas\",\n        \"parametros\": {\n          \"glassesVariant\": \"round\"\n        },\n        \"nivel_requerido\": 3,\n        \"desbloqueado\": true,\n        \"niveles_faltantes\": 0,\n        \"puesto\": true\n      },\n      {\n        \"id\": \"gafas_sol\",\n        \"tipo\": \"accesorio\",\n        \"nombre\": \"Gafas de sol\",\n        \"parametros\": {\n          \"glassesVariant\": \"shades\"\n        },\n        \"nivel_requerido\": 7,\n        \"desbloqueado\": false,\n        \"niveles_faltantes\": 3,\n        \"puesto\": false\n      }\n    ]\n  },\n  \"imagenes_listas\": false,\n  \"base\": {\n    \"id\": \"base_1\",\n    \"nombre\": \"Base 1\",\n    \"archivo\": \"base_1.png\",\n    \"url\": \"http://127.0.0.1:5002/static/avatar/base_1.png\",\n    \"imagen_lista\": false\n  },\n  \"bases\": [\n    {\n      \"id\": \"base_1\",\n      \"nombre\": \"Base 1\",\n      \"archivo\": \"base_1.png\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_1.png\",\n      \"imagen_lista\": false,\n      \"seleccionada\": true\n    },\n    {\n      \"id\": \"base_2\",\n      \"nombre\": \"Base 2\",\n      \"archivo\": \"base_2.png\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_2.png\",\n      \"imagen_lista\": false,\n      \"seleccionada\": false\n    }\n  ],\n  \"capas\": [\n    {\n      \"tipo\": \"base\",\n      \"id\": \"base_1\",\n      \"archivo\": \"base_1.png\",\n      \"url\": \"http://127.0.0.1:5002/static/avatar/base_1.png\",\n      \"imagen_lista\": false\n    }\n  ],\n  \"respaldo_dicebear\": {\n    \"id\": \"sol\",\n    \"nombre\": \"Sol\",\n    \"forma\": \"circle\",\n    \"color\": \"F6B73C\",\n    \"url\": \"https://api.dicebear.com/10.x/gaze/svg?seed=lumea-sol&shapeVariant=circle&bodyColor=F6B73C&eyesVariant=dots\"\n  }\n}"
             }
           ]
+        },
+        {
+          "name": "Avatar: elegir base (EN DESUSO)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Responde 200\", function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/avatar/base",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "avatar",
+                "base"
+              ]
+            },
+            "description": "EN DESUSO desde el 9 oct: la persona ya no se arma con capas PNG y la base no cambia a la persona. Sigue respondiendo para no romper a nadie.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"base_id\": \"base_2\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
         },
         {
           "name": "Avatares DiceBear",

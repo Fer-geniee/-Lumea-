@@ -26,12 +26,13 @@ Backend/
 ├── app.py                 Rutas de la API (Flask). Orquesta; no tiene lógica de IA.
 ├── predict.py             Carga los dos modelos y decide en cascada (primero el regional).
 ├── database.py            Toda la capa MySQL (consultas parametrizadas, migraciones suaves).
-├── gamificacion.py        XP, niveles, rachas, misiones y avatar (Blueprint de Flask).
+├── gamificacion.py        XP, niveles, rachas, misiones y la persona voxel-art (Blueprint de Flask).
 ├── gamificacion_config.py Todos los números de la gamificación, en un solo lugar.
 ├── grupos_confusion.py    Alimentos que siempre piden confirmación humana.
 ├── sellos.py              Sellos de advertencia (Res. 810 de 2021).
+├── dato_del_dia.py        El dato curioso del día (GET /dato-del-dia), el mismo para todos en un día de Bogotá.
 ├── camara.html            Demo de la cámara (servida por la ruta /camara).
-├── static/                Imágenes de avatares.
+├── static/                Imágenes de las capas PNG del avatar (en desuso desde el 9 oct).
 ├── modelo_lumea_comida.keras + clases.json      Modelo regional (35 clases).
 ├── modelo_lumea101.keras + clases_101.json      Modelo Food-101 (101 clases).
 ├── pruebas/               Pruebas automáticas de la API, login, gamificación y confirmación.

@@ -76,9 +76,9 @@ Ejemplo con 5 XP por día y tope de 20 (valores de prueba, no los de hoy): regis
 |---|---|
 | `GET /progreso` | Dashboard: XP, nivel, racha, meta del día, aviso de regreso, cara DiceBear con el ánimo de hoy, resumen de calcomanías. |
 | `GET /calcomanias` | Pantalla de calcomanías: las 10, con cuáles están ganadas y cómo conseguir las demás. |
-| `GET /avatar` (singular) | Pantalla "personalizar avatar" (capas de Figma): base, ropa y accesorio. |
-| `POST /avatar/base`, `POST /avatar/equipar`, `POST /avatar/quitar` | Cambiar el avatar por capas. |
-| `GET /avatares` (plural) y `POST /avatar` | Avatares DiceBear: la cara del check-in de ánimo, y el avatar de **respaldo** si el diseño de Figma no llega a tiempo. |
+| `GET /avatar` (singular) | Pantalla del avatar: la persona voxel-art (rasgos y lo puesto), los rasgos que se pueden elegir y el armario por etapas. |
+| `POST /avatar/rasgos`, `POST /avatar/equipar`, `POST /avatar/quitar` | Cambiar cómo se ve la persona (rasgos libres) y qué lleva puesto (armario por etapas). `POST /avatar/base` está **en desuso**. |
+| `GET /avatares` (plural) y `POST /avatar` | Compañeros DiceBear *gaze*: la cara del check-in de ánimo y el compañero del Inicio. |
 
 Ojo: `GET /avatar` (capas) y `POST /avatar` (DiceBear) comparten la dirección pero son cosas distintas.
 
@@ -289,112 +289,123 @@ Notas:
 
 Errores: `400` sin `email`, `404` si el correo no tiene perfil.
 
-## Avatar por capas (diseño de Figma), opcional
+## La persona: avatar voxel-art y armario por etapas · nuevo, 9 oct 2026
 
-El avatar del perfil se arma apilando PNG transparentes del mismo tamaño: abajo la **base** (2 para elegir), encima la **ropa** y encima el **accesorio**. La ropa y los accesorios se desbloquean con el **nivel máximo** y nunca se vuelven a bloquear. Cada usuario lleva como máximo una prenda y un accesorio, o ninguno.
+**Decisión de Isabella (9 oct).** Las imágenes por capas de la diseñadora no llegan a tiempo. La persona ahora es un avatar **voxel-art de DiceBear 10.x** (CC0) que **el frontend dibuja en el navegador**: el backend nunca le pide nada a DiceBear. El armario se conserva (tipos `ropa` y `accesorio`, `equipar`, `quitar` y el bloqueo por etapa), pero **cada objeto ahora cambia a la persona**: lleva `parametros` (opciones de DiceBear) en vez de un archivo PNG.
 
-**Mientras no existan las imágenes**, todo responde igual, con los nombres de archivo y `"imagen_lista": false`: el frontend muestra un marcador en vez de la imagen. Si el diseño no llega a tiempo, el perfil usa el avatar DiceBear (`respaldo_dicebear`). Especificación para la diseñadora: `ESPECIFICACION_AVATARES_FIGMA.md`.
+Dos partes, con reglas distintas:
+
+| | Rasgos | Armario (ropa y accesorio) |
+|---|---|---|
+| Qué es | Cómo se ve la persona: piel, peinado, ojos, boca... | Prendas y accesorios |
+| Se bloquea | **Nunca.** La identidad no es un premio. | Sí, por **etapa máxima alcanzada** (nunca se vuelve a bloquear) |
+| Se cambia con | `POST /avatar/rasgos` | `POST /avatar/equipar` y `/avatar/quitar` |
+
+Hay **una prenda o un accesorio por cada una de las 10 etapas** (borrador: Isabella revisa los nombres). Las gorras y los gorros no entran: en voxel-art reemplazan el peinado.
+
+| Etapa | Id | Tipo | Nombre | `parametros` |
+|---|---|---|---|---|
+| 1 | `camiseta_lisa` | ropa | Camiseta lisa (la de por defecto) | `{"outfitVariant": "plain"}` |
+| 2 | `camiseta_rayas` | ropa | Camiseta de rayas | `{"outfitVariant": "stripes"}` |
+| 3 | `gafas_redondas` | accesorio | Gafas redondas | `{"glassesVariant": "round"}` |
+| 4 | `overol` | ropa | Overol de jardín | `{"outfitVariant": "overalls"}` |
+| 5 | `camisa_cuadros` | ropa | Camisa de cuadros | `{"outfitVariant": "checker"}` |
+| 6 | `buzo_capota` | ropa | Buzo con capota | `{"outfitVariant": "hoodie"}` |
+| 7 | `gafas_sol` | accesorio | Gafas de sol | `{"glassesVariant": "shades"}` |
+| 8 | `chaqueta` | ropa | Chaqueta | `{"outfitVariant": "jacket"}` |
+| 9 | `vestido` | ropa | Vestido | `{"outfitVariant": "dress"}` |
+| 10 | `traje` | ropa | Traje | `{"outfitVariant": "suit"}` |
+
+La **ropa nunca queda vacía**: sin nada elegido lleva `camiseta_lisa`. Quitar la ropa vuelve a `camiseta_lisa`; el accesorio sí puede quedar en `null`. Los ids viejos que haya guardados (`buzo_verde`, `gafas`, `ruana`...) se tratan como «nada puesto», sin error.
+
+### Cómo dibujar a la persona
+
+Las opciones de DiceBear son los `rasgos` más los `parametros` de lo que lleva puesto. Los colores van en hexadecimal **sin `#`**. DiceBear dibuja al azar algunos rasgos con cierta probabilidad (peinado, gafas, barba, mejillas), así que el frontend fija `topProbability`, `glassesProbability`, `beardProbability` y `cheeksProbability` en 100 o en 0 según lo elegido (0 cuando es `null` o no hay accesorio). La semilla es fija (`lumea`): **nunca el correo ni otro dato de la persona**.
 
 ### `GET /avatar?email=<correo>`
 
-Respuesta real (nivel máximo 2, sin imágenes todavía):
+Respuesta real (nivel máximo 4, con trenzas, tono 5, pecas y el overol puesto; recortada: las listas `ropa` y `accesorio` de `objetos` traen todas las prendas y los rasgos disponibles son 8):
 
 ```json
 {
   "success": true,
-  "nivel_maximo": 2,
-  "imagenes_listas": false,
-  "base": { "id": "base_1", "nombre": "Base 1", "archivo": "base_1.png", "imagen_lista": false,
-            "url": "http://127.0.0.1:5002/static/avatar/base_1.png" },
-  "puesto": { "ropa": null, "accesorio": null },
-  "capas": [
-    { "tipo": "base", "id": "base_1", "archivo": "base_1.png", "imagen_lista": false,
-      "url": "http://127.0.0.1:5002/static/avatar/base_1.png" }
-  ],
-  "bases": [
-    { "id": "base_1", "nombre": "Base 1", "archivo": "base_1.png", "imagen_lista": false, "seleccionada": true,
-      "url": "http://127.0.0.1:5002/static/avatar/base_1.png" },
-    { "id": "base_2", "nombre": "Base 2", "archivo": "base_2.png", "imagen_lista": false, "seleccionada": false,
-      "url": "http://127.0.0.1:5002/static/avatar/base_2.png" }
-  ],
+  "nivel_maximo": 4,
+  "persona": {
+    "estilo": "voxel-art",
+    "rasgos": {
+      "skinColor": "b07347", "topVariant": "braids", "hairColor": "3b2f2f", "eyesVariant": "open",
+      "mouthVariant": "smile", "cheeksVariant": "freckles", "beardVariant": null, "shirtColor": "40c057"
+    },
+    "puesto": {
+      "ropa": { "id": "overol", "nombre": "Overol de jardín", "parametros": { "outfitVariant": "overalls" } },
+      "accesorio": null
+    }
+  },
+  "rasgos_disponibles": {
+    "skinColor": { "nombre": "Tono de piel",
+                   "opciones": { "f5d0b0": "Tono 1", "eab890": "Tono 2", "...": "...", "6a3d1f": "Tono 8" } },
+    "topVariant": { "nombre": "Peinado",
+                    "opciones": { "short": "Corto", "spiky": "De puntas", "bowl": "Corte totuma", "...": "..." } },
+    "cheeksVariant": { "nombre": "Mejillas", "ninguno": "Ninguno",
+                       "opciones": { "blush": "Rubor", "pixel": "Cuadritos", "freckles": "Pecas" } },
+    "beardVariant": { "nombre": "Barba", "ninguno": "Ninguna",
+                      "opciones": { "full": "Barba completa", "mustache": "Bigote", "goatee": "Perilla", "stubble": "Barba corta" } }
+  },
   "objetos": {
     "ropa": [
-      { "id": "buzo_verde", "tipo": "ropa", "nombre": "Buzo verde", "archivo": "ropa_buzo_verde.png", "imagen_lista": false,
-        "nivel_requerido": 1, "desbloqueado": true, "niveles_faltantes": 0, "puesto": false,
-        "url": "http://127.0.0.1:5002/static/avatar/ropa_buzo_verde.png" },
-      { "id": "camiseta_lumea", "tipo": "ropa", "nombre": "Camiseta Lumea", "archivo": "ropa_camiseta_lumea.png", "imagen_lista": false,
-        "nivel_requerido": 3, "desbloqueado": false, "niveles_faltantes": 1, "puesto": false,
-        "url": "http://127.0.0.1:5002/static/avatar/ropa_camiseta_lumea.png" },
-      { "id": "ruana", "tipo": "ropa", "nombre": "Ruana", "archivo": "ropa_ruana.png", "imagen_lista": false,
-        "nivel_requerido": 6, "desbloqueado": false, "niveles_faltantes": 4, "puesto": false,
-        "url": "http://127.0.0.1:5002/static/avatar/ropa_ruana.png" }
+      { "id": "camiseta_lisa", "tipo": "ropa", "nombre": "Camiseta lisa", "parametros": { "outfitVariant": "plain" },
+        "nivel_requerido": 1, "desbloqueado": true, "niveles_faltantes": 0, "puesto": false },
+      { "id": "overol", "tipo": "ropa", "nombre": "Overol de jardín", "parametros": { "outfitVariant": "overalls" },
+        "nivel_requerido": 4, "desbloqueado": true, "niveles_faltantes": 0, "puesto": true },
+      { "id": "camisa_cuadros", "tipo": "ropa", "nombre": "Camisa de cuadros", "parametros": { "outfitVariant": "checker" },
+        "nivel_requerido": 5, "desbloqueado": false, "niveles_faltantes": 1, "puesto": false }
     ],
     "accesorio": [
-      { "id": "gafas", "tipo": "accesorio", "nombre": "Gafas", "archivo": "accesorio_gafas.png", "imagen_lista": false,
-        "nivel_requerido": 2, "desbloqueado": true, "niveles_faltantes": 0, "puesto": false,
-        "url": "http://127.0.0.1:5002/static/avatar/accesorio_gafas.png" },
-      { "id": "audifonos", "tipo": "accesorio", "nombre": "Audífonos", "archivo": "accesorio_audifonos.png", "imagen_lista": false,
-        "nivel_requerido": 4, "desbloqueado": false, "niveles_faltantes": 2, "puesto": false,
-        "url": "http://127.0.0.1:5002/static/avatar/accesorio_audifonos.png" },
-      { "id": "sombrero_vueltiao", "tipo": "accesorio", "nombre": "Sombrero vueltiao", "archivo": "accesorio_sombrero_vueltiao.png", "imagen_lista": false,
-        "nivel_requerido": 8, "desbloqueado": false, "niveles_faltantes": 6, "puesto": false,
-        "url": "http://127.0.0.1:5002/static/avatar/accesorio_sombrero_vueltiao.png" }
+      { "id": "gafas_redondas", "tipo": "accesorio", "nombre": "Gafas redondas", "parametros": { "glassesVariant": "round" },
+        "nivel_requerido": 3, "desbloqueado": true, "niveles_faltantes": 0, "puesto": false }
     ]
   },
-  "respaldo_dicebear": {
-    "color": "F6B73C",
-    "forma": "circle",
-    "id": "sol",
-    "nombre": "Sol",
-    "url": "https://api.dicebear.com/10.x/gaze/svg?seed=lumea-sol&shapeVariant=circle&bodyColor=F6B73C&eyesVariant=dots"
-  }
+  "puesto": { "ropa": { "id": "overol", "...": "..." }, "accesorio": null },
+  "base": "...", "bases": "...", "capas": "...", "imagenes_listas": false, "respaldo_dicebear": "..."
 }
 ```
 
-(Claves reordenadas para leerlas mejor; el backend las manda en orden alfabético.)
-
-- `capas` ya viene **en el orden de apilado** (la primera va abajo). Dibuja una `<img>` por capa, una encima de otra.
-- `imagen_lista: false` → esa imagen todavía no existe: muestra un marcador. `imagenes_listas` es `true` solo cuando existen las 8.
-- `niveles_faltantes` es 0 si ya está desbloqueado. Para el candado: "Nivel `nivel_requerido`" o "Te faltan `niveles_faltantes` niveles".
+- **`persona.rasgos`** trae SIEMPRE los 8 rasgos (los de por defecto si la persona no ha elegido). Una persona neutra: `skinColor c99062`, `topVariant short`, `hairColor 3b2f2f`, `eyesVariant open`, `mouthVariant smile`, mejillas y barba `null`, `shirtColor 40c057`.
+- **`rasgos_disponibles`**: por cada rasgo, su `nombre` en español y sus `opciones` `{valor: nombre}`, **en el orden en que deben mostrarse** (Tono 1 a Tono 8; el servidor ya no reordena las claves alfabéticamente). Solo mejillas y barba traen `ninguno` (el nombre de la opción «sin esto», que se guarda como `null`). Los tonos de piel se llaman «Tono 1» a «Tono 8». Los peinados no incluyen gorras ni gorros.
+- **`objetos`**: cada objeto trae `parametros`, `nivel_requerido`, `desbloqueado`, `niveles_faltantes` (0 si ya está abierto) y `puesto`. Para el candado: «Etapa `nivel_requerido`» o «Te faltan `niveles_faltantes` etapas».
+- **`puesto`** (arriba del todo) es lo mismo que `persona.puesto`.
+- **EN DESUSO** (siguen respondiendo para no romper a nadie): `base`, `bases`, `capas`, `imagenes_listas`, `imagen_lista`, y las rutas `POST /avatar/base`. La persona ya no se arma con imágenes PNG. `respaldo_dicebear` sigue siendo el compañero gaze.
 
 Errores: `400` sin `email`, `404` sin perfil.
 
-### `POST /avatar/base`
+### `POST /avatar/rasgos`
 
 ```json
-{ "email": "ana@correo.com", "base_id": "base_2" }
+{ "email": "ana@correo.com", "rasgos": { "topVariant": "braids", "skinColor": "b07347", "cheeksVariant": null } }
 ```
 
-`200`: el mismo cuerpo de `GET /avatar`, ya con la base nueva (así el frontend redibuja con la respuesta). Las dos bases están disponibles desde el inicio.
+- Cada **clave** debe existir en `rasgos_disponibles` y cada **valor** debe ser una de sus `opciones`. `null` solo vale en mejillas y barba (`cheeksVariant`, `beardVariant`). Los colores van sin `#`.
+- Lo nuevo se **mezcla** con lo ya guardado: se puede mandar solo el rasgo que cambió.
+- **No se verifica la etapa**: los rasgos son libres.
+- `200`: el mismo cuerpo de `GET /avatar`, ya con los rasgos nuevos.
+
+| Código | Cuándo | Cuerpo |
+|---|---|---|
+| `400` | Falta `rasgos` o está vacío, una clave no existe, o un valor no vale (si algo no vale, **no se guarda nada**) | `{"error": "El valor de \"topVariant\" no es válido."}` |
+| `404` | El correo no tiene perfil | `{"error": "No existe un perfil con ese correo."}` |
 
 ### `POST /avatar/equipar`
 
 ```json
-{ "email": "ana@correo.com", "tipo": "ropa", "item_id": "buzo_verde" }
+{ "email": "ana@correo.com", "tipo": "ropa", "item_id": "overol" }
 ```
 
-`200`: el mismo cuerpo de `GET /avatar`. Extracto real de `puesto` y `capas` después de ponerse el buzo con la base 2:
-
-```json
-{
-  "puesto": {
-    "ropa": { "id": "buzo_verde", "nombre": "Buzo verde", "archivo": "ropa_buzo_verde.png", "imagen_lista": false,
-              "url": "http://127.0.0.1:5002/static/avatar/ropa_buzo_verde.png" },
-    "accesorio": null
-  },
-  "capas": [
-    { "tipo": "base", "id": "base_2", "archivo": "base_2.png", "imagen_lista": false, "url": "http://127.0.0.1:5002/static/avatar/base_2.png" },
-    { "tipo": "ropa", "id": "buzo_verde", "archivo": "ropa_buzo_verde.png", "imagen_lista": false, "url": "http://127.0.0.1:5002/static/avatar/ropa_buzo_verde.png" }
-  ]
-}
-```
-
-Ponerse otra prenda reemplaza la anterior (solo una por tipo).
+`200`: el mismo cuerpo de `GET /avatar`, con el objeto puesto (ponerse otro del mismo tipo reemplaza al anterior; solo uno por tipo). La etapa **se verifica en el servidor**.
 
 | Código | Cuándo | Cuerpo |
 |---|---|---|
-| `400` | Falta `tipo` o `item_id`, el tipo no existe, el objeto no existe, o el objeto es de otro tipo | `{"error": "..."}` |
-| `403` | El objeto existe pero está bloqueado | `{"error": "El objeto \"audifonos\" todavía está bloqueado.", "nivel_maximo": 1, "nivel_requerido": 4, "niveles_faltantes": 3}` |
+| `400` | Falta `tipo` o `item_id`, el tipo no existe, el objeto no existe (incluidos los ids viejos como `buzo_verde`) o es de otro tipo | `{"error": "..."}` |
+| `403` | El objeto existe pero está bloqueado | `{"error": "El objeto \"traje\" todavía está bloqueado.", "nivel_maximo": 4, "nivel_requerido": 10, "niveles_faltantes": 6}` |
 | `404` | El correo no tiene perfil | `{"error": "No existe un perfil con ese correo."}` |
 
 ### `POST /avatar/quitar`
@@ -403,7 +414,27 @@ Ponerse otra prenda reemplaza la anterior (solo una por tipo).
 { "email": "ana@correo.com", "tipo": "ropa" }
 ```
 
-`200`: el mismo cuerpo de `GET /avatar`, sin nada de ese tipo. Quitar cuando no hay nada puesto no es error. `400` si el tipo no existe.
+`200`: el mismo cuerpo de `GET /avatar`. Quitar la **ropa** vuelve a `camiseta_lisa`; quitar el **accesorio** lo deja en `null`. Quitar cuando no hay nada puesto no es error. `400` si el tipo no existe.
+
+### `POST /avatar/base` (EN DESUSO)
+
+```json
+{ "email": "ana@correo.com", "base_id": "base_2" }
+```
+
+Sigue guardando la base de las capas PNG y respondiendo `200` con el cuerpo de `GET /avatar`, pero **la base ya no cambia a la persona**. No lo uses en pantallas nuevas.
+
+### Cuando una etapa abre una prenda
+
+Las respuestas que suben de etapa (`desbloqueos` en `gamificacion`, ver «Cambios en endpoints que ya existían») nombran la prenda con su `id` y su `nombre`, y traen sus `parametros` para dibujar a la persona con la prenda puesta en la celebración. Respuesta real al pasar de la etapa 4 a la 5:
+
+```json
+"desbloqueos": [
+  { "tipo": "avatar", "id": "montana", "nombre": "Montaña", "nivel_requerido": 5 },
+  { "tipo": "ropa", "id": "camisa_cuadros", "nombre": "Camisa de cuadros", "nivel_requerido": 5,
+    "parametros": { "outfitVariant": "checker" } }
+]
+```
 
 ## Avatares DiceBear (ánimo y respaldo)
 
@@ -610,7 +641,16 @@ Y la misma respuesta, con una bebida de paquete (la tercera comida del día), tr
 - `GET /historial`: cada registro suma `es_fruta` (booleano; `true` si el alimento está en `FRUTAS` de `gamificacion_config.py`). Respuesta real de un registro: `{"alimento_codigo": "mango", "alimento_detectado": "Mango", "es_fruta": true, "sellos_advertencia": [], ...}`. No lo uses para juzgar la comida: sirve, por ejemplo, para marcar con un dibujo las frutas de la semana.
 - `GET /estado-animo`: sin cambios por defecto (los últimos 30 registros, con `id`, `fecha` y `estado`). Nuevo parámetro opcional `?dias=7`: solo los registros de los últimos 7 días (hoy cuenta), aunque haya más de 30. Respuesta real: `{"success": true, "cantidad": 1, "historial": [{"id": 50, "fecha": "Mon, 05 Oct 2026 00:00:00 GMT", "estado": "bien"}]}`. `dias` menor que 1 o que no es un número entero responde `400`.
 
+## Otros cambios del 9 oct 2026 (perfil, dato del día e historial)
+
+- **`POST /perfil`**: `peso` y `altura` **ya no se piden** (si llegan, se ignoran y se guardan como `NULL`; las columnas siguen en la tabla por los perfiles viejos). `edad` debe ser un **entero entre 11 y 120** (`400` si no). Si `edad` < 18, `acudiente_sabe` debe ser `true` o responde `400` con «Para menores de 18 años, tu madre, padre o acudiente debe saber que usas Lumea.» (texto provisional). Se guardan `acudiente_sabe` y `acudiente_fecha` (la fecha en que se marcó la casilla por primera vez). Es un **aviso**, no una autorización verificada. `objetivo` solo acepta `comer_balanceado` y `conocer_lo_que_como` (los de la pantalla de crear cuenta); un perfil viejo con otro objetivo se sigue leyendo.
+- **`GET /perfil`**: ya **no devuelve `peso` ni `altura`** (los perfiles viejos aún pueden tenerlos guardados, pero no salen). Sí devuelve `acudiente_sabe` y `acudiente_fecha`.
+- **`GET /dato-del-dia`** (nuevo): `{"fecha", "alimento_codigo", "nombre", "dato_curioso"}`. El mismo para todas las personas durante un día de Bogotá; no recibe parámetros ni datos personales. Sale de las filas de `tabla_alimentos` con `dato_curioso`, ordenadas por el SHA-256 de su código; el día elige el elemento `fecha.toordinal() % n`, así que `n` días seguidos recorren los `n` datos sin repetir. `404` sin datos, `503` sin base de datos.
+- **`GET /historial`**: cada registro suma `grupo` (clave del grupo del plato según `consejos.py` y `datos/grupos_plato.csv`, o `null`) y `sellos` (lista de `{sello, dato, idea}`, o `[]`). Respuesta real de un registro: `{"alimento_codigo": "cocacola_original", "grupo": "azucares", "sellos_advertencia": ["azucares", "edulcorantes"], "sellos": [{"sello": "azucares", "dato": "Tiene azúcar añadida alta. ...", "idea": "Si otro día quieres algo dulce, ..."}, ...], ...}`.
+- **JSON sin reordenar**: el servidor ya no ordena alfabéticamente las claves de las respuestas, para que las `opciones` de `rasgos_disponibles` lleguen en su orden (Tono 1 a Tono 8).
+
 ## Imágenes
 
 - **DiceBear** (`api.dicebear.com/10.x/gaze/svg`, estilo *gaze*, versión 10.x; valores de forma y ojos verificados el 7 oct 2026 en `@dicebear/styles` 10.6.0). Se cargan con un `<img src="...">` normal. **Necesitan internet**: si el día de la presentación no hay conexión, no se van a ver (se pueden descargar los SVG y servirlos localmente). La semilla de cada avatar es fija (`lumea-sol`, ...): nunca se manda el correo ni otro dato del usuario a DiceBear.
-- **Capas de Figma**: las sirve el propio backend desde `Backend/static/avatar/` (`http://127.0.0.1:5002/static/avatar/<archivo>`). No necesitan internet.
+- **La persona (voxel-art)**: la dibuja el frontend en el navegador con los archivos de `vendor/dicebear/`; no necesita internet ni le pide nada a DiceBear.
+- **Capas de Figma (EN DESUSO)**: las servía el propio backend desde `Backend/static/avatar/`. Ya no se usan.

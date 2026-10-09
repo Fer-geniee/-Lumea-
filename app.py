@@ -18,6 +18,10 @@ from dato_del_dia import fecha_de_hoy, respuesta_del_dia
 from predict import predecir_alimento, OPCIONES_CUANDO_DUDA  # única fuente de inferencia (fusión con predict.py)
 
 app = Flask(__name__)
+# Flask ordena las claves del JSON alfabéticamente por defecto. Las listas de opciones
+# del avatar (rasgos_disponibles) son objetos {valor: nombre} cuyo ORDEN importa
+# (Tono 1 a Tono 8): con False se respeta el orden en que están escritas en el config.
+app.json.sort_keys = False
 CORS(app)
 
 # ===== Una petición a la vez (por la única conexión MySQL) =====

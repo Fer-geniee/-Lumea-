@@ -1,3 +1,8 @@
+> **EN DESUSO (9 oct 2026).** Estas imágenes por capas no llegaron a tiempo: la persona de Lumea ahora es un avatar
+> **voxel-art de DiceBear** que el frontend dibuja en el navegador, y cada etapa desbloquea una prenda que cambia a la
+> persona (ver `CONTRATO_GAMIFICACION.md`, «La persona: avatar voxel-art y armario por etapas»). Este documento se
+> conserva como historia del proyecto y por si algún día se vuelve a las ilustraciones propias.
+
 # Avatar de Lumea por capas: qué dibujar en Figma (para Laura)
 
 Hola, Laura. Esta guía explica qué imágenes necesita la app para el avatar del

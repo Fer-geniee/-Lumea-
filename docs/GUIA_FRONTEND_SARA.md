@@ -60,7 +60,8 @@ Funciones que trae `api.js`:
 | `confirmarAlimento(codigo, email)` | `POST /confirmar-alimento` | Confirmación |
 | `registrarEstadoAnimo(email, estado)`, `obtenerEstadosAnimo(email)` | `POST` y `GET /estado-animo` | Check-in de ánimo |
 | `obtenerHistorial(email)` | `GET /historial` | Mis registros |
-| `obtenerAvatar(email)`, `elegirBaseAvatar(...)`, `equiparObjeto(...)`, `quitarObjeto(...)` | `GET /avatar`, `POST /avatar/base`, `/avatar/equipar`, `/avatar/quitar` | Personalizar avatar |
+| `obtenerAvatar(email)`, `equiparObjeto(...)`, `quitarObjeto(...)` y la función que llama a `POST /avatar/rasgos` (por crear en `api.js`) | `GET /avatar`, `POST /avatar/equipar`, `/avatar/quitar`, `/avatar/rasgos` | Avatar (`POST /avatar/base` está en desuso) |
+| La función que llama a `GET /dato-del-dia` (por crear en `api.js`) | `GET /dato-del-dia` | Inicio: el dato curioso del día |
 | `obtenerAvataresDiceBear(email)`, `elegirAvatarDiceBear(...)` | `GET /avatares`, `POST /avatar` | Respaldo del avatar |
 
 Todas devuelven lo mismo: `{ ok, cuerpo }`. `ok` es `true` si todo salió bien, y
@@ -169,12 +170,16 @@ el correo no existe o si la cuenta es de antes de las contraseñas:
 ### Crear cuenta: la contraseña ahora es obligatoria
 
 `crearOActualizarPerfil(datos)` → `POST /perfil`. El JSON debe llevar
-`"contraseña"` (mínimo 6 caracteres) además de los datos de siempre:
+`"contraseña"` (mínimo 6 caracteres) además de los datos de siempre. **Desde el 9 oct
+ya no se piden peso ni altura** (si llegan, se ignoran y se guardan vacíos), la
+**edad mínima es 11** y, para **menores de 18**, la casilla `acudiente_sabe` debe
+ir en `true`:
 
 ```js
 const datos = {
   nombre: "Ana", email: "ana@correo.com", edad: 15, genero: "femenino",
-  peso: 52, altura: 158, objetivo: "comer_balanceado",
+  objetivo: "comer_balanceado",        // solo "comer_balanceado" o "conocer_lo_que_como"
+  acudiente_sabe: true,                // obligatoria si edad < 18: «Mi madre, padre o acudiente sabe que uso Lumea»
   "contraseña": document.getElementById("contrasena").value,
 };
 ```
@@ -182,11 +187,16 @@ const datos = {
 | Respuesta | Cuándo | Qué mostrar |
 |---|---|---|
 | `200` `{"success": true, "mensaje": "Perfil guardado."}` | Cuenta creada | "¡Cuenta creada!" y llevar a iniciar sesión (o guardar la sesión). |
-| `400` | Falta la contraseña o tiene menos de 6 caracteres | El `error` que manda el backend. |
+| `400` | Falta la contraseña o tiene menos de 6 caracteres; la edad no es un entero entre 11 y 120; es menor de 18 y `acudiente_sabe` no es `true`; el objetivo no es válido | El `error` que manda el backend. Para el acudiente: «Para menores de 18 años, tu madre, padre o acudiente debe saber que usas Lumea.» (texto provisional, lo revisa Isabella). |
 | `409` | Ya existe una cuenta con ese correo | "Ya existe una cuenta con ese correo. Inicia sesión con tu contraseña." |
 
-(Guardar el perfil otra vez **sin** contraseña sirve para editar edad, peso,
-etc. de una cuenta que ya existe; nunca cambia la contraseña.)
+(Guardar el perfil otra vez **sin** contraseña sirve para editar edad, nombre,
+etc. de una cuenta que ya existe; nunca cambia la contraseña. Un menor de 18 que
+edita su perfil debe mandar `acudiente_sabe: true` otra vez.)
+
+`GET /perfil` ya **no devuelve peso ni altura**; sí devuelve `acudiente_sabe`
+(1 o 0) y `acudiente_fecha`. La casilla es un **aviso**, no una autorización
+verificada (ver `DEFENSA_TECNICA_LUMEA.md`, sección 5.1).
 
 | Estado | Qué mostrar |
 |---|---|
@@ -272,11 +282,11 @@ Cómo usar cada dato:
   cerrarlo. Llega **una sola vez** por ausencia: la siguiente vez ya viene
   `null`. Muéstralo tal cual, sin reescribirlo. `xp_perdido_desde_ultima_visita`
   hoy siempre es 0 (la pérdida está apagada); no lo muestres.
-- **Avatar:** si el avatar de Figma está listo, las capas (pantalla 8). Si no,
-  el compañero DiceBear *gaze* con los ojos del ánimo de hoy: `<img src="${p.avatar.url_con_animo}" alt="Tu compañero">`.
-  La URL es quieta; si quieres animarlo, agrégale `&animationVariant=...` en el frontend.
-  También vienen `forma` y `color` (sin `#`) por si quieres dibujar algo con ellos.
-  Para saber si Figma está listo, mira `imagenes_listas` en `GET /avatar`.
+- **Persona y compañero:** la persona voxel-art sale de `GET /avatar` (pantalla 8) y
+  se dibuja en el navegador. El compañero DiceBear *gaze* con los ojos del ánimo de hoy
+  sale de `p.avatar.url_con_animo`; el frontend lo dibuja con sus parámetros, sin pedirle
+  nada a `api.dicebear.com`. La URL es quieta; si quieres animarlo, agrégale
+  `animationVariant` en el frontend. También vienen `forma` y `color` (sin `#`).
 
 | Estado | Qué mostrar |
 |---|---|
@@ -408,8 +418,9 @@ Si `gamificacion` no es `null`:
 - Si `subio_de_nivel` es `true`: celebración ("¡Subiste al nivel 2!"), con
   `nivel_anterior` y `nivel` si quieres mostrar el cambio. **`desbloqueos`**
   lista exactamente lo que se abrió (`{tipo, id, nombre, nivel_requerido}`,
-  con `tipo` = `avatar`, `ropa` o `accesorio`): "¡Desbloqueaste: Gafas!" y un
-  botón a "Personalizar avatar". Es `[]` si no subió.
+  con `tipo` = `avatar`, `ropa` o `accesorio`; las prendas y accesorios traen
+  además `parametros` para dibujar a la persona con la prenda puesta):
+  "Prenda nueva: Overol de jardín" y un botón a "Mi armario". Es `[]` si no subió.
 - **`calcomanias_nuevas`** (desde el 5 oct): las calcomanías ganadas con esta
   acción, `{id, nombre, descripcion, rol}`. Celebración: "¡Nueva calcomanía:
   Primera foto!". Vacía si ninguna. Las calcomanías no dan XP ni se comparan
@@ -717,198 +728,131 @@ Respuesta real (recortada a 2 de 3 registros):
 
 ---
 
-## Pantalla 8: Perfil → Personalizar avatar
+## Pantalla 8: Perfil → Avatar (la persona y «Mi armario»)
 
-**Qué muestra:** el avatar grande, armado **por capas**. Debajo, las 2 **bases**
-para elegir, y la **ropa** y los **accesorios**. Lo desbloqueado se puede tocar
-para ponérselo o quitárselo. Lo bloqueado sale con **candado** y el nivel que
-necesita.
+**Qué muestra:** la **persona** (un avatar voxel-art que el frontend dibuja en el
+navegador con DiceBear), y debajo dos cosas con reglas distintas:
 
-Las imágenes las está diseñando Laura en Figma (ver
-`ESPECIFICACION_AVATARES_FIGMA.md`). **Mientras no existan**, el backend responde
-igual, con los nombres de archivo y `"imagen_lista": false`, y la pantalla
-muestra un marcador. Así puedes construirla ya.
+- **«Mi armario»**: la ropa y los accesorios. **Cada etapa desbloquea una prenda
+  nueva** que cambia a la persona. Lo desbloqueado se toca para ponérselo o
+  quitárselo; lo bloqueado sale con **candado** y «Etapa N».
+- **«Cómo me veo»**: los **rasgos** (piel, peinado, color de pelo, ojos, boca,
+  mejillas, barba y color de la camiseta). Son **libres**: nunca se bloquean,
+  porque la identidad no es un premio.
+
+Contrato completo y con ejemplos reales: `CONTRATO_GAMIFICACION.md`, sección «La
+persona: avatar voxel-art y armario por etapas».
 
 **Rutas:**
 
 - Ver todo: `obtenerAvatar(email)` → `GET /avatar?email=...`
-- Elegir base: `elegirBaseAvatar(email, "base_2")` → `POST /avatar/base`
-- Ponerse algo: `equiparObjeto(email, "ropa", "buzo_verde")` → `POST /avatar/equipar`
-- Quitárselo: `quitarObjeto(email, "ropa")` → `POST /avatar/quitar`
+- Ponerse algo: `equiparObjeto(email, "ropa", "overol")` → `POST /avatar/equipar`
+- Quitárselo: `quitarObjeto(email, "ropa")` → `POST /avatar/quitar` (la ropa vuelve a la camiseta lisa)
+- Cambiar rasgos: `POST /avatar/rasgos` con `{email, rasgos: {topVariant: "braids"}}`
+- `POST /avatar/base`, `capas`, `imagen_lista`: **en desuso**, no los uses.
 
 Las tres de cambiar responden **lo mismo que `GET /avatar`**, ya con el cambio:
-redibuja la pantalla con esa respuesta, sin volver a pedir nada.
+redibuja con esa respuesta, sin volver a pedir nada.
 
-Respuesta real de `GET /avatar` (nivel 2, sin imágenes todavía; recortada a
-un objeto de cada tipo, completa en `CONTRATO_GAMIFICACION.md`):
+### Qué trae `GET /avatar` (recortado)
 
 ```json
 {
-  "success": true,
-  "nivel_maximo": 2,
-  "imagenes_listas": false,
-  "base": { "id": "base_1", "nombre": "Base 1", "archivo": "base_1.png", "imagen_lista": false,
-            "url": "http://127.0.0.1:5002/static/avatar/base_1.png" },
-  "puesto": { "ropa": null, "accesorio": null },
-  "capas": [
-    { "tipo": "base", "id": "base_1", "archivo": "base_1.png", "imagen_lista": false,
-      "url": "http://127.0.0.1:5002/static/avatar/base_1.png" }
-  ],
-  "bases": [
-    { "id": "base_1", "nombre": "Base 1", "archivo": "base_1.png", "imagen_lista": false, "seleccionada": true,
-      "url": "http://127.0.0.1:5002/static/avatar/base_1.png" },
-    { "id": "base_2", "nombre": "Base 2", "archivo": "base_2.png", "imagen_lista": false, "seleccionada": false,
-      "url": "http://127.0.0.1:5002/static/avatar/base_2.png" }
-  ],
-  "objetos": {
-    "ropa": [
-      { "id": "buzo_verde", "tipo": "ropa", "nombre": "Buzo verde", "archivo": "ropa_buzo_verde.png", "imagen_lista": false,
-        "nivel_requerido": 1, "desbloqueado": true, "niveles_faltantes": 0, "puesto": false,
-        "url": "http://127.0.0.1:5002/static/avatar/ropa_buzo_verde.png" }
-    ],
-    "accesorio": [
-      { "id": "audifonos", "tipo": "accesorio", "nombre": "Audífonos", "archivo": "accesorio_audifonos.png", "imagen_lista": false,
-        "nivel_requerido": 4, "desbloqueado": false, "niveles_faltantes": 2, "puesto": false,
-        "url": "http://127.0.0.1:5002/static/avatar/accesorio_audifonos.png" }
-    ]
+  "nivel_maximo": 4,
+  "persona": {
+    "estilo": "voxel-art",
+    "rasgos": { "skinColor": "b07347", "topVariant": "braids", "hairColor": "3b2f2f", "eyesVariant": "open",
+                "mouthVariant": "smile", "cheeksVariant": "freckles", "beardVariant": null, "shirtColor": "40c057" },
+    "puesto": { "ropa": { "id": "overol", "nombre": "Overol de jardín", "parametros": { "outfitVariant": "overalls" } },
+                "accesorio": null }
   },
-  "respaldo_dicebear": {
-    "id": "sol", "nombre": "Sol", "forma": "circle", "color": "F6B73C",
-    "url": "https://api.dicebear.com/10.x/gaze/svg?seed=lumea-sol&shapeVariant=circle&bodyColor=F6B73C&eyesVariant=dots"
-  }
+  "rasgos_disponibles": { "topVariant": { "nombre": "Peinado", "opciones": { "short": "Corto", "braids": "Trenzas" } } },
+  "objetos": { "ropa": [ { "id": "camisa_cuadros", "tipo": "ropa", "nombre": "Camisa de cuadros",
+                           "parametros": { "outfitVariant": "checker" },
+                           "nivel_requerido": 5, "desbloqueado": false, "niveles_faltantes": 1, "puesto": false } ] }
 }
 ```
 
-### Cómo se apilan las capas (CSS)
+### Cómo se dibuja la persona
 
-Todas las imágenes miden lo mismo y tienen fondo transparente. El truco es
-ponerlas **una encima de otra en la misma caja**: la caja con
-`position: relative` y cada imagen con `position: absolute` ocupando toda la
-caja. La que se agrega después queda encima.
+Las opciones de DiceBear son `persona.rasgos` + los `parametros` de lo que lleva
+puesto. Los colores van **sin `#`**. DiceBear dibuja al azar algunos rasgos con
+cierta probabilidad, así que fija `topProbability`, `glassesProbability`,
+`beardProbability` y `cheeksProbability` en 100 (o en 0 si el rasgo es `null` o no
+hay accesorio). La semilla es fija; **nunca el correo**. Los estilos están en
+`vendor/dicebear/` (no se le pide nada a internet).
 
-```html
-<div id="avatar" class="avatar-capas"></div>
-```
+### «Mi armario»: candado y etapa que falta
 
-```css
-.avatar-capas {
-  position: relative;          /* las capas se ubican respecto a esta caja */
-  width: 256px;
-  height: 256px;
-}
-.avatar-capas img,
-.avatar-capas .marcador {
-  position: absolute;          /* todas en la misma esquina... */
-  inset: 0;                    /* ...ocupando toda la caja */
-  width: 100%;
-  height: 100%;
-}
-.avatar-capas .marcador {      /* lo que se ve mientras no hay imagen */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 1rem;
-  border: 2px dashed var(--lumea-accent-border);
-  border-radius: 1rem;
-  background: var(--lumea-accent-soft);
-  color: var(--lumea-text-muted);
-  font-size: 0.85rem;
-}
-.objeto.bloqueado { opacity: 0.55; }
-```
+Cada mosaico muestra a la persona con esa prenda puesta (`parametros` del objeto).
 
 ```js
-// capas ya viene en orden: la primera (la base) va abajo.
-function dibujarAvatar(contenedor, capas) {
-  contenedor.innerHTML = "";
-  const faltan = capas.filter((capa) => !capa.imagen_lista).map((capa) => capa.archivo);
-  if (faltan.length > 0) {
-    const marcador = document.createElement("div");
-    marcador.className = "marcador";
-    marcador.textContent = "Imagen en camino: " + faltan.join(", ");
-    contenedor.appendChild(marcador);            // queda abajo de todo
+objetos.forEach((objeto) => {
+  if (objeto.desbloqueado) {
+    // tocar: si ya lo tiene puesto se lo quita; si no, se lo pone
+    boton.onclick = () => cambiar(objeto.puesto
+      ? quitarObjeto(email, objeto.tipo)
+      : equiparObjeto(email, objeto.tipo, objeto.id));
+  } else {
+    boton.disabled = true;                       // aria-disabled="true"
+    boton.title = `Te faltan ${objeto.niveles_faltantes} etapa(s)`;
+    // texto del mosaico: candado + «Etapa ${objeto.nivel_requerido}»
   }
-  capas.filter((capa) => capa.imagen_lista).forEach((capa) => {
-    const img = document.createElement("img");
-    img.src = capa.url;
-    img.alt = "";                                // decorativa: el nombre va en texto aparte
-    contenedor.appendChild(img);                 // cada una queda encima de la anterior
-  });
-}
+});
 ```
-
-### Candado y nivel que falta
-
-```js
-function dibujarObjetos(contenedor, objetos) {
-  contenedor.innerHTML = "";
-  objetos.forEach((objeto) => {
-    const boton = document.createElement("button");
-    boton.className = "btn btn-sm rounded-pill objeto " +
-      (objeto.puesto ? "btn-lumea" : "btn-lumea-outline") +
-      (objeto.desbloqueado ? "" : " bloqueado");
-    if (objeto.desbloqueado) {
-      boton.textContent = objeto.nombre;
-      boton.addEventListener("click", () => cambiar(objeto.puesto
-        ? quitarObjeto(email, objeto.tipo)                  // si ya lo tiene puesto, se lo quita
-        : equiparObjeto(email, objeto.tipo, objeto.id)));   // si no, se lo pone
-    } else {
-      boton.disabled = true;
-      boton.innerHTML = `<i class="bi bi-lock-fill"></i> ${objeto.nombre} · Nivel ${objeto.nivel_requerido}`;
-      boton.title = `Te faltan ${objeto.niveles_faltantes} nivel(es)`;
-    }
-    contenedor.appendChild(boton);
-  });
-}
-
-async function cambiar(promesa) {
-  const { ok, cuerpo } = await promesa;
-  if (ok) pintar(cuerpo);              // la respuesta ya trae el avatar actualizado
-  else mostrarError(cuerpo.error);
-}
-
-function pintar(datos) {
-  dibujarAvatar(document.getElementById("avatar"), datos.capas);
-  dibujarObjetos(document.getElementById("listaRopa"), datos.objetos.ropa);
-  dibujarObjetos(document.getElementById("listaAccesorios"), datos.objetos.accesorio);
-  // y las bases: un botón por datos.bases, marcado si "seleccionada"
-}
-```
-
-Este código se probó en el navegador contra el backend, con imágenes de prueba:
-base, buzo y gafas quedan bien apilados, y lo bloqueado sale con candado.
 
 Si se intenta poner algo bloqueado, el backend responde `403` (respuesta real):
 
 ```json
-{ "error": "El objeto \"audifonos\" todavía está bloqueado.", "nivel_maximo": 1, "nivel_requerido": 4, "niveles_faltantes": 3 }
+{ "error": "El objeto \"traje\" todavía está bloqueado.", "nivel_maximo": 4, "nivel_requerido": 10, "niveles_faltantes": 6 }
 ```
 
-Con los botones bloqueados deshabilitados no debería pasar, pero si pasa,
-muestra el mensaje.
+Con los botones bloqueados deshabilitados no debería pasar, pero si pasa, muestra el mensaje.
 
-**Lo desbloqueado no se vuelve a bloquear:** se desbloquea por el **nivel
-máximo**, que nunca baja. Aunque alguien pierda XP por no entrar, conserva todo.
+**Lo desbloqueado no se vuelve a bloquear:** se desbloquea por la **etapa máxima**,
+que nunca baja. Aunque alguien pierda XP por no entrar, conserva todo.
 
-### Si el diseño de Figma no llega a tiempo
+### «Cómo me veo»: guardar los rasgos
 
-- Mientras `imagenes_listas` sea `false`, en el **dashboard** muestra la cara de
-  DiceBear (`respaldo_dicebear.url`, o `progreso.avatar.url_con_animo`). En
-  **esta pantalla** deja los marcadores para poder probarla.
-- Si el día de la presentación todavía no están las imágenes, se esconde
-  "Personalizar avatar" y se usa el selector DiceBear: `obtenerAvataresDiceBear(email)`
-  (`GET /avatares`: 6 caras, cada una con `desbloqueado`, `nivel_requerido` y
-  `niveles_faltantes`) y `elegirAvatarDiceBear(email, id)` (`POST /avatar`).
-  Mismo candado, misma lógica.
+Un grupo de `radio` con su `label` por rasgo, con los nombres de
+`rasgos_disponibles` **en el orden en que vienen** (Tono 1 a Tono 8). Mejillas y
+barba traen además `ninguno` («Ninguno», «Ninguna»): se manda `null`. La vista
+previa cambia al instante; el botón «Guardar cómo me veo» manda **solo claves que
+estén en `rasgos_disponibles`**:
+
+```js
+await fetch(`${API_BASE_URL}/avatar/rasgos`, {
+  method: "POST", headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ email, rasgos: { topVariant: "braids", cheeksVariant: null } }),
+}); // 200: el avatar completo · 400: algo no vale (no se guardó nada)
+```
 
 | Estado | Qué mostrar |
 |---|---|
-| Cargando | Spinner en la caja del avatar; al tocar un objeto, deshabilitar los botones hasta que responda. |
-| Error | `403` (bloqueado) y `400` (no existe): el mensaje de `error`. `404`: volver a iniciar sesión. Sin conexión: el mensaje de conexión. |
-| Sin datos | Cuenta nueva: base 1 y nada puesto. No es un error: "Elige tu base y estrena tu primera prenda". |
+| Cargando | Spinner en la caja de la persona; al tocar un objeto, deshabilitar los botones hasta que responda. |
+| Error | `403` (bloqueado) y `400` (no existe / rasgo inválido): el mensaje de `error`. `404`: volver a iniciar sesión. Sin conexión: el mensaje de conexión. |
+| Sin datos | Cuenta nueva: la persona neutra con la camiseta lisa. No es un error: «Elige cómo te ves y estrena tu primera prenda». |
 
 ---
+
+## El dato del día (Inicio) y los datos nuevos del historial · 9 oct 2026
+
+**`GET /dato-del-dia`** (sin parámetros, sin correo): el mismo dato curioso para
+todas las personas durante un día de Bogotá. Respuesta real:
+
+```json
+{ "fecha": "2026-10-09", "alimento_codigo": "lobster_roll_sandwich", "nombre": "Sándwich de langosta",
+  "dato_curioso": "El sándwich de langosta es un plato típico de Nueva Inglaterra (EE.UU.) que se sirve ..." }
+```
+
+`404` si todavía no hay datos curiosos; `503` si MySQL está apagado. Muéstralo tal
+cual, sin reescribirlo.
+
+**`GET /historial`**: cada ítem suma `grupo` (la clave del grupo del plato:
+`cereales`, `proteinas`, `frutas_verduras`, `lacteos`, `grasas` o `azucares`; `null`
+si no tiene) y `sellos` (por cada sello de advertencia, `{sello, dato, idea}`; `[]`
+si no tiene). `sellos_advertencia` sigue igual (la lista de claves). Para el
+`grupo`, usa solo la clave como etiqueta o color; no lo presentes como «bueno» o «malo».
 
 ## Postman: probar el backend sin el frontend
 
