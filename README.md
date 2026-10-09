@@ -1,4 +1,4 @@
-# Lumea · Backend
+# Lumea · Backend · El cerebro detrás de Lumea 
 
 API REST en Flask que recibe la foto de un alimento, la reconoce con dos redes
 MobileNetV2 (transfer learning) entrenadas con dos datasets (uno regional, de
@@ -56,7 +56,7 @@ Backend/
 ├── herramientas/          Evaluación y diagnóstico del modelo (incluye la prueba de campo) crear_usuario_demo.py (cuenta de demostración para el video) y cargar_datos_curiosos.py.
 ├── datos/                 Tablas nutricionales en CSV con sus fuentes (USDA, ICBF, receta), grupos_plato.csv y datos_curiosos.csv.
 ├── docs/                  Contratos de la API, guía del frontend, colección de Postman.
-└── historico/             Evidencia de etapas anteriores (ver abajo). No se usa en producción.
+└── historico/             Evidencia de etapas anteriores (ver abajo). No se usan en producción.
 ```
 
 Los modelos y `clases*.json` viven en la raíz a propósito: `predict.py` los carga
@@ -88,7 +88,7 @@ Contratos con respuestas reales: `docs/CONTRATO_GAMIFICACION.md` y `docs/CONTRAT
 Está pensada para estudiantes de colegio: **premia registrar, nunca lo que se comió**, y nada depende de calorías, peso, cuerpo
 ni del ánimo reportado.
 
-- **Semillas** (el XP): se ganan por registrar una comida, un check-in de ánimo y las misiones del día. Hay tope diario por
+- **Semillas** (lo que antes fue XP): se ganan por registrar una comida, un check-in de ánimo y las misiones del día. Hay tope diario por
   acción. **Nunca se pierden**: la pérdida por inactividad existe en el código pero está apagada. Nunca se resta por lo que se comió.
 - **Etapas** (10 niveles): el nivel máximo nunca baja, y todo lo que se desbloquea por etapa se queda desbloqueado.
 - **Compañeros**: criaturas DiceBear *gaze* cuyos ojos muestran el ánimo.
@@ -143,15 +143,15 @@ las clases del modelo tengan fila de nutrición, y `python3 herramientas/verific
 
 ## Créditos
 
-- **Isabella Fernanda Obando Ordóñez**: líder técnica y de producto, arquitecta de software. Backend (Python, Flask, MySQL), modelos de IA y datos nutricionales, gamificación «Camino del cuidado», consejos y dirección del rediseño.
-- **Sara Jiménez**: desarrolladora frontend y diseñadora UI (páginas, estilos y primera interfaz web).
-- **Laura Narváez**: diseñadora UX/UI y redactora de contenidos (diseños en Figma, logo, paleta original, textos de la app, términos y condiciones y «Conócenos»).
-- **Claude (Anthropic)**: consultora (planeación, revisión y acompañamiento). **Claude Code**: asistente de programación bajo la dirección de Isabella; cada aporte está registrado en la bitácora de IA.
+- **Isabella Fernanda Obando Ordóñez**: Líder técnica y de producto, arquitecta de software. Backend (Python, Flask, MySQL), modelos de IA y datos nutricionales, gamificación «Camino del cuidado», consejos y dirección del rediseño.
+- **Sara Jiménez**: Desarrolladora frontend y diseñadora UI (páginas, estilos y primera interfaz web).
+- **Laura Narváez**: Diseñadora UX/UI y redactora de contenidos (diseños en Figma, logo, paleta original, textos de la app, términos y condiciones y «Conócenos»).
+- **Claude (Anthropic)**: Consultora (planeación, revisión y acompañamiento). **Claude Code**: aAistente de programación bajo la dirección de Isabella; cada aporte está registrado en la bitácora de IA.
 
 ## Uso de IA
 
 - **En el producto**: dos redes MobileNetV2 con transfer learning reconocen los alimentos (modelo regional de 35 clases y Food-101).
-- **En el desarrollo**: gran parte del código del backend, de las pruebas y de la documentación la escribió Claude Code
+- **En el desarrollo**: gran parte del código del backend, de las pruebas y de la documentación la escribió con ayuda de Claude Code
   (Anthropic) bajo la dirección de Isabella; **las decisiones y la revisión son de ella**. Los textos de `consejos_config.py` partieron
   de un borrador de Claude y los editó y aprobó Isabella. Los datos curiosos se generaron con IA y Isabella los revisó (ver «Fuentes de datos»).
 - **Qué no hace la IA**: no decide qué se premia ni cuánto; esas reglas están en `gamificacion_config.py`, escritas y aprobadas por personas.
