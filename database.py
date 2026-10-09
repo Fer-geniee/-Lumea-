@@ -496,6 +496,26 @@ class BaseDatos:
         finally:
             cursor.close()
 
+    def obtener_datos_curiosos(self):
+        """Los alimentos que tienen dato curioso (para GET /dato-del-dia).
+        None si no hay conexión o MySQL falla (la ruta responde 503); una
+        lista vacía si la conexión funciona pero no hay ningún dato."""
+        if not self.conexion or not self.conexion.is_connected():
+            return None
+        cursor = self.conexion.cursor(dictionary=True)
+        try:
+            cursor.execute(
+                "SELECT alimento_codigo, nombre_pantalla, dato_curioso FROM tabla_alimentos "
+                "WHERE dato_curioso IS NOT NULL AND TRIM(dato_curioso) <> ''"
+            )
+            return cursor.fetchall()
+        except Error as e:
+            print(f"Error al leer los datos curiosos: {e}")
+            return None
+        finally:
+            cursor.close()
+            self.conexion.commit()  # app.py usa UNA conexión: cerrar la transacción de lectura
+
     def obtener_informacion_alimento(self, codigo_alimento):
         if not self.conexion or not self.conexion.is_connected():
             return None

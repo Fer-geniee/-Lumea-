@@ -14,6 +14,7 @@ from gamificacion_config import FRUTAS
 from grupos_confusion import grupo_para, codigos_de_opciones, detalle_de_opciones
 from sellos import obtener_sellos
 from consejos import consejo_para
+from dato_del_dia import fecha_de_hoy, respuesta_del_dia
 from predict import predecir_alimento, OPCIONES_CUANDO_DUDA  # única fuente de inferencia (fusión con predict.py)
 
 app = Flask(__name__)
@@ -588,6 +589,19 @@ def lista_alimentos():
         }), 200
     except Exception as e:
         return jsonify({'error': f'Error al obtener la lista de alimentos: {str(e)}'}), 500
+
+
+@app.route('/dato-del-dia', methods=['GET'])
+def dato_del_dia():
+    """El dato curioso del día: el mismo para todas las personas durante un día
+    de Bogotá. No recibe parámetros ni datos personales (ver dato_del_dia.py)."""
+    filas = db.obtener_datos_curiosos()
+    if filas is None:
+        return jsonify({'error': 'Sin conexión con la base de datos. ¿MySQL está encendido?'}), 503
+    cuerpo = respuesta_del_dia(filas, fecha_de_hoy())
+    if cuerpo is None:
+        return jsonify({'error': 'Todavía no hay datos curiosos.'}), 404
+    return jsonify(cuerpo), 200
 
 
 # ==== Cargar alimentos desde CSV ====  # YA NO SE USA, ASÍ QUE DEBE ELIMINARSE 
