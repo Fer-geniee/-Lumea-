@@ -13,7 +13,7 @@ from gamificacion import registrar_gamificacion, registrar_actividad, mensaje_ed
 from gamificacion_config import FRUTAS
 from grupos_confusion import grupo_para, codigos_de_opciones, detalle_de_opciones
 from sellos import obtener_sellos
-from consejos import consejo_para
+from consejos import consejo_para, grupo_de
 from dato_del_dia import fecha_de_hoy, respuesta_del_dia
 from predict import predecir_alimento, OPCIONES_CUANDO_DUDA  # única fuente de inferencia (fusión con predict.py)
 
@@ -559,6 +559,11 @@ def ruta_historial():
             registro['sellos_advertencia'] = sellos_por_codigo[codigo]
             # La pantalla de Progreso marca las frutas (FRUTAS está en gamificacion_config.py).
             registro['es_fruta'] = codigo in FRUTAS
+            # Grupo del plato (consejos.py y datos/grupos_plato.csv) y, por cada sello, su dato
+            # y su idea (sellos_advertencia sigue siendo solo la lista de claves).
+            registro['grupo'] = grupo_de(codigo)
+            consejo = consejo_para(codigo, registro['sellos_advertencia']) if codigo else None
+            registro['sellos'] = consejo['sellos'] if consejo else []
         return jsonify({
             'success': True,
             'cantidad_registros': len(historial),

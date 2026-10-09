@@ -40,6 +40,14 @@ def _leer_mapa():
 MAPA = _leer_mapa()
 
 
+def grupo_de(alimento_codigo):
+    """La clave del grupo del plato (el primero del mapa), o None si el
+    alimento no tiene grupo o no está en el mapa. Es el mismo `grupo` que
+    devuelve consejo_para."""
+    datos = MAPA.get(alimento_codigo)
+    return datos["grupos"][0] if datos and datos["grupos"] else None
+
+
 def consejo_para(alimento_codigo, sellos):
     """El consejo del alimento, o None si no se puede dar.
 
