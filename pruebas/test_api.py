@@ -11,6 +11,7 @@ exactas. La limpieza final borra SOLO filas de correos con ese patrón.
 import os as _os, sys as _sys  # (reorganización) para importar los módulos de Backend/
 _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 
+import json
 import os
 import sys
 import time
@@ -235,23 +236,50 @@ def probar_gamificacion(xp_esperado):
 
 
 def probar_avatar_capas(nivel):
-    """Avatar por capas (Figma): base + ropa + accesorio. Funciona aunque
-    las imágenes todavía no existan (responde con los nombres de archivo)."""
+    """La persona voxel-art (rasgos libres + armario por etapas). Las capas PNG
+    (base, capas, imagen_lista) están EN DESUSO pero siguen respondiendo."""
     cuerpo = verificar("GET /avatar", get("/avatar", email=EMAIL_PRUEBA), mostrar=False)
-    comprobar("GET /avatar: base por defecto", (cuerpo.get("base") or {}).get("id") == config.BASE_POR_DEFECTO)
-    comprobar("GET /avatar: trae los nombres de archivo", (cuerpo.get("base") or {}).get("archivo") == "base_1.png")
-    comprobar("GET /avatar: nada puesto al empezar", cuerpo.get("puesto") == {t: None for t in config.TIPOS_OBJETO})
+    persona = cuerpo.get("persona") or {}
+    comprobar("GET /avatar: persona voxel-art con los rasgos por defecto",
+              persona.get("estilo") == "voxel-art" and persona.get("rasgos") == config.RASGOS_POR_DEFECTO)
+    comprobar("GET /avatar: lleva puesta la camiseta lisa y ningún accesorio",
+              (persona.get("puesto") or {}).get("ropa", {}).get("id") == "camiseta_lisa"
+              and (persona.get("puesto") or {}).get("accesorio") is None)
+    comprobar("GET /avatar: rasgos_disponibles trae los nombres en español",
+              cuerpo.get("rasgos_disponibles", {}).get("topVariant", {}).get("opciones", {}).get("braids") == "Trenzas")
     objetos = [o for lista in (cuerpo.get("objetos") or {}).values() for o in lista]
-    comprobar("GET /avatar: desbloqueado según el nivel máximo",
-              all(o["desbloqueado"] == (o["nivel_requerido"] <= nivel) for o in objetos) and len(objetos) == len(config.OBJETOS_AVATAR))
+    comprobar("GET /avatar: desbloqueado según el nivel máximo y con parametros",
+              all(o["desbloqueado"] == (o["nivel_requerido"] <= nivel) and o["parametros"] for o in objetos)
+              and len(objetos) == len(config.OBJETOS_AVATAR))
+    comprobar("GET /avatar: sigue la base de las capas PNG (en desuso)", (cuerpo.get("base") or {}).get("id") == config.BASE_POR_DEFECTO)
+    comprobar("GET /avatar: ningún valor lleva el correo", EMAIL_PRUEBA not in json.dumps(cuerpo))
 
-    verificar("POST /avatar/base (base_2)", post("/avatar/base", {"email": EMAIL_PRUEBA, "base_id": "base_2"}), mostrar=False)
+    verificar("POST /avatar/base (base_2, en desuso)", post("/avatar/base", {"email": EMAIL_PRUEBA, "base_id": "base_2"}), mostrar=False)
     verificar("POST /avatar/base que no existe -> 400", post("/avatar/base", {"email": EMAIL_PRUEBA, "base_id": "base_9"}), esperado=400)
 
-    libre = next(o for o in config.OBJETOS_AVATAR if o["nivel_requerido"] <= nivel)
+    # Rasgos libres: se guardan y se mezclan sin pedir etapa.
+    cuerpo = verificar("POST /avatar/rasgos (trenzas, tono 8)",
+                       post("/avatar/rasgos", {"email": EMAIL_PRUEBA, "rasgos": {"topVariant": "braids", "skinColor": "6a3d1f"}}), mostrar=False)
+    comprobar("POST /avatar/rasgos devuelve el avatar con los rasgos nuevos",
+              cuerpo.get("persona", {}).get("rasgos", {}).get("topVariant") == "braids")
+    cuerpo = verificar("POST /avatar/rasgos (barba y sin mejillas, null)",
+                       post("/avatar/rasgos", {"email": EMAIL_PRUEBA, "rasgos": {"beardVariant": "goatee", "cheeksVariant": None}}), mostrar=False)
+    rasgos = cuerpo.get("persona", {}).get("rasgos", {})
+    comprobar("lo nuevo se mezcla con lo guardado", rasgos.get("topVariant") == "braids" and rasgos.get("beardVariant") == "goatee")
+    cuerpo = verificar("GET /avatar recuerda los rasgos", get("/avatar", email=EMAIL_PRUEBA), mostrar=False)
+    comprobar("los rasgos quedaron guardados", cuerpo.get("persona", {}).get("rasgos", {}).get("skinColor") == "6a3d1f")
+    for nombre, rasgos_malos in (("valor que no existe", {"topVariant": "sombrero"}), ("gorra como peinado", {"topVariant": "cap"}),
+                                 ("clave que no existe", {"altura": 180}), ("null donde no vale", {"hairColor": None})):
+        verificar(f"POST /avatar/rasgos con {nombre} -> 400", post("/avatar/rasgos", {"email": EMAIL_PRUEBA, "rasgos": rasgos_malos}), esperado=400)
+    verificar("POST /avatar/rasgos sin rasgos -> 400", post("/avatar/rasgos", {"email": EMAIL_PRUEBA}), esperado=400)
+    verificar("POST /avatar/rasgos sin perfil -> 404", post("/avatar/rasgos", {"email": "nadie@lumea.test", "rasgos": {"topVariant": "bob"}}), esperado=404)
+
+    libre = next((o for o in config.OBJETOS_AVATAR if o["nivel_requerido"] <= nivel and o["id"] != "camiseta_lisa"),
+                 config.OBJETOS_AVATAR[0])
     cuerpo = verificar(f"POST /avatar/equipar ({libre['id']})",
                        post("/avatar/equipar", {"email": EMAIL_PRUEBA, "tipo": libre["tipo"], "item_id": libre["id"]}), mostrar=False)
-    comprobar("las capas quedan base + lo puesto", [c["tipo"] for c in cuerpo.get("capas", [])] == ["base", libre["tipo"]])
+    comprobar("lo equipado cambia a la persona con sus parametros",
+              (cuerpo.get("persona", {}).get("puesto", {}).get(libre["tipo"]) or {}).get("parametros") == libre["parametros"])
 
     caro = max(config.OBJETOS_AVATAR, key=lambda o: o["nivel_requerido"])
     cuerpo = verificar(f"POST /avatar/equipar bloqueado ({caro['id']}) -> 403",
@@ -260,12 +288,16 @@ def probar_avatar_capas(nivel):
     otro_tipo = next(t for t in config.TIPOS_OBJETO if t != libre["tipo"])
     verificar("POST /avatar/equipar con el tipo equivocado -> 400",
               post("/avatar/equipar", {"email": EMAIL_PRUEBA, "tipo": otro_tipo, "item_id": libre["id"]}), esperado=400)
+    verificar("POST /avatar/equipar con un id viejo (buzo_verde) -> 400",
+              post("/avatar/equipar", {"email": EMAIL_PRUEBA, "tipo": "ropa", "item_id": "buzo_verde"}), esperado=400)
     verificar("POST /avatar/equipar sin item_id -> 400", post("/avatar/equipar", {"email": EMAIL_PRUEBA, "tipo": "ropa"}), esperado=400)
     verificar("POST /avatar/equipar sin perfil -> 404",
               post("/avatar/equipar", {"email": "nadie@lumea.test", "tipo": libre["tipo"], "item_id": libre["id"]}), esperado=404)
 
     cuerpo = verificar(f"POST /avatar/quitar ({libre['tipo']})", post("/avatar/quitar", {"email": EMAIL_PRUEBA, "tipo": libre["tipo"]}), mostrar=False)
-    comprobar("después de quitar solo queda la base", [c["tipo"] for c in cuerpo.get("capas", [])] == ["base"])
+    puesto = cuerpo.get("persona", {}).get("puesto", {}).get(libre["tipo"])
+    comprobar("al quitar: la ropa vuelve a la camiseta lisa y el accesorio queda vacío",
+              (puesto or {}).get("id") == "camiseta_lisa" if libre["tipo"] == "ropa" else puesto is None)
     verificar("POST /avatar/quitar tipo que no existe -> 400", post("/avatar/quitar", {"email": EMAIL_PRUEBA, "tipo": "zapatos"}), esperado=400)
     verificar("GET /avatar sin email -> 400", get("/avatar"), esperado=400)
 

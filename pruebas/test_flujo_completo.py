@@ -221,6 +221,11 @@ def main():
     libre = next(o for o in config.OBJETOS_AVATAR if o["nivel_requerido"] == 1)
     r = post("/avatar/equipar", {"email": EMAIL, "tipo": libre["tipo"], "item_id": libre["id"]})
     comprobar(f"ponerse {libre['nombre']} -> 200", r.status_code == 200)
+    r = post("/avatar/rasgos", {"email": EMAIL, "rasgos": {"topVariant": "twinTails", "hairColor": "d6455d"}})
+    comprobar("elegir peinado y color de pelo (rasgos libres) -> 200", r.status_code == 200
+              and cuerpo(r).get("persona", {}).get("rasgos", {}).get("topVariant") == "twinTails")
+    r = post("/avatar/rasgos", {"email": EMAIL, "rasgos": {"topVariant": "cap"}})
+    comprobar("una gorra no es un peinado -> 400", r.status_code == 400)
     caro = max(config.OBJETOS_AVATAR, key=lambda o: o["nivel_requerido"])
     r = post("/avatar/equipar", {"email": EMAIL, "tipo": caro["tipo"], "item_id": caro["id"]})
     comprobar(f"{caro['nombre']} (nivel {caro['nivel_requerido']}) bloqueado -> 403", r.status_code == 403)

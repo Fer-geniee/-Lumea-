@@ -68,7 +68,7 @@ TABLAS_DEL_USUARIO = (
     "historial_comida", "estado_animo",
 )
 # Resultado esperado de la demo (la herramienta avisa si no se cumple).
-NIVELES_ESPERADOS = (3, 4)
+NIVELES_ESPERADOS = (4, 4)  # etapa 4: 4 prendas abiertas y el resto con candado
 CALCOMANIAS_ESPERADAS = (4, 6)
 
 
@@ -179,13 +179,22 @@ def _simular_semana(conexion, usuario_id):
     return db
 
 
-def _poner_avatar(db, usuario_id, nivel):
-    """Viste el avatar con lo que ya está desbloqueado (se ve mejor en el video)."""
-    ropa = "camiseta_lumea" if nivel >= 3 else "buzo_verde"
-    for tipo, item in (("ropa", ropa), ("accesorio", "gafas")):
-        ok, codigo, _ = g.equipar(db, usuario_id, tipo, item)
-        if not ok:
-            print(f"  (no se pudo poner {item}: código {codigo})")
+# La persona de la demo: rasgos elegidos (libres) y el overol, la prenda de la
+# etapa 4. En la grabación se ven prendas abiertas y prendas con candado.
+RASGOS_DEMO = {"topVariant": "braids", "hairColor": "5a3825", "skinColor": "b07347",
+               "eyesVariant": "happy", "mouthVariant": "bigSmile", "cheeksVariant": "freckles",
+               "shirtColor": "12b886"}
+PRENDA_DEMO = ("ropa", "overol")
+
+
+def _poner_avatar(db, usuario_id):
+    """Elige los rasgos de la persona y le pone el overol."""
+    ok, codigo, cuerpo = g.guardar_rasgos(db, usuario_id, RASGOS_DEMO)
+    if not ok:
+        print(f"  (no se pudieron guardar los rasgos: código {codigo}, {cuerpo})")
+    ok, codigo, cuerpo = g.equipar(db, usuario_id, *PRENDA_DEMO)
+    if not ok:
+        print(f"  (no se pudo poner {PRENDA_DEMO[1]}: código {codigo})")
 
 
 def crear_demo(conexion):
@@ -194,7 +203,7 @@ def crear_demo(conexion):
     db = _simular_semana(conexion, usuario_id)
 
     progreso = g.obtener_progreso(db, usuario_id)  # hoy: sin pérdida (la última actividad fue ayer)
-    _poner_avatar(db, usuario_id, progreso["nivel"])
+    _poner_avatar(db, usuario_id)
     calcomanias = g.obtener_calcomanias(db, usuario_id)
     ganadas = [c["nombre"] for c in calcomanias["calcomanias"] if c["ganada"]]
 
@@ -209,7 +218,7 @@ def crear_demo(conexion):
 
     problemas = []
     if progreso["nivel"] not in NIVELES_ESPERADOS:
-        problemas.append(f"el nivel es {progreso['nivel']} y se esperaba {NIVELES_ESPERADOS[0]} o {NIVELES_ESPERADOS[1]}")
+        problemas.append(f"el nivel es {progreso['nivel']} y se esperaba el {NIVELES_ESPERADOS[0]}")
     if not CALCOMANIAS_ESPERADAS[0] <= calcomanias["ganadas"] <= CALCOMANIAS_ESPERADAS[1]:
         problemas.append(f"hay {calcomanias['ganadas']} calcomanías y se esperaban de {CALCOMANIAS_ESPERADAS[0]} a {CALCOMANIAS_ESPERADAS[1]}")
     if progreso["racha_actual"] < len(PLAN_DE_LA_SEMANA):

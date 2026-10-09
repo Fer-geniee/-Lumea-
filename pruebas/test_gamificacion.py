@@ -159,11 +159,44 @@ class TestConfigCoherente(unittest.TestCase):
         for objeto in config.OBJETOS_AVATAR:
             with self.subTest(id=objeto["id"]):
                 self.assertIn(objeto["tipo"], config.TIPOS_OBJETO)
-                # Nombre exacto que se le pidió a la diseñadora:
-                # <tipo>_<id>.png (ESPECIFICACION_AVATARES_FIGMA.md).
-                self.assertEqual(objeto["archivo"], f'{objeto["tipo"]}_{objeto["id"]}.png')
+                # Desde el 9 oct los objetos cambian a la persona voxel-art:
+                # llevan `parametros` de DiceBear, ya no un archivo PNG.
+                self.assertNotIn("archivo", objeto)
+                self.assertTrue(objeto["parametros"])
+        # Las bases PNG están EN DESUSO pero se conservan.
         for base in config.BASES_AVATAR:
             self.assertEqual(base["archivo"], f'{base["id"]}.png')
+
+    def test_una_prenda_o_accesorio_por_cada_etapa(self):
+        niveles = sorted(o["nivel_requerido"] for o in config.OBJETOS_AVATAR)
+        self.assertEqual(niveles, list(range(1, len(config.NIVELES) + 1)))
+
+    def test_la_ropa_por_defecto_existe_y_esta_abierta_desde_el_nivel_1(self):
+        objeto = g.objeto_por_id(config.OBJETOS_POR_DEFECTO["ropa"])
+        self.assertEqual((objeto["tipo"], objeto["nivel_requerido"]), ("ropa", 1))
+
+    def test_los_parametros_de_las_prendas_son_de_dicebear_y_no_llevan_gorras(self):
+        for objeto in config.OBJETOS_AVATAR:
+            with self.subTest(id=objeto["id"]):
+                clave = {"ropa": "outfitVariant", "accesorio": "glassesVariant"}[objeto["tipo"]]
+                self.assertEqual(list(objeto["parametros"]), [clave])
+                self.assertNotIn(objeto["parametros"][clave], ("cap", "beanie"))
+
+    def test_rasgos_coherentes(self):
+        self.assertEqual(set(config.RASGOS_POR_DEFECTO), set(config.RASGOS))
+        for clave, valor in config.RASGOS_POR_DEFECTO.items():
+            with self.subTest(rasgo=clave):
+                self.assertTrue(g.rasgo_valido(clave, valor))
+        self.assertEqual({k for k, r in config.RASGOS.items() if "ninguno" in r}, {"cheeksVariant", "beardVariant"})
+        self.assertEqual(len(config.RASGOS["skinColor"]["opciones"]), 8)
+        self.assertEqual(len(config.RASGOS["hairColor"]["opciones"]), 12)
+        self.assertEqual(len(config.RASGOS["eyesVariant"]["opciones"]), 8)
+        self.assertEqual(len(config.RASGOS["mouthVariant"]["opciones"]), 10)
+        self.assertEqual(len(config.RASGOS["shirtColor"]["opciones"]), 10)
+        self.assertEqual(list(config.RASGOS["skinColor"]["opciones"].values()), [f"Tono {n}" for n in range(1, 9)])
+        # Las gorras y los gorros reemplazan el peinado en voxel-art: no son peinados.
+        for no_peinado in ("cap", "beanie", "animalEars", "bunnyEars"):
+            self.assertNotIn(no_peinado, config.RASGOS["topVariant"]["opciones"])
 
     def test_hay_algo_para_estrenar_desde_el_nivel_1(self):
         self.assertTrue(any(o["nivel_requerido"] == 1 for o in config.OBJETOS_AVATAR))
@@ -402,19 +435,86 @@ class TestNadaSeVuelveABloquear(unittest.TestCase):
 
 
 class TestAvatarPorCapas(unittest.TestCase):
-    def test_usuario_nuevo_tiene_la_base_por_defecto_y_nada_puesto(self):
+    def test_usuario_nuevo_es_la_persona_neutra_con_la_camiseta_lisa(self):
+        estado = g.estado_avatar_capas(g.progreso_vacio(1))
+        persona = estado["persona"]
+        self.assertEqual(persona["estilo"], "voxel-art")
+        self.assertEqual(persona["rasgos"], config.RASGOS_POR_DEFECTO)
+        self.assertEqual(persona["puesto"]["ropa"], {"id": "camiseta_lisa", "nombre": "Camiseta lisa",
+                                                      "parametros": {"outfitVariant": "plain"}})
+        self.assertIsNone(persona["puesto"]["accesorio"])
+        self.assertEqual(estado["puesto"], persona["puesto"])
+
+    def test_el_contrato_de_persona_y_rasgos_disponibles(self):
+        estado = g.estado_avatar_capas(g.progreso_vacio(1))
+        self.assertEqual(set(estado["rasgos_disponibles"]), set(config.RASGOS))
+        peinado = estado["rasgos_disponibles"]["topVariant"]
+        self.assertEqual(peinado["nombre"], "Peinado")
+        self.assertEqual(peinado["opciones"]["braids"], "Trenzas")
+        self.assertEqual(estado["rasgos_disponibles"]["beardVariant"]["ninguno"], "Ninguna")
+        self.assertNotIn("ninguno", estado["rasgos_disponibles"]["skinColor"])
+        for lista in estado["objetos"].values():
+            for o in lista:
+                self.assertTrue({"id", "nombre", "parametros", "nivel_requerido", "desbloqueado"} <= set(o))
+
+    def test_lo_puesto_aparece_en_persona_y_en_objetos(self):
+        p = progreso_con(config.NIVELES[-1], HOY, ropa_id="overol", accesorio_id="gafas_sol")
+        estado = g.estado_avatar_capas(p)
+        self.assertEqual(estado["persona"]["puesto"]["ropa"]["id"], "overol")
+        self.assertEqual(estado["persona"]["puesto"]["ropa"]["parametros"], {"outfitVariant": "overalls"})
+        self.assertEqual(estado["persona"]["puesto"]["accesorio"]["id"], "gafas_sol")
+        puestos = [o["id"] for lista in estado["objetos"].values() for o in lista if o["puesto"]]
+        self.assertEqual(sorted(puestos), ["gafas_sol", "overol"])
+
+    def test_ids_viejos_cuentan_como_nada_puesto_sin_error(self):
+        # buzo_verde, gafas, ruana... eran de las capas PNG y ya no existen.
+        p = progreso_con(config.NIVELES[-1], HOY, ropa_id="buzo_verde", accesorio_id="gafas")
+        estado = g.estado_avatar_capas(p)
+        self.assertEqual(estado["persona"]["puesto"]["ropa"]["id"], "camiseta_lisa")
+        self.assertIsNone(estado["persona"]["puesto"]["accesorio"])
+        # Un accesorio guardado en la columna de la ropa tampoco se pone.
+        p = progreso_con(config.NIVELES[-1], HOY, ropa_id="gafas_sol")
+        self.assertEqual(g.estado_avatar_capas(p)["persona"]["puesto"]["ropa"]["id"], "camiseta_lisa")
+
+    def test_rasgos_guardados_se_mezclan_con_los_de_por_defecto(self):
+        p = progreso_con(0, None, avatar_rasgos='{"topVariant": "braids", "beardVariant": "goatee"}')
+        rasgos = g.estado_avatar_capas(p)["persona"]["rasgos"]
+        self.assertEqual(rasgos["topVariant"], "braids")
+        self.assertEqual(rasgos["beardVariant"], "goatee")
+        self.assertEqual(rasgos["skinColor"], config.RASGOS_POR_DEFECTO["skinColor"])
+
+    def test_rasgos_guardados_que_ya_no_valen_o_estan_rotos_se_ignoran(self):
+        for guardado in ('{"topVariant": "cap", "nada": 1}', "esto no es json", "[1, 2]"):
+            with self.subTest(guardado=guardado):
+                p = progreso_con(0, None, avatar_rasgos=guardado)
+                self.assertEqual(g.rasgos_de(p), config.RASGOS_POR_DEFECTO)
+
+    def test_validar_rasgos(self):
+        self.assertIsNone(g.validar_rasgos({"topVariant": "braids", "cheeksVariant": None, "beardVariant": None}))
+        malos = [
+            {}, None, [], "braids",
+            {"colorDeLaLuna": "x"},                    # clave que no existe
+            {"topVariant": "cap"},                     # gorra: no es peinado
+            {"topVariant": None},                      # null solo en mejillas y barba
+            {"skinColor": "#c99062"},                  # los colores van sin #
+            {"skinColor": 5},
+            {"topVariant": ["braids"]},
+            {"eyesVariant": "braids"},                 # valor de otro rasgo
+        ]
+        for rasgos in malos:
+            with self.subTest(rasgos=rasgos):
+                self.assertIsNotNone(g.validar_rasgos(rasgos))
+
+    def test_el_error_de_rasgos_no_repite_lo_que_mando_la_persona(self):
+        self.assertNotIn("zzz@lumea.test", g.validar_rasgos({"topVariant": "zzz@lumea.test"}))
+        self.assertNotIn("zzz@lumea.test", g.validar_rasgos({"zzz@lumea.test": "x"}))
+
+    def test_capas_png_en_desuso_siguen_respondiendo(self):
         estado = g.estado_avatar_capas(g.progreso_vacio(1))
         self.assertEqual(estado["base"]["id"], config.BASE_POR_DEFECTO)
-        self.assertEqual(estado["puesto"], {tipo: None for tipo in config.TIPOS_OBJETO})
         self.assertEqual([c["tipo"] for c in estado["capas"]], ["base"])
-
-    def test_capas_en_orden_base_ropa_accesorio(self):
-        ropa = next(o for o in config.OBJETOS_AVATAR if o["tipo"] == "ropa")
-        accesorio = next(o for o in config.OBJETOS_AVATAR if o["tipo"] == "accesorio")
-        p = progreso_con(config.NIVELES[-1], HOY, avatar_base="base_2", ropa_id=ropa["id"], accesorio_id=accesorio["id"])
-        estado = g.estado_avatar_capas(p)
-        self.assertEqual([c["tipo"] for c in estado["capas"]], ["base", *config.TIPOS_OBJETO])
-        self.assertEqual(estado["capas"][0]["archivo"], "base_2.png")
+        self.assertEqual(len(estado["bases"]), len(config.BASES_AVATAR))
+        self.assertIn("imagen_lista", estado["base"])
 
     def test_sin_imagenes_responde_igual_con_los_nombres_de_archivo(self):
         with mock.patch.object(g, "imagen_lista", return_value=False):
@@ -436,7 +536,9 @@ class TestAvatarPorCapas(unittest.TestCase):
         # Solo pasaría si alguien sube el nivel de un objeto en el config.
         caro = max(config.OBJETOS_AVATAR, key=lambda o: o["nivel_requerido"])
         p = progreso_con(0, None, **{f'{caro["tipo"]}_id': caro["id"]})
-        self.assertIsNone(g.estado_avatar_capas(p)["puesto"][caro["tipo"]])
+        por_defecto = config.OBJETOS_POR_DEFECTO.get(caro["tipo"])
+        puesto = g.estado_avatar_capas(p)["puesto"][caro["tipo"]]
+        self.assertEqual(None if puesto is None else puesto["id"], por_defecto)
 
     def test_tipos_desconocidos_no_llegan_al_sql(self):
         self.assertEqual(g.columna_de_tipo("ropa"), "ropa_id")
@@ -508,16 +610,18 @@ class TestDesbloqueosAlSubir(unittest.TestCase):
         self.assertEqual(g.desbloqueos_al_subir(3, 3), [])
 
     def test_un_nivel_abre_lo_que_pide_ese_nivel(self):
-        # Nivel 3 -> 4: en el config actual, los audífonos piden nivel 4.
+        # Nivel 3 -> 4: en el config actual, el overol pide nivel 4. La prenda
+        # trae sus `parametros` para dibujar a la persona con ella puesta.
         d = g.desbloqueos_al_subir(3, 4)
-        self.assertEqual(d, [{"tipo": "accesorio", "id": "audifonos", "nombre": "Audífonos", "nivel_requerido": 4}])
+        self.assertEqual(d, [{"tipo": "ropa", "id": "overol", "nombre": "Overol de jardín", "nivel_requerido": 4,
+                              "parametros": {"outfitVariant": "overalls"}}])
 
     def test_el_nivel_anterior_no_cuenta_y_el_nuevo_si(self):
         for d in g.desbloqueos_al_subir(1, 5):
             self.assertTrue(1 < d["nivel_requerido"] <= 5)
         ids = [(d["tipo"], d["id"]) for d in g.desbloqueos_al_subir(1, 5)]
         self.assertIn(("avatar", "montana"), ids)       # nivel 5
-        self.assertNotIn(("ropa", "buzo_verde"), ids)   # nivel 1: ya estaba abierto
+        self.assertNotIn(("ropa", "camiseta_lisa"), ids)   # nivel 1: ya estaba abierto
 
     def test_un_salto_de_varios_niveles_los_abre_todos_sin_repetir(self):
         todos = [d for d in g.desbloqueos_al_subir(1, len(config.NIVELES))]
@@ -647,7 +751,48 @@ class TestConMySQL(unittest.TestCase):
         ok, codigo, cuerpo = g.elegir_base(self.db, USUARIO_PRUEBA, "base_2")
         self.assertEqual(cuerpo["base"]["id"], "base_2")
         self.assertEqual(g.elegir_base(self.db, USUARIO_PRUEBA, "base_9")[1], 400)
+        # Un id de las capas PNG (ya no existe) no se puede equipar.
         self.assertEqual(g.equipar(self.db, USUARIO_PRUEBA, "accesorio", "buzo_verde")[1], 400)
+
+    def test_quitar_la_ropa_vuelve_a_la_camiseta_lisa(self):
+        self._poner(xp_total=config.NIVELES[3], nivel_maximo=4, ultima_fecha_actividad=date.today())
+        ok, codigo, cuerpo = g.equipar(self.db, USUARIO_PRUEBA, "ropa", "overol")
+        self.assertEqual(cuerpo["persona"]["puesto"]["ropa"]["id"], "overol")
+        ok, codigo, cuerpo = g.quitar(self.db, USUARIO_PRUEBA, "ropa")
+        self.assertEqual(codigo, 200)
+        self.assertEqual(cuerpo["persona"]["puesto"]["ropa"]["id"], "camiseta_lisa")
+
+    def test_guardar_rasgos_valida_mezcla_y_no_pide_etapa(self):
+        # Nivel 1: los rasgos son libres, nunca se bloquean.
+        ok, codigo, cuerpo = g.guardar_rasgos(self.db, USUARIO_PRUEBA, {"topVariant": "braids", "skinColor": "6a3d1f"})
+        self.assertEqual(codigo, 200, cuerpo)
+        self.assertEqual(cuerpo["persona"]["rasgos"]["topVariant"], "braids")
+        # Mezcla: lo nuevo se suma a lo guardado, sin borrarlo.
+        ok, codigo, cuerpo = g.guardar_rasgos(self.db, USUARIO_PRUEBA, {"beardVariant": "goatee", "cheeksVariant": None})
+        self.assertEqual(codigo, 200)
+        rasgos = cuerpo["persona"]["rasgos"]
+        self.assertEqual((rasgos["topVariant"], rasgos["skinColor"], rasgos["beardVariant"]), ("braids", "6a3d1f", "goatee"))
+        self.assertIsNone(rasgos["cheeksVariant"])
+        # Y quedó guardado en MySQL, no solo en la respuesta.
+        self.assertEqual(g.obtener_avatar_capas(self.db, USUARIO_PRUEBA)["persona"]["rasgos"], rasgos)
+        # Se puede volver a "sin barba".
+        self.assertIsNone(g.guardar_rasgos(self.db, USUARIO_PRUEBA, {"beardVariant": None})[2]["persona"]["rasgos"]["beardVariant"])
+
+    def test_rasgos_invalidos_dan_400_y_no_cambian_nada(self):
+        g.guardar_rasgos(self.db, USUARIO_PRUEBA, {"topVariant": "curly"})
+        for malos in ({"topVariant": "cap"}, {"nada": "x"}, {"topVariant": "bob", "eyesVariant": "nope"}, {}):
+            with self.subTest(rasgos=malos):
+                ok, codigo, cuerpo = g.guardar_rasgos(self.db, USUARIO_PRUEBA, malos)
+                self.assertEqual(codigo, 400)
+                self.assertIn("error", cuerpo)
+        # El válido que venía junto a uno malo tampoco se guardó.
+        self.assertEqual(g.obtener_avatar_capas(self.db, USUARIO_PRUEBA)["persona"]["rasgos"]["topVariant"], "curly")
+
+    def test_ids_viejos_guardados_en_mysql_no_rompen_el_avatar(self):
+        self._poner(xp_total=0, nivel_maximo=1, ropa_id="buzo_verde", accesorio_id="gafas")
+        estado = g.obtener_avatar_capas(self.db, USUARIO_PRUEBA)
+        self.assertEqual(estado["persona"]["puesto"]["ropa"]["id"], "camiseta_lisa")
+        self.assertIsNone(estado["persona"]["puesto"]["accesorio"])
 
     def test_puntos_v2_comidas_bonus_y_misiones(self):
         xp_comida = config.ACCIONES["comida_registrada"]["xp"]
@@ -850,12 +995,13 @@ class TestConMySQL(unittest.TestCase):
 
 
     def test_resumen_trae_nivel_anterior_y_desbloqueos(self):
-        # 28 XP (nivel 1) + una comida (10) pasa a 38: nivel 2 (gafas piden nivel 2).
+        # 28 XP (nivel 1) + una comida (10) pasa a 38: nivel 2 (la camiseta de rayas pide nivel 2).
         self._poner(xp_total=28, nivel_maximo=1, ultima_fecha_actividad=date.today())
         r = g.registrar_actividad(self.db, USUARIO_PRUEBA, "comida_registrada", alimento_codigo="ajiaco", sellos=["sodio"])
         self.assertTrue(r["subio_de_nivel"])
         self.assertEqual((r["nivel_anterior"], r["nivel"]), (1, 2))
-        self.assertEqual([d["id"] for d in r["desbloqueos"]], ["gafas"])
+        self.assertEqual([(d["tipo"], d["id"], d["nombre"]) for d in r["desbloqueos"]],
+                         [("ropa", "camiseta_rayas", "Camiseta de rayas")])
         # Otra comida sin subir: nivel_anterior = nivel y nada nuevo.
         r = g.registrar_actividad(self.db, USUARIO_PRUEBA, "comida_registrada", alimento_codigo="ajiaco", sellos=["sodio"])
         self.assertFalse(r["subio_de_nivel"])

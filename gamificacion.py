@@ -17,7 +17,8 @@ Aquí no hay ninguno.
 Tablas:
 - progreso_usuario: una fila por usuario con su estado acumulado (XP
   actual, nivel máximo alcanzado, racha, avatar DiceBear elegido y avatar
-  por capas: base, ropa y accesorio puestos).
+  por capas: base, ropa y accesorio puestos, y los rasgos de la persona
+  voxel-art en JSON).
 - actividad_diaria: una fila por usuario y día (XP del día, meta cumplida).
 - eventos_xp: una fila por cada acción registrada, con el XP que dio
   (0 si ya había llegado al tope del día), y una fila con XP negativo
@@ -28,6 +29,7 @@ Tablas:
   ("aviso_regreso_pendiente" y "aviso_regreso"), para dárselo una sola vez.
 """
 
+import json
 import os
 from datetime import date, timedelta
 from urllib.parse import urlencode
@@ -236,7 +238,7 @@ def progreso_vacio(usuario_id):
         "usuario_id": usuario_id, "xp_total": 0, "nivel_maximo": 1, "racha_actual": 0,
         "racha_maxima": 0, "ultima_fecha_actividad": None, "avatar_id": None,
         "xp_perdido_periodo": 0, "xp_perdido_sin_avisar": 0,
-        "avatar_base": None, "ropa_id": None, "accesorio_id": None,
+        "avatar_base": None, "ropa_id": None, "accesorio_id": None, "avatar_rasgos": None,
     }
 
 
@@ -292,7 +294,10 @@ def desbloqueos_al_subir(nivel_anterior, nivel):
         {"tipo": "avatar", "id": a["id"], "nombre": a["nombre"], "nivel_requerido": a["nivel_requerido"]}
         for a in config.AVATARES
     ] + [
-        {"tipo": o["tipo"], "id": o["id"], "nombre": o["nombre"], "nivel_requerido": o["nivel_requerido"]}
+        # Las prendas llevan `parametros` para que la celebración dibuje a la
+        # persona con la prenda nueva puesta.
+        {"tipo": o["tipo"], "id": o["id"], "nombre": o["nombre"], "nivel_requerido": o["nivel_requerido"],
+         "parametros": o["parametros"]}
         for o in config.OBJETOS_AVATAR
     ]
     return sorted(
@@ -336,13 +341,13 @@ def columna_de_tipo(tipo):
 
 
 def imagen_lista(archivo):
-    """True si la diseñadora ya entregó ese archivo (existe en static/)."""
+    """EN DESUSO. True si ya existe ese archivo de las capas PNG en static/."""
     return os.path.isfile(os.path.join(CARPETA_STATIC, config.CARPETA_IMAGENES_AVATAR, archivo))
 
 
 def url_imagen(archivo):
-    """URL completa de una capa del avatar. Aunque el archivo no exista
-    todavía, la URL se arma igual (el frontend muestra un marcador)."""
+    """EN DESUSO. URL completa de una capa PNG del avatar. Aunque el archivo
+    no exista, la URL se arma igual."""
     ruta = f"{config.CARPETA_IMAGENES_AVATAR}/{archivo}"
     if has_request_context():
         return url_for("static", filename=ruta, _external=True)
@@ -357,55 +362,111 @@ def _describir_imagen(elemento):
     }
 
 
+# ----- Rasgos de la persona (voxel-art) -----
+
+def rasgo_valido(clave, valor):
+    """True si `valor` es una opción válida del rasgo `clave`. null (None)
+    solo vale en los rasgos que tienen `ninguno` (mejillas y barba)."""
+    rasgo = config.RASGOS.get(clave)
+    if rasgo is None:
+        return False
+    if valor is None:
+        return "ninguno" in rasgo
+    return isinstance(valor, str) and valor in rasgo["opciones"]
+
+
+def validar_rasgos(rasgos):
+    """None si todos los rasgos valen, o el texto del error (400). No repite
+    en el mensaje lo que mandó la persona."""
+    if not isinstance(rasgos, dict) or not rasgos:
+        return 'Falta el campo "rasgos" (un objeto con al menos un rasgo).'
+    for clave, valor in rasgos.items():
+        if clave not in config.RASGOS:
+            return f'Ese rasgo no existe. Rasgos válidos: {", ".join(config.RASGOS)}.'
+        if not rasgo_valido(clave, valor):
+            return f'El valor de "{clave}" no es válido.'
+    return None
+
+
+def rasgos_de(progreso):
+    """Los rasgos de la persona: los de por defecto, con encima lo que haya
+    guardado. Lo guardado que ya no valga (el config cambió) se ignora."""
+    try:
+        guardados = json.loads(progreso.get("avatar_rasgos") or "{}")
+    except ValueError:
+        guardados = {}
+    rasgos = dict(config.RASGOS_POR_DEFECTO)
+    if isinstance(guardados, dict):
+        rasgos.update({k: v for k, v in guardados.items() if rasgo_valido(k, v)})
+    return rasgos
+
+
+def rasgos_disponibles():
+    """Para la pantalla "Cómo me veo": cada rasgo con su nombre en español y
+    sus opciones {valor: nombre}. `ninguno` (solo mejillas y barba) es el
+    nombre de la opción vacía, que se manda como null."""
+    return {
+        clave: {"nombre": r["nombre"], **({"ninguno": r["ninguno"]} if "ninguno" in r else {}),
+                "opciones": dict(r["opciones"])}
+        for clave, r in config.RASGOS.items()
+    }
+
+
+def _objeto_puesto(progreso, tipo):
+    """El objeto que lleva la persona de ese tipo. Lo guardado que no sirva
+    (id viejo como buzo_verde, que ya no existe, o aún bloqueado) cuenta como
+    nada puesto: la ropa vuelve a la de por defecto y el accesorio queda vacío."""
+    objeto = objeto_por_id(progreso[columna_de_tipo(tipo)])
+    if objeto is None or objeto["tipo"] != tipo or not desbloqueado(objeto, progreso["nivel_maximo"]):
+        objeto = objeto_por_id(config.OBJETOS_POR_DEFECTO.get(tipo))
+    return objeto
+
+
+def _describir_prenda(objeto):
+    return None if objeto is None else {"id": objeto["id"], "nombre": objeto["nombre"], "parametros": objeto["parametros"]}
+
+
 def estado_avatar_capas(progreso):
-    """Todo lo que necesita la pantalla "personalizar avatar": la base,
-    lo que tiene puesto, las capas en orden para apilarlas, y cada objeto
-    con si está desbloqueado y cuántos niveles le faltan."""
+    """Todo lo que necesita la pantalla del avatar: la persona (rasgos y lo
+    que lleva puesto), los rasgos que se pueden elegir y cada objeto del
+    armario con si está desbloqueado y cuántos niveles le faltan.
+
+    `base`, `bases`, `capas` e `imagenes_listas` son de las capas PNG
+    (EN DESUSO) y se dejan para no romper a nadie."""
     nivel = progreso["nivel_maximo"]
     base = base_por_id(progreso["avatar_base"]) or base_por_id(config.BASE_POR_DEFECTO)
-
-    # Capas de abajo hacia arriba: base, y luego un objeto por tipo en el
-    # orden de config.TIPOS_OBJETO.
-    capas = [{"tipo": "base", "id": base["id"], **_describir_imagen(base)}]
-    puesto = {}
-    for tipo in config.TIPOS_OBJETO:
-        objeto = objeto_por_id(progreso[columna_de_tipo(tipo)])
-        # Si lo guardado ya no existe en el catálogo, o dejó de estar
-        # disponible (p. ej. se le subió el nivel en el config), no se pone.
-        if objeto is None or objeto["tipo"] != tipo or not desbloqueado(objeto, nivel):
-            puesto[tipo] = None
-            continue
-        puesto[tipo] = {"id": objeto["id"], "nombre": objeto["nombre"], **_describir_imagen(objeto)}
-        capas.append({"tipo": tipo, "id": objeto["id"], **_describir_imagen(objeto)})
-
-    archivos = [b["archivo"] for b in config.BASES_AVATAR] + [o["archivo"] for o in config.OBJETOS_AVATAR]
+    puestos = {tipo: _objeto_puesto(progreso, tipo) for tipo in config.TIPOS_OBJETO}
+    puesto = {tipo: _describir_prenda(o) for tipo, o in puestos.items()}
     respaldo = avatar_por_id(progreso["avatar_id"]) or avatar_por_id(config.AVATAR_POR_DEFECTO)
     return {
         "nivel_maximo": nivel,
-        "imagenes_listas": all(imagen_lista(a) for a in archivos),
-        "base": {"id": base["id"], "nombre": base["nombre"], **_describir_imagen(base)},
+        "persona": {"estilo": config.ESTILO_PERSONA, "rasgos": rasgos_de(progreso), "puesto": puesto},
+        "rasgos_disponibles": rasgos_disponibles(),
         "puesto": puesto,
-        "capas": capas,
-        "bases": [
-            {"id": b["id"], "nombre": b["nombre"], **_describir_imagen(b), "seleccionada": b["id"] == base["id"]}
-            for b in config.BASES_AVATAR
-        ],
         "objetos": {
             tipo: [
                 {
                     "id": o["id"],
                     "tipo": o["tipo"],
                     "nombre": o["nombre"],
-                    **_describir_imagen(o),
+                    "parametros": o["parametros"],
                     "nivel_requerido": o["nivel_requerido"],
                     "desbloqueado": desbloqueado(o, nivel),
                     "niveles_faltantes": max(0, o["nivel_requerido"] - nivel),
-                    "puesto": bool(puesto[tipo]) and puesto[tipo]["id"] == o["id"],
+                    "puesto": puestos[tipo] is not None and puestos[tipo]["id"] == o["id"],
                 }
                 for o in config.OBJETOS_AVATAR if o["tipo"] == tipo
             ]
             for tipo in config.TIPOS_OBJETO
         },
+        # ----- EN DESUSO (capas PNG) -----
+        "imagenes_listas": all(imagen_lista(b["archivo"]) for b in config.BASES_AVATAR),
+        "base": {"id": base["id"], "nombre": base["nombre"], **_describir_imagen(base)},
+        "bases": [
+            {"id": b["id"], "nombre": b["nombre"], **_describir_imagen(b), "seleccionada": b["id"] == base["id"]}
+            for b in config.BASES_AVATAR
+        ],
+        "capas": [{"tipo": "base", "id": base["id"], **_describir_imagen(base)}],
         "respaldo_dicebear": {"id": respaldo["id"], "nombre": respaldo["nombre"], "forma": respaldo["forma"],
                               "color": respaldo["color"], "url": url_avatar(respaldo)},
     }
@@ -469,7 +530,8 @@ def asegurar_tablas(conexion):
                 xp_perdido_sin_avisar INT NOT NULL DEFAULT 0,
                 avatar_base VARCHAR(40) NULL,
                 ropa_id VARCHAR(40) NULL,
-                accesorio_id VARCHAR(40) NULL
+                accesorio_id VARCHAR(40) NULL,
+                avatar_rasgos TEXT NULL
             )
         """)
         # Tablas creadas antes del 27 sep 2026: la columna "nivel" pasa a
@@ -483,6 +545,7 @@ def asegurar_tablas(conexion):
         _asegurar_columna(cursor, "progreso_usuario", "avatar_base", "avatar_base VARCHAR(40) NULL")
         _asegurar_columna(cursor, "progreso_usuario", "ropa_id", "ropa_id VARCHAR(40) NULL")
         _asegurar_columna(cursor, "progreso_usuario", "accesorio_id", "accesorio_id VARCHAR(40) NULL")
+        _asegurar_columna(cursor, "progreso_usuario", "avatar_rasgos", "avatar_rasgos TEXT NULL")
 
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS actividad_diaria (
@@ -1024,6 +1087,20 @@ def elegir_base(db, usuario_id, base_id):
     return _cambiar_avatar_capas(db, usuario_id, cambio)
 
 
+def guardar_rasgos(db, usuario_id, rasgos):
+    """Valida los rasgos, los mezcla con los ya guardados y devuelve el avatar.
+    Los rasgos son libres: nunca se verifica la etapa."""
+    error = validar_rasgos(rasgos)
+    if error:
+        return False, 400, {"error": error}
+
+    def cambio(progreso):
+        nuevos = {**rasgos_de(progreso), **rasgos}
+        progreso["avatar_rasgos"] = json.dumps(nuevos, ensure_ascii=False)
+
+    return _cambiar_avatar_capas(db, usuario_id, cambio)
+
+
 def equipar(db, usuario_id, tipo, item_id):
     columna = columna_de_tipo(tipo)
     if columna is None:
@@ -1127,7 +1204,7 @@ def ruta_elegir_avatar():
     return jsonify(cuerpo), codigo
 
 
-# ----- Avatar por capas (Figma): base + ropa + accesorio -----
+# ----- La persona (voxel-art): rasgos y armario (base = capas PNG, EN DESUSO) -----
 
 @bp.route("/avatar", methods=["GET"])
 def ruta_avatar_capas():
@@ -1146,6 +1223,18 @@ def ruta_elegir_base():
     if error:
         return error
     _, codigo, cuerpo = elegir_base(_db, usuario_id, datos["base_id"])
+    return jsonify(cuerpo), codigo
+
+
+@bp.route("/avatar/rasgos", methods=["POST"])
+def ruta_guardar_rasgos():
+    datos, error = _datos_con_campos("rasgos")
+    if error:
+        return error
+    usuario_id, error = _usuario_id_desde_email(datos.get("email"))
+    if error:
+        return error
+    _, codigo, cuerpo = guardar_rasgos(_db, usuario_id, datos["rasgos"])
     return jsonify(cuerpo), codigo
 
 

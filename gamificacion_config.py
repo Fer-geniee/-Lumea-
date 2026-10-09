@@ -232,44 +232,95 @@ AVATARES = [
 ]
 AVATAR_POR_DEFECTO = "sol"
 
-# ===== Avatar por capas (diseño en Figma) -- OPCIONAL =====
-# El avatar del perfil se arma apilando imágenes PNG del mismo tamaño y
-# con fondo transparente: abajo la BASE, encima la ROPA y encima el
-# ACCESORIO. Lo que se desbloquea subiendo de nivel son la ropa y los
-# accesorios. Especificación para la diseñadora:
-# ESPECIFICACION_AVATARES_FIGMA.md.
+# ===== La persona: avatar voxel-art de DiceBear 10.x (9 oct 2026) =====
+# Decisión de Isabella: las imágenes por capas de la diseñadora no llegan a
+# tiempo, así que la persona es un avatar "voxel-art" de DiceBear (CC0) que el
+# FRONTEND dibuja en el navegador (el backend nunca le pide nada a DiceBear).
+# El backend solo guarda y valida qué opciones lleva cada persona.
 #
-# Es opcional: mientras las imágenes no existan, las rutas responden igual
-# (con los nombres de archivo e "imagen_lista": false) y el frontend
-# muestra un marcador. Si el diseño no llega a tiempo, el perfil usa el
-# avatar DiceBear de arriba.
+# Dos partes:
+# - RASGOS: cómo se ve la persona (piel, peinado, ojos...). Son LIBRES: nunca
+#   se bloquean, porque la identidad no es un premio.
+# - OBJETOS_AVATAR: el armario. Cada etapa (nivel) desbloquea una prenda o un
+#   accesorio que CAMBIA a la persona (`parametros` son opciones de DiceBear).
 #
-# Las imágenes van en Backend/static/<CARPETA_IMAGENES_AVATAR>/ y Flask
-# las sirve en http://127.0.0.1:5002/static/avatar/<archivo>.
-CARPETA_IMAGENES_AVATAR = "avatar"
+# Los valores válidos salen de voxel-art.json (@dicebear/styles 10.6.0, en el
+# frontend: vendor/dicebear/estilos/). Los colores van en hexadecimal sin "#".
+ESTILO_PERSONA = "voxel-art"
 
-# Las 2 bases tienen la misma silueta y postura, para que cada prenda y
-# accesorio sirva en las dos. Las dos están disponibles desde el inicio.
+# Tipos de objeto del armario. Cada usuario lleva como máximo UN objeto de
+# cada tipo. La ropa nunca queda vacía: sin nada elegido lleva la de
+# OBJETOS_POR_DEFECTO. El accesorio sí puede estar vacío.
+TIPOS_OBJETO = ["ropa", "accesorio"]
+
+# Una prenda o accesorio por cada una de las 10 etapas de NIVELES (borrador:
+# Isabella revisa los nombres). nivel_requerido se compara con el NIVEL MÁXIMO
+# alcanzado, así que un objeto desbloqueado nunca se vuelve a bloquear. Las
+# gorras y gorros (cap, beanie) no entran: en voxel-art reemplazan el peinado.
+# Sin nada que resalte el cuerpo (población adolescente, ver
+# DEFENSA_TECNICA_LUMEA.md sección 5).
+OBJETOS_AVATAR = [
+    {"id": "camiseta_lisa", "tipo": "ropa", "nombre": "Camiseta lisa", "parametros": {"outfitVariant": "plain"}, "nivel_requerido": 1},
+    {"id": "camiseta_rayas", "tipo": "ropa", "nombre": "Camiseta de rayas", "parametros": {"outfitVariant": "stripes"}, "nivel_requerido": 2},
+    {"id": "gafas_redondas", "tipo": "accesorio", "nombre": "Gafas redondas", "parametros": {"glassesVariant": "round"}, "nivel_requerido": 3},
+    {"id": "overol", "tipo": "ropa", "nombre": "Overol de jardín", "parametros": {"outfitVariant": "overalls"}, "nivel_requerido": 4},
+    {"id": "camisa_cuadros", "tipo": "ropa", "nombre": "Camisa de cuadros", "parametros": {"outfitVariant": "checker"}, "nivel_requerido": 5},
+    {"id": "buzo_capota", "tipo": "ropa", "nombre": "Buzo con capota", "parametros": {"outfitVariant": "hoodie"}, "nivel_requerido": 6},
+    {"id": "gafas_sol", "tipo": "accesorio", "nombre": "Gafas de sol", "parametros": {"glassesVariant": "shades"}, "nivel_requerido": 7},
+    {"id": "chaqueta", "tipo": "ropa", "nombre": "Chaqueta", "parametros": {"outfitVariant": "jacket"}, "nivel_requerido": 8},
+    {"id": "vestido", "tipo": "ropa", "nombre": "Vestido", "parametros": {"outfitVariant": "dress"}, "nivel_requerido": 9},
+    {"id": "traje", "tipo": "ropa", "nombre": "Traje", "parametros": {"outfitVariant": "suit"}, "nivel_requerido": 10},
+]
+OBJETOS_POR_DEFECTO = {"ropa": "camiseta_lisa"}   # puesto al crear la cuenta
+
+
+# Rasgos libres. Por cada clave: su nombre en español, sus opciones
+# ({valor: nombre}) y, solo en mejillas y barba, `ninguno`: el nombre de la
+# opción "sin esto", que se guarda como null.
+RASGOS = {
+    "skinColor": {"nombre": "Tono de piel", "opciones": {
+        valor: f"Tono {n}" for n, valor in enumerate(
+            ["f5d0b0", "eab890", "dda878", "c99062", "b07347", "95562f", "7d4a26", "6a3d1f"], start=1)}},
+    "topVariant": {"nombre": "Peinado", "opciones": {
+        "short": "Corto", "spiky": "De puntas", "bowl": "Corte totuma", "sideSwept": "De lado",
+        "curly": "Crespo", "mohawk": "Mohicano", "buns": "Moños", "ponytail": "Cola de caballo",
+        "bob": "Melena corta", "shoulderLength": "A los hombros", "longStraight": "Largo liso",
+        "longWavy": "Largo ondulado", "partedLong": "Largo con partidura", "braids": "Trenzas",
+        "twinTails": "Dos colitas", "afro": "Afro", "halfShaved": "Medio rapado"}},
+    "hairColor": {"nombre": "Color de pelo", "opciones": {
+        "2c222b": "Negro", "3b2f2f": "Café muy oscuro", "5a3825": "Café oscuro", "7b4a2d": "Café",
+        "a56b46": "Café claro", "c98850": "Miel", "d9b380": "Rubio oscuro", "e8d4a8": "Rubio",
+        "b55239": "Cobrizo", "d6455d": "Rosado", "6d5acf": "Morado", "3fb27f": "Verde"}},
+    "eyesVariant": {"nombre": "Ojos", "opciones": {
+        "open": "Abiertos", "soft": "Suaves", "happy": "Contentos", "sleepy": "Soñolientos",
+        "side": "Mirando de lado", "closed": "Cerrados", "wide": "Muy abiertos", "star": "De estrella"}},
+    "mouthVariant": {"nombre": "Boca", "opciones": {
+        "smile": "Sonrisa", "bigSmile": "Sonrisa grande", "flat": "Recta", "ooh": "Sorprendida",
+        "tongue": "Lengua afuera", "smirk": "Sonrisa de lado", "laugh": "Risa",
+        "wideSmile": "Sonrisa ancha", "frown": "Boca hacia abajo", "grin": "Dientes"}},
+    "cheeksVariant": {"nombre": "Mejillas", "ninguno": "Ninguno", "opciones": {
+        "blush": "Rubor", "pixel": "Cuadritos", "freckles": "Pecas"}},
+    "beardVariant": {"nombre": "Barba", "ninguno": "Ninguna", "opciones": {
+        "full": "Barba completa", "mustache": "Bigote", "goatee": "Perilla", "stubble": "Barba corta"}},
+    "shirtColor": {"nombre": "Color de la camiseta", "opciones": {
+        "e64980": "Rosado", "f76707": "Naranja", "fab005": "Amarillo", "40c057": "Verde",
+        "12b886": "Turquesa", "228be6": "Azul", "4c6ef5": "Añil", "7950f2": "Morado",
+        "e8590c": "Mandarina", "495057": "Gris"}},
+}
+
+# Una persona neutra, para quien todavía no ha elegido nada.
+RASGOS_POR_DEFECTO = {
+    "skinColor": "c99062", "topVariant": "short", "hairColor": "3b2f2f", "eyesVariant": "open",
+    "mouthVariant": "smile", "cheeksVariant": None, "beardVariant": None, "shirtColor": "40c057",
+}
+
+# ----- EN DESUSO (9 oct): las capas PNG de la diseñadora -----
+# Se conservan para no romper a quien ya las use (/avatar/base, "capas",
+# "imagen_lista"), pero la persona ya no se arma con ellas. Sin imágenes, las
+# rutas responden igual con `imagen_lista: false`.
+CARPETA_IMAGENES_AVATAR = "avatar"
 BASES_AVATAR = [
     {"id": "base_1", "nombre": "Base 1", "archivo": "base_1.png"},
     {"id": "base_2", "nombre": "Base 2", "archivo": "base_2.png"},
 ]
 BASE_POR_DEFECTO = "base_1"
-
-# Tipos de objeto, en el orden en que se apilan encima de la base (el
-# último queda arriba). Cada usuario lleva como máximo UN objeto de cada
-# tipo, o ninguno.
-TIPOS_OBJETO = ["ropa", "accesorio"]
-
-# Propuesta inicial: 3 de ropa y 3 accesorios. nivel_requerido se compara
-# con el NIVEL MÁXIMO alcanzado, así que un objeto desbloqueado nunca se
-# vuelve a bloquear. Sin nada que resalte el cuerpo (población
-# adolescente, ver DEFENSA_TECNICA_LUMEA.md sección 5).
-OBJETOS_AVATAR = [
-    {"id": "buzo_verde", "tipo": "ropa", "nombre": "Buzo verde", "archivo": "ropa_buzo_verde.png", "nivel_requerido": 1},
-    {"id": "camiseta_lumea", "tipo": "ropa", "nombre": "Camiseta Lumea", "archivo": "ropa_camiseta_lumea.png", "nivel_requerido": 3},
-    {"id": "ruana", "tipo": "ropa", "nombre": "Ruana", "archivo": "ropa_ruana.png", "nivel_requerido": 6},
-    {"id": "gafas", "tipo": "accesorio", "nombre": "Gafas", "archivo": "accesorio_gafas.png", "nivel_requerido": 2},
-    {"id": "audifonos", "tipo": "accesorio", "nombre": "Audífonos", "archivo": "accesorio_audifonos.png", "nivel_requerido": 4},
-    {"id": "sombrero_vueltiao", "tipo": "accesorio", "nombre": "Sombrero vueltiao", "archivo": "accesorio_sombrero_vueltiao.png", "nivel_requerido": 8},
-]
