@@ -126,10 +126,13 @@ class TestFuncionConsejo(unittest.TestCase):
                 with self.subTest(grupo=grupo["id"], codigo=codigo):
                     self.assertIsNotNone(consejos.consejo_para(codigo, []))
 
-    def test_aromatica_no_tiene_grupo_y_no_inventa_texto(self):
+    def test_aromatica_no_tiene_grupo_pero_usa_su_texto_propio(self):
+        # Sin grupo en el mapa, el "aporta" sale del texto propio que escribió
+        # Isabella (la clave de consejos_config.py es "aromatica", sin tilde,
+        # igual que el código del alimento).
         c = consejos.consejo_para("aromatica", [])
         self.assertIsNone(c["grupo"])
-        self.assertIsNone(c["aporta"])
+        self.assertEqual(c["aporta"], textos.ALIMENTOS["aromatica"]["aporta"])
 
 
 class TestTextosYMapa(unittest.TestCase):
