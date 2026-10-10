@@ -1,4 +1,4 @@
-# Lumea · Backend · El cerebro detrás de Lumea 
+# Lumea · Backend · El cerebro detrás de Lumea 🧠🤓
 
 API REST en Flask que recibe la foto de un alimento, la reconoce con dos redes
 MobileNetV2 (transfer learning) entrenadas con dos datasets (uno regional, de
